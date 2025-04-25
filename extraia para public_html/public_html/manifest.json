@@ -1,0 +1,91 @@
+{
+  "assets/images/cassino-small.png": {
+    "file": "assets/cassino-small-DmZcS2BB.png",
+    "src": "assets/images/cassino-small.png"
+  },
+  "assets/images/cassino.png": {
+    "file": "assets/cassino-Cv0UC3Ds.png",
+    "src": "assets/images/cassino.png"
+  },
+  "assets/images/sport-small.png": {
+    "file": "assets/sport-small-DzaHxV5c.png",
+    "src": "assets/images/sport-small.png"
+  },
+  "assets/images/sport.png": {
+    "file": "assets/sport-C22CSqte.png",
+    "src": "assets/images/sport.png"
+  },
+  "lang/en.json": {
+    "file": "assets/en-DsL4mXW5.js",
+    "src": "lang/en.json",
+    "isDynamicEntry": true
+  },
+  "lang/es.json": {
+    "file": "assets/es-22qP3pLO.js",
+    "src": "lang/es.json",
+    "isDynamicEntry": true
+  },
+  "lang/php_en.json": {
+    "file": "assets/php_en-C6PQuTyh.js",
+    "src": "lang/php_en.json",
+    "isDynamicEntry": true
+  },
+  "lang/php_es.json": {
+    "file": "assets/php_es-DhSK7Pja.js",
+    "src": "lang/php_es.json",
+    "isDynamicEntry": true
+  },
+  "lang/php_pt_BR.json": {
+    "file": "assets/php_pt_BR-JGPSWtEN.js",
+    "src": "lang/php_pt_BR.json",
+    "isDynamicEntry": true
+  },
+  "lang/php_vendor.json": {
+    "file": "assets/php_vendor-CNgoKMZt.js",
+    "src": "lang/php_vendor.json",
+    "isDynamicEntry": true
+  },
+  "lang/pt_BR.json": {
+    "file": "assets/pt_BR-lJGEsLFu.js",
+    "src": "lang/pt_BR.json",
+    "isDynamicEntry": true
+  },
+  "public/guga.png": {
+    "file": "assets/guga-b0sTMGPg.png",
+    "src": "public/guga.png"
+  },
+  "public/trofeu.webp": {
+    "file": "assets/trofeu-k7kuguoC.webp",
+    "src": "public/trofeu.webp"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-l0sNRNKZ.js",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-CNXOO7jO.js",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "dynamicImports": [
+      "lang/en.json",
+      "lang/es.json",
+      "lang/php_en.json",
+      "lang/php_es.json",
+      "lang/php_pt_BR.json",
+      "lang/php_vendor.json",
+      "lang/pt_BR.json"
+    ],
+    "css": [
+      "assets/app-BbqrdZHi.css"
+    ],
+    "assets": [
+      "assets/trofeu-k7kuguoC.webp",
+      "assets/guga-b0sTMGPg.png",
+      "assets/cassino-Cv0UC3Ds.png",
+      "assets/cassino-small-DmZcS2BB.png",
+      "assets/sport-C22CSqte.png",
+      "assets/sport-small-DzaHxV5c.png"
+    ]
+  }
+}

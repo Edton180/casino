@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+<!-- Mirrored from aquelasorte.online/raspadinha/ by HTTrack Website Copier/3.x [XR&CO'2014], Tue, 02 Jul 2024 13:48:55 GMT -->
+<head>
+    
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-6PQVNVMJP6"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-6PQVNVMJP6');
+</script>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raspadinha | Guga</title>
+
+    <meta
+      name="description"
+      content="Guga é o melhor site de apostas esportivas, com diversas opções de esportes para apostar e promoções exclusivas. Com uma plataforma intuitiva e segura, oferecemos estatísticas detalhadas dos jogos, análises de especialistas e suporte ao cliente 24/7."
+    />
+    <meta name="og:title" content="Guga BET" />
+    <meta name="og:site_name" content="Guga BET" />
+    <meta
+      name="og:description"
+      content="Guga tem as melhores apostas online e jogos de cassino virtual para você se divertir. Curta nosso site para ter o melhor do entretenimento em jogos de futebol, basquete, tênis, e-sports é muito mais. Aposte para ganhar nos melhores jogos de cassino disponível no mercado de iGaming."
+    />
+    <script type="module" crossorigin src="assets/index-CvVb0J-z.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+       <script>
+						
+		const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const utm_source = urlParams.get('utm_source') ? urlParams.get('utm_source') : '';
+        const utm_campaign = urlParams.get('utm_campaign') ? urlParams.get('utm_campaign') : '';
+        const utm_medium = urlParams.get('utm_medium') ? urlParams.get('utm_medium') : '';
+        const utm_content = urlParams.get('utm_content') ? urlParams.get('utm_content') : '';
+        const utm_term = urlParams.get('utm_term') ? urlParams.get('utm_term') : '';	
+			
+		function setCookie(cookieName, cookieValue, expirationDays) {
+		  const d = new Date();
+		  d.setTime(d.getTime() + (expirationDays * 24 * 60 * 60 * 1000));
+		  const expires = "expires=" + d.toUTCString();
+		  document.cookie = cookieName + "=" + cookieValue + ";" + expires + ";path=/";
+		}
+		
+		function getCookieValue(cookieName) {
+		  const cookies = document.cookie.split(';');
+			console.log(cookies)
+		  for(let i = 0; i < cookies.length; i++) {
+			let cookie = cookies[i].trim();
+			if(cookie.startsWith(cookieName + '=')) {
+			  return cookie.substring(cookieName.length + 1);
+			}
+		  }
+		
+		  return null;
+		}
+		
+		let fbp = getCookieValue("_fbp")
+		let uniqueId = getCookieValue("unique_id");
+		let urlGuga;
+		
+		if (uniqueId === null) {
+		  fetch('https://pixelhook.online/cookies.php')
+			.then(response => {
+			  if (!response.ok) {
+				throw new Error('Erro ao fazer a solicitação para o servidor PHP');
+			  }
+			  return response.text();
+			})
+			.then(data => {
+			  console.log('Resposta do servidor PHP:', data);
+			  uniqueId = data;
+			  setCookie("unique_id", data, 30);
+			  //redirecionar();
+			})
+			.catch(error => {
+			  console.error('Erro:', error);
+			});
+		} else {
+		  console.log("Valor do cookie 'unique_id':", uniqueId);
+		  //redirecionar();
+		}
+			
+    
+		function adicionarOuvinte(botao) {
+			botao.addEventListener('click', function(event) {
+				fbq('track', 'Lead');
+				//event.preventDefault();
+			});
+		}
+	
+			
+		function verificarNovosBotoes() {
+			
+			var botoesWa = document.querySelectorAll('a[href^="https://go.aff"]');
+
+			
+			botoesWa.forEach(function(botao) {
+				if (!botao.hasAttribute('data-ouvinte-adicionado')) {
+					adicionarOuvinte(botao);
+					botao.href = `https://go.aff.Guga.bet/x8dzg1sq?utm_campaign=TDIRETO-${utm_campaign}&utm_content=${uniqueId}`
+					botao.setAttribute('data-ouvinte-adicionado', 'true');
+				}
+			});
+		}
+
+		
+		document.addEventListener('DOMContentLoaded', function() {
+			verificarNovosBotoes();
+		});
+
+		setInterval(verificarNovosBotoes, 200);
+		</script>
+  </body>
+
+<!-- Mirrored from aquelasorte.online/raspadinha/ by HTTrack Website Copier/3.x [XR&CO'2014], Tue, 02 Jul 2024 13:48:57 GMT -->
+</html>

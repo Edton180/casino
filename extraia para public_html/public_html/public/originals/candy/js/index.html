@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="content-type" content="text/html; charset=UTF8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="viewport" content="height=device-height, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui, viewport-fit=cover" />
+    <meta name="description" content="">
+    <meta name="csrf-token" content="uayl28NaJSux83QpbV00shs7ZVI3R7MBdg0fHbBr"> <!-- Token CSRF -->
+    <title>Selecione o Valor da Aposta</title>
+	  <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container {
+            width: 400px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        form {
+            text-align: center;
+        }
+        
+        input[type="number"],
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 20px; /* Adiciona bordas arredondadas */
+            box-sizing: border-box;
+        }
+
+        input[type="number"]::placeholder {
+            text-align: center; /* Centraliza o texto do placeholder */
+        }
+
+        .additional-info {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<script>
+function confirmarAposta() {
+    // Obtém o valor da aposta do campo de entrada
+    let valorAposta = document.getElementById("valorAposta").value;
+
+    // Verifica se a aposta está entre 1 e 25
+    if (valorAposta >= 1 && valorAposta <= 25) {
+        // Obtém o usuário do armazenamento local
+        const user = JSON.parse(localStorage.getItem('user'));
+
+        // Verifica se o usuário está presente e possui um id
+        if (user && user.id) {
+            // Obtém o id do usuário
+            const userId = user.id;
+
+            // Obtém o valor de is_demo_agent
+            const isDemoAgent = user.is_demo_agent || 0; // Padrão para 0 se não estiver presente
+
+            // Envia um POST para o PHP com o id do usuário, o valor da aposta e is_demo_agent
+            let xhr = new XMLHttpRequest();
+            xhr.open("POST", "processar_aposta.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        if (isDemoAgent === 1) {
+                            // Se isDemoAgent for 1, redirecione para outra página
+                            window.location.href = `jogo2.html?aposta=${encodeURIComponent(valorAposta)}&is_demo_agent=${encodeURIComponent(isDemoAgent)}`;
+                        } else {
+                            // Caso contrário, redirecione para a página de jogo
+                            window.location.href = `jogo.html?aposta=${encodeURIComponent(valorAposta)}&is_demo_agent=${encodeURIComponent(isDemoAgent)}`;
+                        }
+                    } else {
+                        alert("Erro ao processar a aposta. Por favor, tente novamente mais tarde.");
+                    }
+                }
+            };
+            xhr.send("user_id=" + encodeURIComponent(userId) + "&aposta=" + encodeURIComponent(valorAposta));
+        } else {
+            // Se o usuário não estiver presente ou não tiver um id, exibe uma mensagem de erro
+            alert("Erro ao obter o ID do usuário. Por favor, faça login novamente.");
+        }
+    } else {
+        // Se a aposta estiver fora do intervalo permitido, exibe uma mensagem de erro
+        alert("A aposta deve ser entre 1 a 25 reais !");
+    }
+}
+
+</script>
+    <h1>Selecione o Valor da Aposta</h1>
+    <form id="apostaForm" onsubmit="return false;">
+        <input type="number" id="valorAposta" placeholder="Valor da Aposta" required>
+        <button onclick="confirmarAposta()">Confirmar</button>
+    </form>
+
+
+
+</body>
+</html>

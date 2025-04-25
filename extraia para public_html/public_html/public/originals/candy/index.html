@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6PQVNVMJP6"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-6PQVNVMJP6');
+</script>
+    <meta charset="UTF-8">
+    <meta http-equiv="content-type" content="text/html; charset=UTF8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="viewport" content="height=device-height, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui, viewport-fit=cover" />
+    <meta name="description" content="">
+    <meta name="csrf-token" content="uayl28NaJSux83QpbV00shs7ZVI3R7MBdg0fHbBr"> <!-- Token CSRF -->
+    <title>Candy Selecione</title>
+	  <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+background-image: url('Candy.png');
+            background-size: cover; /* Ajusta o tamanho da imagem para cobrir todo o corpo */
+            background-position: center; /* Centraliza a imagem */
+        }
+
+    .container {
+        width: 400px;
+        background-color: #fff;
+        border-radius: 20px; /* Aumenta a borda arredondada */
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2); /* Aumenta a sombra */
+        padding: 30px; /* Aumenta o espaço interno */
+        text-align: center;
+    }
+
+    h1 {
+        margin-top: 0;
+        color: #000000; /* Altera a cor do título */
+                text-align: center;
+
+    }
+
+    form {
+        margin-top: 20px;
+    }
+
+    input[type="number"],
+    button {
+        width: calc(100% - 40px); /* Reduz a largura para acomodar a borda e o preenchimento */
+        padding: 15px;
+    margin: auto; /* Centraliza vertical e horizontalmente */
+        border: none;
+        border-radius: 20px;
+        box-sizing: border-box;
+        background-color: #f0f0f0; /* Altera a cor de fundo dos inputs */
+
+    }
+
+    input[type="number"]::placeholder {
+        text-align: center;
+    }
+
+    .additional-info {
+        font-size: 16px; /* Aumenta o tamanho da fonte */
+        color: #fff; /* Altera a cor do texto adicional */
+        margin-top: 10px; /* Ajusta a margem superior */
+    }
+
+    button {
+        background-color: #0056b3; /* Altera a cor de fundo do botão */
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s; /* Adiciona uma transição suave */
+    }
+
+    button:hover {
+        background-color: #004080; /* Altera a cor de fundo do botão ao passar o mouse */
+    }
+</style>
+
+</head>
+<body class="body">
+<script>
+function confirmarAposta() {
+    // Obtém o valor da aposta do campo de entrada
+    let valorAposta = document.getElementById("valorAposta").value;
+
+    // Verifica se a aposta está entre 1 e 25
+    if (valorAposta >= 1 && valorAposta <= 25) {
+        // Obtém o usuário do armazenamento local
+        const user = JSON.parse(localStorage.getItem('user'));
+
+        // Verifica se o usuário está presente e possui um id
+        if (user && user.id) {
+            // Obtém o id do usuário
+            const userId = user.id;
+
+            // Obtém o valor de is_demo_agent
+            const isDemoAgent = user.is_demo_agent || 0; // Padrão para 0 se não estiver presente
+
+            // Envia um POST para o PHP com o id do usuário, o valor da aposta e is_demo_agent
+            let xhr = new XMLHttpRequest();
+            xhr.open("POST", "processar_aposta.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        if (isDemoAgent === 1) {
+                            // Se isDemoAgent for 1, redirecione para outra página
+                            window.location.href = `jogo2.html?aposta=${encodeURIComponent(valorAposta)}&is_demo_agent=${encodeURIComponent(isDemoAgent)}`;
+                        } else {
+                            // Caso contrário, redirecione para a página de jogo
+                            window.location.href = `jogo.html?aposta=${encodeURIComponent(valorAposta)}&is_demo_agent=${encodeURIComponent(isDemoAgent)}`;
+                        }
+                    } else {
+                        alert("Erro ao processar a aposta. Por favor, tente novamente mais tarde.");
+                    }
+                }
+            };
+            xhr.send("user_id=" + encodeURIComponent(userId) + "&aposta=" + encodeURIComponent(valorAposta));
+        } else {
+            // Se o usuário não estiver presente ou não tiver um id, exibe uma mensagem de erro
+            alert("Erro ao obter o ID do usuário. Por favor, faça login novamente.");
+        }
+    } else {
+        // Se a aposta estiver fora do intervalo permitido, exibe uma mensagem de erro
+        alert("A aposta deve ser entre 1 a 25 reais !");
+    }
+}
+
+</script>
+<div class="flex flex-col items-center justify-center h-screen">
+    <h1 class="mb-4">Selecione o Valor</h1>
+    <form id="apostaForm" onsubmit="return false;" class="flex flex-col items-center">
+        <input type="number" id="valorAposta" placeholder="Valor da Aposta" required class="mb-2">
+        <button onclick="confirmarAposta()">Confirmar</button>
+    </form>
+    <h1 class="mb-4">O jogo encerra automaticamente</h1>
+
+</div>
+
+
+
+</body>
+</html>
