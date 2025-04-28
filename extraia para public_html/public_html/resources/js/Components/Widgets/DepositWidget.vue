@@ -3,76 +3,57 @@
         <div v-if="(paymentType == null || paymentType === '') && wallet && setting">
             <div class="">
                 <ul>
-                    <li v-if="setting.digitopay_is_enable" @click="setPaymentMethod('pix', 'digitopay')" class=" bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
+                    <li v-if="setting.asaas_is_enable" @click="setPaymentMethod('pix', 'asaas')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
                         <div class="flex items-center gap-4">
                             <img :src="`/assets/images/pix.png`" alt="" width="100">
-                            <p>DIGITOPAY</p>
-                        </div>
-                        <div>
-
+                            <p>ASAAS PIX</p>
                         </div>
                         <div class="flex justify-center items-center text-gray-500 gap-4">
                             <i class="fa-solid fa-chevron-right ml-2"></i>
                         </div>
                     </li>
-                    <li v-if="setting.mercadopago_is_enable" @click="setPaymentMethod('pix', 'mercadopago')" class=" bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
+                    <li v-if="setting.asaas_is_enable && setting.asaas_credit_card_enable" @click="setPaymentMethod('credit_card', 'asaas')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
                         <div class="flex items-center gap-4">
-                            <img :src="`/assets/images/pix.png`" alt="" width="100">
-                            <p>MERCADO PAGO</p>
-                        </div>
-                        <div>
-
+                            <img :src="`/assets/images/credit-card.png`" alt="" width="100">
+                            <p>ASAAS CARTÃO</p>
                         </div>
                         <div class="flex justify-center items-center text-gray-500 gap-4">
                             <i class="fa-solid fa-chevron-right ml-2"></i>
                         </div>
                     </li>
-                    
-                    <li v-if="setting.bspay_is_enable" @click="setPaymentMethod('pix', 'bspay')" class=" bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
+                    <li v-if="setting.mercadopago_is_enable" @click="setPaymentMethod('pix', 'mercadopago')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
                         <div class="flex items-center gap-4">
                             <img :src="`/assets/images/pix.png`" alt="" width="100">
-                            <p>BSPAY/PIXUP</p>
-                        </div>
-                        <div>
-
+                            <p>MERCADO PAGO PIX</p>
                         </div>
                         <div class="flex justify-center items-center text-gray-500 gap-4">
                             <i class="fa-solid fa-chevron-right ml-2"></i>
                         </div>
                     </li>
-                    
-                    <li v-if="setting.sharkpay_is_enable" @click="setPaymentMethod('pix', 'sharkpay')" class=" bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
+                    <li v-if="setting.mercadopago_is_enable && setting.mercadopago_credit_card_enable" @click="setPaymentMethod('credit_card', 'mercadopago')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
                         <div class="flex items-center gap-4">
-                            <img :src="`/assets/images/pix.png`" alt="" width="100">
-                            <p>SHARKPAY</p>
-                        </div>
-                        <div>
-
+                            <img :src="`/assets/images/credit-card.png`" alt="" width="100">
+                            <p>MERCADO PAGO CARTÃO</p>
                         </div>
                         <div class="flex justify-center items-center text-gray-500 gap-4">
                             <i class="fa-solid fa-chevron-right ml-2"></i>
                         </div>
                     </li>
-                    <li v-if="setting.suitpay_is_enable" @click="setPaymentMethod('pix', 'suitpay')" class=" bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
+                    <li v-if="setting.paypal_is_enable" @click="setPaymentMethod('pix', 'paypal')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
                         <div class="flex items-center gap-4">
                             <img :src="`/assets/images/pix.png`" alt="" width="100">
-                            <p>SUITPAY</p>
-                        </div>
-                        <div>
-
+                            <p>PAYPAL PIX</p>
                         </div>
                         <div class="flex justify-center items-center text-gray-500 gap-4">
                             <i class="fa-solid fa-chevron-right ml-2"></i>
                         </div>
                     </li>
-                    <li v-if="setting.stripe_is_enable" @click="setPaymentMethod('stripe', 'stripe')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-2">
-                        <div>
-                            <img :src="`/assets/images/stripe.png`" alt="" width="80">
+                    <li v-if="setting.paypal_is_enable && setting.paypal_credit_card_enable" @click="setPaymentMethod('credit_card', 'paypal')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
+                        <div class="flex items-center gap-4">
+                            <img :src="`/assets/images/credit-card.png`" alt="" width="100">
+                            <p>PAYPAL CARTÃO</p>
                         </div>
-                        <div>
-
-                        </div>
-                        <div class="flex justify-center items-center gap-4 text-gray-500">
+                        <div class="flex justify-center items-center text-gray-500 gap-4">
                             <i class="fa-solid fa-chevron-right ml-2"></i>
                         </div>
                     </li>
@@ -354,7 +335,13 @@
                 sessionId: null,
                 paymentGateway: '',
                 showQRCode: false,
-
+                paymentMethod: null,
+                creditCard: {
+                    number: '',
+                    name: '',
+                    expiry: '',
+                    cvc: ''
+                }
             }
         },
         setup(props) {
@@ -452,12 +439,13 @@ if (userData && userData.cpf) {
 
                 }).catch(error => { });
             },
-            setPaymentMethod: function(type, gateway) {
-                if(type === 'stripe') {
+            setPaymentMethod: function(method, gateway) {
+                if(method === 'stripe') {
                     this.getPublicKeyStripe();
                 }
-                this.paymentType = type;
+                this.paymentType = method;
                 this.paymentGateway = gateway;
+                this.paymentMethod = method;
             },
             openModalDeposit: function() {
     window.location.reload();
@@ -528,6 +516,11 @@ submitQRCode: function(event) {
 
     _this.deposit.paymentType = _this.paymentType;
     _this.deposit.gateway = _this.paymentGateway;
+    _this.deposit.payment_method = _this.paymentMethod;
+
+    if (_this.paymentMethod === 'credit_card') {
+        _this.deposit.credit_card = _this.creditCard;
+    }
 
     const attemptPayment = (gateway) => {
         _this.isLoading = true;
@@ -545,29 +538,21 @@ submitQRCode: function(event) {
                 _this.intervalId = setInterval(function () {
                     _this.checkTransactions(_this.idTransaction);
                 }, 5000);
+            } else if (response.data && response.data.redirect_url) {
+                window.location.href = response.data.redirect_url;
             } else {
-                throw new Error('Invalid QR code response');
+                throw new Error('Invalid response');
             }
         }).catch(error => {
-            if (gateway === 'digitopay') {
-                // Tentar novamente com suitpay
-                attemptPayment('suitpay');
-            } else {
-                // Erro ao tentar com suitpay também
-                Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
-                    _toast.error(`${value}`);
-                });
-                _this.showPixQRCode = false;
-                _this.isLoading = false;
-            }
+            Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
+                _toast.error(`${value}`);
+            });
+            _this.showPixQRCode = false;
+            _this.isLoading = false;
         });
     };
 
-    // Primeira tentativa com digitopay
-    attemptPayment('digitopay');
-    
-    // Primeira tentativa com digitopay
-    attemptPayment('bspay');
+    attemptPayment(_this.paymentGateway);
 },
 
             
@@ -918,5 +903,29 @@ submitQRCode: function(event) {
     margin: 0 auto;
          margin-bottom: -20px; /* Ajuste conforme necessário para encostar no logo */
     top: -50px;
+}
+
+.credit-card-form {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.credit-card-form input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.credit-card-form .row {
+    display: flex;
+    gap: 15px;
+}
+
+.credit-card-form .row .col {
+    flex: 1;
 }
 </style>

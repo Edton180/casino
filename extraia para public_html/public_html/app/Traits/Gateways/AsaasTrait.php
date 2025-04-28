@@ -2,94 +2,44 @@
 
 namespace App\Traits\Gateways;
 
-use App\Models\AffiliateHistory;
 use App\Models\Deposit;
-use App\Models\GamesKey;
-use App\Models\Gateway;
-use App\Models\Setting;
-use App\Models\SuitPayPayment;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
-use App\Notifications\NewDepositNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Validator;
-use App\Helpers\Core as Helper;
 use Illuminate\Support\Facades\Log;
 
-trait MercadoPagoTrait
+trait AsaasTrait
 {
-    private static $uriMP;
+    private static $uriAsaas;
     private static $apiKey;
-    private static $publicKey;
+    private static $webhookKey;
 
     /**
-     * Gera as credenciais do Mercado Pago
+     * Gera as credenciais do Asaas
      * @return array
      */
-    private static function generateCredentialsMP()
+    private static function generateCredentialsAsaas()
     {
         $gateway = \App\Models\Gateway::first();
-        if (!empty($gateway) && $gateway->mp_is_enable) {
-            self::$apiKey = $gateway->mp_access_token;
-            self::$publicKey = $gateway->mp_public_key;
-            self::$uriMP = $gateway->mp_sandbox ? 'https://api.mercadopago.com/v1/' : 'https://api.mercadopago.com/v1/';
+        if (!empty($gateway) && $gateway->asaas_is_enable) {
+            self::$apiKey = $gateway->asaas_api_key;
+            self::$webhookKey = $gateway->asaas_webhook_key;
+            self::$uriAsaas = $gateway->asaas_sandbox ? 'https://sandbox.asaas.com/api/v3/' : 'https://api.asaas.com/v3/';
             return true;
         }
         return false;
     }
 
     /**
-     * @param $idTransaction
-     * @param $amount
-     * @dev victormsalatiel - Corra de golpista, me chame no instagram
-     * @return void
-     */
-    private static function generateDepositMP($idTransaction, $amount)
-    {
-        $userId = auth('api')->user()->id;
-        $wallet = Wallet::where('user_id', $userId)->first();
-
-        Deposit::create([
-            'payment_id'=> $idTransaction,
-            'user_id'   => $userId,
-            'amount'    => $amount,
-            'type'      => 'pix',
-            'currency'  => $wallet->currency,
-            'symbol'    => $wallet->symbol,
-            'status'    => 0
-        ]);
-    }
-
-    /**
-     * @param $idTransaction
-     * @param $amount
-     * @dev victormsalatiel - Corra de golpista, me chame no instagram
-     * @return void
-     */
-    private static function generateTransactionMP($idTransaction, $amount)
-    {
-        $setting = Helper::getSetting();
-
-        Transaction::create([
-            'payment_id' => $idTransaction,
-            'user_id' => auth('api')->user()->id,
-            'payment_method' => 'pix',
-            'price' => $amount,
-            'currency' => $setting->currency_code,
-            'status' => 0
-        ]);
-    }
-
-    /**
-     * Cria um pagamento PIX via Mercado Pago
+     * Cria um pagamento PIX via Asaas
      * @param $request
      * @return array
      */
-    public static function requestQrcodeMP($request)
+    public static function requestQrcodeAsaas($request)
     {
-        if (self::generateCredentialsMP()) {
+        if (self::generateCredentialsAsaas()) {
             $setting = \Helper::getSetting();
             $rules = [
                 'amount' => ['required', 'max:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
@@ -102,22 +52,23 @@ trait MercadoPagoTrait
             }
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . self::$apiKey,
+                'access_token' => self::$apiKey,
                 'Content-Type' => 'application/json',
-            ])->post(self::$uriMP . 'payments', [
-                'transaction_amount' => floatval($request->amount),
-                'description' => 'Depósito',
-                'payment_method_id' => 'pix',
-                'payer' => [
+            ])->post(self::$uriAsaas . 'payments', [
+                'customer' => [
+                    'name' => auth('api')->user()->name,
+                    'cpfCnpj' => \Helper::soNumero($request->cpf),
                     'email' => auth('api')->user()->email,
-                    'first_name' => auth('api')->user()->name,
-                    'last_name' => auth('api')->user()->name,
-                    'identification' => [
-                        'type' => 'CPF',
-                        'number' => \Helper::soNumero($request->cpf)
-                    ]
+                    'phone' => \Helper::soNumero(auth('api')->user()->phone),
                 ],
-                'notification_url' => url('/mercadopago/callback')
+                'billingType' => 'PIX',
+                'value' => floatval($request->amount),
+                'dueDate' => Carbon::now()->addDay()->format('Y-m-d'),
+                'description' => 'Depósito',
+                'externalReference' => uniqid(),
+                'callback' => [
+                    'url' => url('/asaas/callback')
+                ]
             ]);
 
             if ($response->successful()) {
@@ -145,7 +96,7 @@ trait MercadoPagoTrait
                 return [
                     'status' => true,
                     'idTransaction' => $responseData['id'],
-                    'qrcode' => $responseData['point_of_interaction']['transaction_data']['qr_code']
+                    'qrcode' => $responseData['pixQrCode']
                 ];
             }
 
@@ -162,13 +113,13 @@ trait MercadoPagoTrait
     }
 
     /**
-     * Cria um pagamento com cartão de crédito via Mercado Pago
+     * Cria um pagamento com cartão de crédito via Asaas
      * @param $request
      * @return array
      */
-    public static function requestCreditCardMP($request)
+    public static function requestCreditCardAsaas($request)
     {
-        if (self::generateCredentialsMP()) {
+        if (self::generateCredentialsAsaas()) {
             $setting = \Helper::getSetting();
             $rules = [
                 'amount' => ['required', 'max:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
@@ -187,16 +138,16 @@ trait MercadoPagoTrait
 
             // Primeiro, cria um token do cartão
             $tokenResponse = Http::withHeaders([
-                'Authorization' => 'Bearer ' . self::$apiKey,
+                'access_token' => self::$apiKey,
                 'Content-Type' => 'application/json',
-            ])->post(self::$uriMP . 'card_tokens', [
-                'card_number' => $request->credit_card['number'],
-                'cardholder' => [
-                    'name' => $request->credit_card['name']
-                ],
-                'expiration_month' => substr($request->credit_card['expiry'], 0, 2),
-                'expiration_year' => '20' . substr($request->credit_card['expiry'], 3, 2),
-                'security_code' => $request->credit_card['cvc']
+            ])->post(self::$uriAsaas . 'creditCard/tokenize', [
+                'creditCard' => [
+                    'holderName' => $request->credit_card['name'],
+                    'number' => $request->credit_card['number'],
+                    'expiryMonth' => substr($request->credit_card['expiry'], 0, 2),
+                    'expiryYear' => '20' . substr($request->credit_card['expiry'], 3, 2),
+                    'ccv' => $request->credit_card['cvc']
+                ]
             ]);
 
             if (!$tokenResponse->successful()) {
@@ -206,28 +157,35 @@ trait MercadoPagoTrait
                 ];
             }
 
-            $token = $tokenResponse->json()['id'];
+            $token = $tokenResponse->json()['creditCardToken'];
 
             // Agora, cria o pagamento com o token
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . self::$apiKey,
+                'access_token' => self::$apiKey,
                 'Content-Type' => 'application/json',
-            ])->post(self::$uriMP . 'payments', [
-                'transaction_amount' => floatval($request->amount),
-                'token' => $token,
-                'description' => 'Depósito',
-                'installments' => 1,
-                'payment_method_id' => 'visa',
-                'payer' => [
+            ])->post(self::$uriAsaas . 'payments', [
+                'customer' => [
+                    'name' => auth('api')->user()->name,
+                    'cpfCnpj' => \Helper::soNumero($request->cpf),
                     'email' => auth('api')->user()->email,
-                    'first_name' => auth('api')->user()->name,
-                    'last_name' => auth('api')->user()->name,
-                    'identification' => [
-                        'type' => 'CPF',
-                        'number' => \Helper::soNumero($request->cpf)
-                    ]
+                    'phone' => \Helper::soNumero(auth('api')->user()->phone),
                 ],
-                'notification_url' => url('/mercadopago/callback')
+                'billingType' => 'CREDIT_CARD',
+                'value' => floatval($request->amount),
+                'dueDate' => Carbon::now()->addDay()->format('Y-m-d'),
+                'description' => 'Depósito',
+                'externalReference' => uniqid(),
+                'creditCard' => [
+                    'holderName' => $request->credit_card['name'],
+                    'number' => $request->credit_card['number'],
+                    'expiryMonth' => substr($request->credit_card['expiry'], 0, 2),
+                    'expiryYear' => '20' . substr($request->credit_card['expiry'], 3, 2),
+                    'ccv' => $request->credit_card['cvc']
+                ],
+                'creditCardToken' => $token,
+                'callback' => [
+                    'url' => url('/asaas/callback')
+                ]
             ]);
 
             if ($response->successful()) {
@@ -255,7 +213,7 @@ trait MercadoPagoTrait
                 return [
                     'status' => true,
                     'idTransaction' => $responseData['id'],
-                    'redirect_url' => $responseData['point_of_interaction']['transaction_data']['ticket_url']
+                    'redirect_url' => $responseData['bankSlipUrl']
                 ];
             }
 
@@ -276,19 +234,19 @@ trait MercadoPagoTrait
      * @param $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public static function consultStatusTransactionMP($request)
+    public static function consultStatusTransactionAsaas($request)
     {
-        if (self::generateCredentialsMP()) {
+        if (self::generateCredentialsAsaas()) {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . self::$apiKey,
+                'access_token' => self::$apiKey,
                 'Content-Type' => 'application/json',
-            ])->get(self::$uriMP . 'payments/' . $request->idTransaction);
+            ])->get(self::$uriAsaas . 'payments/' . $request->idTransaction);
 
             if ($response->successful()) {
                 $responseData = $response->json();
 
-                if ($responseData['status'] === 'approved') {
-                    if (self::finalizePaymentMP($request->idTransaction)) {
+                if ($responseData['status'] === 'CONFIRMED') {
+                    if (self::finalizePaymentAsaas($request->idTransaction)) {
                         return response()->json(['status' => 'PAID']);
                     }
                 }
@@ -305,7 +263,7 @@ trait MercadoPagoTrait
      * @param $idTransaction
      * @return bool
      */
-    private static function finalizePaymentMP($idTransaction): bool
+    private static function finalizePaymentAsaas($idTransaction): bool
     {
         $transaction = Transaction::where('payment_id', $idTransaction)->where('status', 0)->first();
         $setting = \Helper::getSetting();
@@ -338,10 +296,4 @@ trait MercadoPagoTrait
 
         return false;
     }
-
-    public static function pixCashOutMP($params)
-    {
-
-    }
-
-}
+} 

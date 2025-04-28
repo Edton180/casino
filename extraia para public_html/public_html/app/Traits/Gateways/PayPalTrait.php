@@ -2,94 +2,66 @@
 
 namespace App\Traits\Gateways;
 
-use App\Models\AffiliateHistory;
 use App\Models\Deposit;
-use App\Models\GamesKey;
-use App\Models\Gateway;
-use App\Models\Setting;
-use App\Models\SuitPayPayment;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
-use App\Notifications\NewDepositNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Validator;
-use App\Helpers\Core as Helper;
 use Illuminate\Support\Facades\Log;
 
-trait MercadoPagoTrait
+trait PayPalTrait
 {
-    private static $uriMP;
-    private static $apiKey;
-    private static $publicKey;
+    private static $uriPayPal;
+    private static $clientId;
+    private static $clientSecret;
+    private static $accessToken;
 
     /**
-     * Gera as credenciais do Mercado Pago
+     * Gera as credenciais do PayPal
      * @return array
      */
-    private static function generateCredentialsMP()
+    private static function generateCredentialsPayPal()
     {
         $gateway = \App\Models\Gateway::first();
-        if (!empty($gateway) && $gateway->mp_is_enable) {
-            self::$apiKey = $gateway->mp_access_token;
-            self::$publicKey = $gateway->mp_public_key;
-            self::$uriMP = $gateway->mp_sandbox ? 'https://api.mercadopago.com/v1/' : 'https://api.mercadopago.com/v1/';
+        if (!empty($gateway) && $gateway->paypal_is_enable) {
+            self::$clientId = $gateway->paypal_client_id;
+            self::$clientSecret = $gateway->paypal_client_secret;
+            self::$uriPayPal = $gateway->paypal_sandbox ? 'https://api-m.sandbox.paypal.com/' : 'https://api-m.paypal.com/';
             return true;
         }
         return false;
     }
 
     /**
-     * @param $idTransaction
-     * @param $amount
-     * @dev victormsalatiel - Corra de golpista, me chame no instagram
-     * @return void
+     * Obtém o token de acesso do PayPal
+     * @return bool
      */
-    private static function generateDepositMP($idTransaction, $amount)
+    private static function getPayPalAccessToken()
     {
-        $userId = auth('api')->user()->id;
-        $wallet = Wallet::where('user_id', $userId)->first();
+        if (self::generateCredentialsPayPal()) {
+            $response = Http::withBasicAuth(self::$clientId, self::$clientSecret)
+                ->asForm()
+                ->post(self::$uriPayPal . 'v1/oauth2/token', [
+                    'grant_type' => 'client_credentials'
+                ]);
 
-        Deposit::create([
-            'payment_id'=> $idTransaction,
-            'user_id'   => $userId,
-            'amount'    => $amount,
-            'type'      => 'pix',
-            'currency'  => $wallet->currency,
-            'symbol'    => $wallet->symbol,
-            'status'    => 0
-        ]);
+            if ($response->successful()) {
+                self::$accessToken = $response->json()['access_token'];
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
-     * @param $idTransaction
-     * @param $amount
-     * @dev victormsalatiel - Corra de golpista, me chame no instagram
-     * @return void
-     */
-    private static function generateTransactionMP($idTransaction, $amount)
-    {
-        $setting = Helper::getSetting();
-
-        Transaction::create([
-            'payment_id' => $idTransaction,
-            'user_id' => auth('api')->user()->id,
-            'payment_method' => 'pix',
-            'price' => $amount,
-            'currency' => $setting->currency_code,
-            'status' => 0
-        ]);
-    }
-
-    /**
-     * Cria um pagamento PIX via Mercado Pago
+     * Cria um pagamento PIX via PayPal
      * @param $request
      * @return array
      */
-    public static function requestQrcodeMP($request)
+    public static function requestQrcodePayPal($request)
     {
-        if (self::generateCredentialsMP()) {
+        if (self::getPayPalAccessToken()) {
             $setting = \Helper::getSetting();
             $rules = [
                 'amount' => ['required', 'max:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
@@ -102,22 +74,26 @@ trait MercadoPagoTrait
             }
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . self::$apiKey,
+                'Authorization' => 'Bearer ' . self::$accessToken,
                 'Content-Type' => 'application/json',
-            ])->post(self::$uriMP . 'payments', [
-                'transaction_amount' => floatval($request->amount),
-                'description' => 'Depósito',
-                'payment_method_id' => 'pix',
+            ])->post(self::$uriPayPal . 'v1/payments/payment', [
+                'intent' => 'sale',
                 'payer' => [
-                    'email' => auth('api')->user()->email,
-                    'first_name' => auth('api')->user()->name,
-                    'last_name' => auth('api')->user()->name,
-                    'identification' => [
-                        'type' => 'CPF',
-                        'number' => \Helper::soNumero($request->cpf)
+                    'payment_method' => 'pix'
+                ],
+                'transactions' => [
+                    [
+                        'amount' => [
+                            'total' => floatval($request->amount),
+                            'currency' => 'BRL'
+                        ],
+                        'description' => 'Depósito'
                     ]
                 ],
-                'notification_url' => url('/mercadopago/callback')
+                'redirect_urls' => [
+                    'return_url' => url('/paypal/success'),
+                    'cancel_url' => url('/paypal/cancel')
+                ]
             ]);
 
             if ($response->successful()) {
@@ -145,7 +121,7 @@ trait MercadoPagoTrait
                 return [
                     'status' => true,
                     'idTransaction' => $responseData['id'],
-                    'qrcode' => $responseData['point_of_interaction']['transaction_data']['qr_code']
+                    'qrcode' => $responseData['links'][1]['href']
                 ];
             }
 
@@ -162,13 +138,13 @@ trait MercadoPagoTrait
     }
 
     /**
-     * Cria um pagamento com cartão de crédito via Mercado Pago
+     * Cria um pagamento com cartão de crédito via PayPal
      * @param $request
      * @return array
      */
-    public static function requestCreditCardMP($request)
+    public static function requestCreditCardPayPal($request)
     {
-        if (self::generateCredentialsMP()) {
+        if (self::getPayPalAccessToken()) {
             $setting = \Helper::getSetting();
             $rules = [
                 'amount' => ['required', 'max:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
@@ -185,49 +161,36 @@ trait MercadoPagoTrait
                 return response()->json($validator->errors(), 400);
             }
 
-            // Primeiro, cria um token do cartão
-            $tokenResponse = Http::withHeaders([
-                'Authorization' => 'Bearer ' . self::$apiKey,
-                'Content-Type' => 'application/json',
-            ])->post(self::$uriMP . 'card_tokens', [
-                'card_number' => $request->credit_card['number'],
-                'cardholder' => [
-                    'name' => $request->credit_card['name']
-                ],
-                'expiration_month' => substr($request->credit_card['expiry'], 0, 2),
-                'expiration_year' => '20' . substr($request->credit_card['expiry'], 3, 2),
-                'security_code' => $request->credit_card['cvc']
-            ]);
-
-            if (!$tokenResponse->successful()) {
-                return [
-                    'status' => false,
-                    'message' => 'Erro ao processar cartão'
-                ];
-            }
-
-            $token = $tokenResponse->json()['id'];
-
-            // Agora, cria o pagamento com o token
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . self::$apiKey,
+                'Authorization' => 'Bearer ' . self::$accessToken,
                 'Content-Type' => 'application/json',
-            ])->post(self::$uriMP . 'payments', [
-                'transaction_amount' => floatval($request->amount),
-                'token' => $token,
-                'description' => 'Depósito',
-                'installments' => 1,
-                'payment_method_id' => 'visa',
+            ])->post(self::$uriPayPal . 'v1/payments/payment', [
+                'intent' => 'sale',
                 'payer' => [
-                    'email' => auth('api')->user()->email,
-                    'first_name' => auth('api')->user()->name,
-                    'last_name' => auth('api')->user()->name,
-                    'identification' => [
-                        'type' => 'CPF',
-                        'number' => \Helper::soNumero($request->cpf)
+                    'payment_method' => 'credit_card',
+                    'funding_instruments' => [
+                        [
+                            'credit_card' => [
+                                'number' => $request->credit_card['number'],
+                                'type' => 'visa',
+                                'expire_month' => substr($request->credit_card['expiry'], 0, 2),
+                                'expire_year' => '20' . substr($request->credit_card['expiry'], 3, 2),
+                                'cvv2' => $request->credit_card['cvc'],
+                                'first_name' => auth('api')->user()->name,
+                                'last_name' => auth('api')->user()->name
+                            ]
+                        ]
                     ]
                 ],
-                'notification_url' => url('/mercadopago/callback')
+                'transactions' => [
+                    [
+                        'amount' => [
+                            'total' => floatval($request->amount),
+                            'currency' => 'BRL'
+                        ],
+                        'description' => 'Depósito'
+                    ]
+                ]
             ]);
 
             if ($response->successful()) {
@@ -255,7 +218,7 @@ trait MercadoPagoTrait
                 return [
                     'status' => true,
                     'idTransaction' => $responseData['id'],
-                    'redirect_url' => $responseData['point_of_interaction']['transaction_data']['ticket_url']
+                    'redirect_url' => $responseData['links'][1]['href']
                 ];
             }
 
@@ -276,24 +239,24 @@ trait MercadoPagoTrait
      * @param $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public static function consultStatusTransactionMP($request)
+    public static function consultStatusTransactionPayPal($request)
     {
-        if (self::generateCredentialsMP()) {
+        if (self::getPayPalAccessToken()) {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . self::$apiKey,
+                'Authorization' => 'Bearer ' . self::$accessToken,
                 'Content-Type' => 'application/json',
-            ])->get(self::$uriMP . 'payments/' . $request->idTransaction);
+            ])->get(self::$uriPayPal . 'v1/payments/payment/' . $request->idTransaction);
 
             if ($response->successful()) {
                 $responseData = $response->json();
 
-                if ($responseData['status'] === 'approved') {
-                    if (self::finalizePaymentMP($request->idTransaction)) {
+                if ($responseData['state'] === 'approved') {
+                    if (self::finalizePaymentPayPal($request->idTransaction)) {
                         return response()->json(['status' => 'PAID']);
                     }
                 }
 
-                return response()->json(['status' => $responseData['status']]);
+                return response()->json(['status' => $responseData['state']]);
             }
         }
 
@@ -305,7 +268,7 @@ trait MercadoPagoTrait
      * @param $idTransaction
      * @return bool
      */
-    private static function finalizePaymentMP($idTransaction): bool
+    private static function finalizePaymentPayPal($idTransaction): bool
     {
         $transaction = Transaction::where('payment_id', $idTransaction)->where('status', 0)->first();
         $setting = \Helper::getSetting();
@@ -338,10 +301,4 @@ trait MercadoPagoTrait
 
         return false;
     }
-
-    public static function pixCashOutMP($params)
-    {
-
-    }
-
-}
+} 

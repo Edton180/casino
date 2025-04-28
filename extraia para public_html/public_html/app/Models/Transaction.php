@@ -23,12 +23,34 @@ class Transaction extends Model
      */
     protected $fillable = [
         'payment_id',
-        'reference',
         'user_id',
         'payment_method',
+        'gateway',
+        'gateway_response',
+        'gateway_error',
         'price',
         'currency',
-        'accept_bonus',
-        'status'
+        'status',
+        'paid_at',
+        'expired_at',
+        'canceled_at'
     ];
+
+    protected $casts = [
+        'paid_at' => 'datetime',
+        'expired_at' => 'datetime',
+        'canceled_at' => 'datetime',
+        'gateway_response' => 'array',
+        'gateway_error' => 'array'
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function deposit()
+    {
+        return $this->hasOne(Deposit::class, 'payment_id', 'payment_id');
+    }
 }

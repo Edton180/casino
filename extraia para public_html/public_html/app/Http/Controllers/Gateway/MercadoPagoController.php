@@ -11,6 +11,7 @@ use App\Traits\Gateways\MercadoPagoTrait;
 use App\Traits\Gateways\SuitpayTrait;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MercadoPagoController extends Controller
 {
@@ -22,10 +23,8 @@ class MercadoPagoController extends Controller
      */
     public function callbackMethodPayment(Request $request)
     {
-        $data = $request->all();
-        \DB::table('debug')->insert(['text' => json_encode($request->all())]);
-
-        return response()->json([], 200);
+        Log::info('MercadoPago Payment Callback', $request->all());
+        return self::consultStatusTransactionMP($request);
     }
 
     /**
@@ -34,15 +33,29 @@ class MercadoPagoController extends Controller
      */
     public function callbackMethod(Request $request)
     {
-        $data = $request->all();
+        Log::info('MercadoPago Callback', $request->all());
 
-        if(isset($data['idTransaction']) && $data['typeTransaction'] == 'PIX') {
-            if($data['statusTransaction'] == "PAID_OUT" || $data['statusTransaction'] == "PAYMENT_ACCEPT") {
-                if(self::finalizePaymentMP($data['idTransaction'])) {
-                    return response()->json([], 200);
-                }
+        $gateway = \App\Models\Gateway::first();
+        
+        // Verifica se a chave do webhook está correta
+        if ($request->header('x-signature') !== $gateway->mp_webhook_key) {
+            Log::error('MercadoPago Callback - Assinatura inválida', [
+                'received' => $request->header('x-signature'),
+                'expected' => $gateway->mp_webhook_key
+            ]);
+            return response()->json(['status' => false, 'message' => 'Assinatura inválida'], 401);
+        }
+
+        if ($request->type === 'payment') {
+            $payment = $request->data;
+            if (self::finalizePaymentMP($payment['id'])) {
+                Log::info('MercadoPago Callback - Pagamento finalizado com sucesso', ['payment_id' => $payment['id']]);
+                return response()->json(['status' => true]);
             }
         }
+
+        Log::info('MercadoPago Callback - Evento não processado', ['type' => $request->type]);
+        return response()->json(['status' => false]);
     }
 
     /**

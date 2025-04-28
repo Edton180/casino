@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Api\Wallet;
 
 use App\Http\Controllers\Controller;
 use App\Models\Deposit;
-use App\Traits\Gateways\DigitoPayTrait;
-use App\Traits\Gateways\BsPayTrait;
-use App\Traits\Gateways\SuitpayTrait;
+use App\Traits\Gateways\AsaasTrait;
+use App\Traits\Gateways\MercadoPagoTrait;
+use App\Traits\Gateways\PayPalTrait;
 use Illuminate\Http\Request;
 
 class DepositController extends Controller
 {
-    use SuitpayTrait, DigitoPayTrait, BsPayTrait;
+    use AsaasTrait, MercadoPagoTrait, PayPalTrait;
 
     /**
      * @param Request $request
@@ -20,16 +20,29 @@ class DepositController extends Controller
     public function submitPayment(Request $request)
     {
         \Log::info($request->gateway);
+        \Log::info($request->payment_method);
+
         switch ($request->gateway) {
-                  
-           
+            case 'asaas':
+                if ($request->payment_method === 'credit_card') {
+                    return self::requestCreditCardAsaas($request);
+                }
+                return self::requestQrcodeAsaas($request);
 
-  case 'bspay': 
+            case 'mercadopago':
+                if ($request->payment_method === 'credit_card') {
+                    return self::requestCreditCardMP($request);
+                }
+                return self::requestQrcodeMP($request);
 
-          return self::requestQrcodeBsPay($request); 
+            case 'paypal':
+                if ($request->payment_method === 'credit_card') {
+                    return self::requestCreditCardPayPal($request);
+                }
+                return self::requestQrcodePayPal($request);
 
-                    
-                    
+            default:
+                return ['status' => false, 'message' => 'Gateway não encontrado'];
         }
     }
 
@@ -38,7 +51,16 @@ class DepositController extends Controller
      */
     public function consultStatusTransactionPix(Request $request)
     {
-        return self::consultStatusTransaction($request);
+        switch ($request->gateway) {
+            case 'asaas':
+                return self::consultStatusTransactionAsaas($request);
+            case 'mercadopago':
+                return self::consultStatusTransactionMP($request);
+            case 'paypal':
+                return self::consultStatusTransactionPayPal($request);
+            default:
+                return response()->json(['status' => 'ERROR']);
+        }
     }
 
     /**
@@ -49,5 +71,4 @@ class DepositController extends Controller
         $deposits = Deposit::whereUserId(auth('api')->id())->paginate();
         return response()->json(['deposits' => $deposits], 200);
     }
-
 }

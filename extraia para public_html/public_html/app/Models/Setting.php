@@ -100,8 +100,9 @@ class Setting extends Model
         'logo_width', 
         'logo_height',
 
-
-
+        'asaas_is_enable',
+        'currency_symbol',
+        'status'
     ];
 
     protected $hidden = array('updated_at');

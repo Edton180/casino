@@ -49,6 +49,28 @@ class Gateway extends Model
         'digitopay_cliente_id',
         'digitopay_cliente_secret',
 
+        'mp_access_token',
+        'mp_public_key',
+        'mp_webhook_key',
+        'asaas_api_key',
+        'asaas_sandbox',
+        'asaas_webhook_key',
+        'asaas_is_enable',
+        'asaas_credit_card_enable',
+        'status',
+
+        // Mercado Pago
+        'mp_sandbox',
+        'mp_is_enable',
+        'mp_credit_card_enable',
+
+        // PayPal
+        'paypal_client_id',
+        'paypal_client_secret',
+        'paypal_webhook_key',
+        'paypal_sandbox',
+        'paypal_is_enable',
+        'paypal_credit_card_enable',
     ];
 
     protected $hidden = array('updated_at');
@@ -147,6 +169,62 @@ class Gateway extends Model
      * Get the user's first name.
      */
     protected function stripeSecretKey(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
+        );
+    }
+
+    protected function asaasApiKey(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
+        );
+    }
+
+    protected function asaasWebhookKey(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
+        );
+    }
+
+    protected function mpAccessToken(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
+        );
+    }
+
+    protected function mpPublicKey(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
+        );
+    }
+
+    protected function mpWebhookKey(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
+        );
+    }
+
+    protected function paypalClientId(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
+        );
+    }
+
+    protected function paypalClientSecret(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
+        );
+    }
+
+    protected function paypalWebhookKey(): Attribute
     {
         return Attribute::make(
             get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
