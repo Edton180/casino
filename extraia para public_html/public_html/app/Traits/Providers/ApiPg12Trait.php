@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Traits\Missions\MissionTrait;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 trait ApiPg12Trait
 {
@@ -118,11 +119,25 @@ trait ApiPg12Trait
         try {
             if ($data['game_type'] == 'slot' && isset($data['slot'])) {
                 $user = User::where('email',  $data['user_code'])->first();
+                if (empty($user)) {
+                    return response()->json([
+                        'status' => 0,
+                        'msg' => 'INVALID_USER'
+                    ], 404);
+                }
+
                 return self::ApiPg12ProcessPlay($data, $user->id, 'slot');
             }
 
             if ($data['game_type'] == 'casino' && isset($data['casino'])) {
                 $user = User::where('email',  $data['user_code'])->first();
+                if (empty($user)) {
+                    return response()->json([
+                        'status' => 0,
+                        'msg' => 'INVALID_USER'
+                    ], 404);
+                }
+
                 return self::ApiPg12ProcessPlay($data, $user->id, 'casino');
             }
 
@@ -130,8 +145,16 @@ trait ApiPg12Trait
                 'status' => 0,
                 'msg' => 'INVALID_USER	'
             ]);
-        } catch (\Exception $e) {
-            dd($e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('ApiPg12 callback error', [
+                'message' => $e->getMessage(),
+                'payload' => $data,
+            ]);
+
+            return response()->json([
+                'status' => 0,
+                'msg' => 'PROCESSING_ERROR'
+            ], 500);
         }
     }
 
@@ -140,7 +163,20 @@ trait ApiPg12Trait
     {
         $userCode = $request->input('user_code');
         $user = User::where('email', $userCode)->first();
+        if (empty($user)) {
+            return response()->json([
+                'status' => 0,
+                'msg' => 'INVALID_USER'
+            ], 404);
+        }
+
         $wallet = Wallet::where('user_id', $user->id)->first();
+        if (empty($wallet)) {
+            return response()->json([
+                'status' => 0,
+                'msg' => 'INVALID_WALLET'
+            ], 404);
+        }
 
         return response()->json([
             "user_code" => $userCode,
@@ -151,8 +187,13 @@ trait ApiPg12Trait
 
     private static function ApiPg12ProcessPlay($data, $userId, $type)
     {
-        Http::post('https://teste.oneplayslots.pro/gold_api/game_callback', $data);
         $wallet = Wallet::where('user_id', $userId)->where('active', 1)->first();
+        if (empty($wallet)) {
+            return response()->json([
+                'status' => 0,
+                'msg' => 'INVALID_WALLET'
+            ], 404);
+        }
         
         $win = $data[$type]['win'];
         $bet = $data[$type]['bet'];
@@ -161,15 +202,19 @@ trait ApiPg12Trait
         $wallet->update(['balance'=> $saldo]);
         $wallet = Wallet::where('user_id', $userId)->where('active', 1)->first();
         
-        $transactionWin = Order::where('transaction_id', $data[$type]['txn_id'])->where('type', 'win')->first();
+        $transactionId = $data[$type]['txn_id'] ?? null;
+        $transaction = !empty($transactionId)
+            ? Order::where('transaction_id', $transactionId)->latest()->first()
+            : null;
+        $changeBonus = $transaction?->getAttributes()['type_money'] ?? 'balance';
             
         Helper::generateGameHistory(
             $wallet->user_id,
             'win',
             $data[$type]['win'],
-            $transaction->amount,
-            $transaction->getAttributes()['type_money'],
-            $transaction->transaction_id
+            $transaction?->amount ?? $bet,
+            $changeBonus,
+            $transactionId
         );
 
         return response()->json([
