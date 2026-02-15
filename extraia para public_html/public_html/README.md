@@ -167,6 +167,28 @@ php artisan about
 
 ---
 
+
+## Acesso local (localhost)
+
+### Opção 1: Laravel embutido
+```bash
+php artisan serve --host=127.0.0.1 --port=8000
+```
+Acesse `http://127.0.0.1:8000`.
+
+### Opção 2: Vite com HMR
+```bash
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+Use para desenvolvimento do frontend com recarregamento em tempo real.
+
+### Opção 3: Apache/Nginx local
+- DocumentRoot para `public/`
+- `APP_URL=http://localhost`
+- Permissões em `storage/` e `bootstrap/cache/`
+
+---
+
 # 8) Deploy em produção
 
 No servidor:
@@ -186,6 +208,28 @@ Garantir permissões de escrita em:
 
 - storage/
 - bootstrap/cache/
+
+---
+
+
+## Checklist de produção (go-live)
+
+1. Ambiente
+   - `APP_ENV=production`
+   - `APP_DEBUG=false`
+   - `APP_URL=https://seu-dominio.com`
+2. Segurança
+   - HTTPS obrigatório
+   - Segredos apenas em variáveis seguras
+   - Painel admin protegido (senha forte + 2FA se disponível)
+3. Operação
+   - Supervisor/systemd para fila
+   - Cron do scheduler ativo
+   - Monitoramento de logs e alertas
+4. Performance
+   - `config:cache`, `route:cache`, `view:cache`
+   - Build frontend com `npm run build`
+   - `composer install --no-dev --optimize-autoloader`
 
 ---
 

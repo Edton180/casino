@@ -86,6 +86,26 @@ Para iniciar o frontend em modo desenvolvimento:
 npm run dev
 ```
 
+### Opções de acesso via localhost
+Você pode usar qualquer uma das estratégias abaixo no ambiente local:
+
+1. **Servidor interno do Laravel (rápido para dev):**
+   ```bash
+   php artisan serve --host=127.0.0.1 --port=8000
+   ```
+   Acesse: `http://127.0.0.1:8000`
+
+2. **Vite com HMR (frontend separado):**
+   ```bash
+   npm run dev -- --host 127.0.0.1 --port 5173
+   ```
+   Mantém hot reload do frontend em `http://127.0.0.1:5173`.
+
+3. **Apache/Nginx local (mais próximo da produção):**
+   - Apontar o `DocumentRoot` para `extraia para public_html/public_html/public`
+   - Definir `APP_URL=http://localhost` (ou porta configurada)
+   - Garantir permissões em `storage/` e `bootstrap/cache/`
+
 ---
 
 ## ⚙️ Configuração de ambiente (.env)
@@ -175,6 +195,35 @@ php artisan route:cache
 php artisan view:cache
 ```
 
+### Checklist para deixar o sistema pronto para produção
+1. **Aplicação e ambiente**
+   - `APP_ENV=production`
+   - `APP_DEBUG=false`
+   - `APP_URL` com domínio final (HTTPS)
+   - `LOG_LEVEL=warning` (ou `error`, conforme operação)
+
+2. **Infraestrutura**
+   - HTTPS ativo com certificado válido
+   - Banco com backup automático (diário + retenção)
+   - Redis recomendado para `CACHE_DRIVER`/`SESSION_DRIVER`/filas
+   - Rotação de logs no servidor
+
+3. **Execução contínua**
+   - Supervisor/systemd para `queue:work`
+   - Cron ativo para scheduler (`schedule:run` a cada minuto)
+   - Health checks de aplicação e banco
+
+4. **Performance**
+   - Cache de config, rotas e views habilitados
+   - Build frontend otimizado (`npm run build`)
+   - `composer install --no-dev --optimize-autoloader`
+
+5. **Segurança**
+   - Nunca commitar `.env`
+   - Rotacionar segredos/chaves periodicamente
+   - Restringir CORS, painel admin e endpoints sensíveis
+   - Configurar webhooks de pagamento com assinatura/verificação
+
 ### Permissões e links
 ```bash
 php artisan storage:link
@@ -208,6 +257,19 @@ php artisan optimize:clear
 - Configurar chaves/webhooks dos gateways no painel admin;
 - Monitorar `storage/logs/laravel.log`;
 - Restringir acesso ao painel administrativo com políticas de senha e permissões.
+
+---
+
+## 🧾 Runbook rápido de operação (produção)
+Comandos úteis para suporte e incidentes:
+
+```bash
+php artisan about
+php artisan optimize:clear
+php artisan queue:restart
+php artisan schedule:list
+tail -f storage/logs/laravel.log
+```
 
 ---
 
@@ -264,4 +326,3 @@ Desenvolvido por **Edton Braz**.
 Nesta revisão foram aplicadas correções em função crítica de callback de jogos (`ApiPg12`) e melhoria de documentação operacional de banco de dados, validações e checklist de go-live no README técnico da aplicação (`extraia para public_html/public_html/README.md`).
 
 Recomendação: usar o README técnico da aplicação como fonte principal para deploy e operação.
-
