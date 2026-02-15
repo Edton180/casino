@@ -92,7 +92,7 @@ trait MercadoPagoTrait
         if (self::generateCredentialsMP()) {
             $setting = \Helper::getSetting();
             $rules = [
-                'amount' => ['required', 'min:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
+                'amount' => ['required', 'numeric', 'min:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
                 'cpf' => ['required', 'max:255'],
             ];
 
@@ -179,7 +179,7 @@ trait MercadoPagoTrait
 
             $setting = \Helper::getSetting();
             $rules = [
-                'amount' => ['required', 'min:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
+                'amount' => ['required', 'numeric', 'min:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
                 'cpf' => ['required', 'max:255'],
                 'credit_card' => ['required', 'array'],
                 'credit_card.number' => ['required', 'string'],
