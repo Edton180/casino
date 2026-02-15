@@ -259,3 +259,9 @@ Defina aqui o modelo de licenciamento do projeto (ex.: MIT, Proprietária, etc.)
 ---
 
 Desenvolvido por **Edton Braz**.
+
+## 🧭 Auditoria e prontidão de produção
+Nesta revisão foram aplicadas correções em função crítica de callback de jogos (`ApiPg12`) e melhoria de documentação operacional de banco de dados, validações e checklist de go-live no README técnico da aplicação (`extraia para public_html/public_html/README.md`).
+
+Recomendação: usar o README técnico da aplicação como fonte principal para deploy e operação.
+

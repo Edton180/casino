@@ -386,3 +386,100 @@ php artisan view:cache
 - [ ] Gateways testados
 - [ ] Webhooks recebendo
 - [ ] Logs monitorados
+
+---
+
+# 17) Banco de Dados — Operação segura para produção
+
+## Charset e collation recomendados
+Use UTF-8 completo para evitar falhas com acentos/emojis e inconsistência entre tabelas:
+
+- charset: `utf8mb4`
+- collation: `utf8mb4_unicode_ci` (ou `utf8mb4_0900_ai_ci` em MySQL 8)
+
+## Estratégia de migração em produção
+1. Fazer backup completo antes de qualquer alteração.
+2. Executar migrações com `--force`.
+3. Validar tabelas críticas: `users`, `wallets`, `orders`, `deposits`, `withdrawals`.
+4. Confirmar índices em colunas de busca frequente (`user_id`, `transaction_id`, `status`).
+
+Comandos sugeridos:
+
+```bash
+php artisan migrate --force
+php artisan db:show
+php artisan db:table users
+php artisan db:table wallets
+php artisan db:table orders
+```
+
+## Backup e restore (exemplo MySQL)
+Backup:
+
+```bash
+mysqldump -uUSER -p --single-transaction --routines --triggers DB_NAME > backup_$(date +%F_%H%M).sql
+```
+
+Restore:
+
+```bash
+mysql -uUSER -p DB_NAME < backup_arquivo.sql
+```
+
+---
+
+# 18) Funções críticas e regras de negócio (resumo operacional)
+
+## Fluxo de saldo (Wallet)
+- `balance`: saldo principal
+- `balance_bonus`: saldo de bônus
+- `balance_withdrawal`: saldo liberado para saque
+- `total_balance`: soma operacional para consumo de APIs
+
+## Fluxo de jogo/callback
+- Callback de provedor deve:
+  1. validar usuário e carteira ativa;
+  2. aplicar débito/apuração de vitória com segurança;
+  3. registrar histórico/transação;
+  4. responder com payload consistente e sem vazar erro interno.
+
+## Fluxo de gateway de pagamento
+- Habilitar e validar gateway no painel.
+- Exigir webhook com HTTPS.
+- Garantir idempotência por `transaction_id`.
+- Auditar logs em caso de divergência de saldo.
+
+---
+
+# 19) Auditoria de prontidão para produção (status atual)
+
+## Melhorias aplicadas nesta revisão
+- Callback `ApiPg12` sem `dd()` em exceções (evita parada de produção).
+- Tratamento explícito para usuário/carteira inexistentes.
+- Remoção de chamada externa de debug dentro do processamento do jogo.
+- Logging estruturado de erro no callback para observabilidade.
+- Correção de uso de variável de transação potencialmente indefinida.
+
+## Itens obrigatórios antes do go-live
+- [ ] Configurar Redis para `CACHE_DRIVER`, `SESSION_DRIVER` e `QUEUE_CONNECTION`.
+- [ ] Rodar worker com Supervisor/systemd e restart automático.
+- [ ] Definir política de backup diário e teste de restore.
+- [ ] Ativar monitoramento de logs e alertas (5xx, exceptions, falha de webhook).
+- [ ] Revisar credenciais e rotacionar chaves de produção.
+- [ ] Validar rate-limit e proteção de rotas administrativas.
+
+---
+
+# 20) Comandos de validação pré-produção
+
+```bash
+php -v
+php artisan about
+php artisan route:list
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan optimize
+php artisan optimize:clear
+```
+
