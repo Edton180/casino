@@ -42,7 +42,7 @@ trait AsaasTrait
         if (self::generateCredentialsAsaas()) {
             $setting = \Helper::getSetting();
             $rules = [
-                'amount' => ['required', 'max:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
+                'amount' => ['required', 'min:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
                 'cpf' => ['required', 'max:255'],
             ];
 
@@ -120,9 +120,17 @@ trait AsaasTrait
     public static function requestCreditCardAsaas($request)
     {
         if (self::generateCredentialsAsaas()) {
+            $gateway = \App\Models\Gateway::first();
+            if (empty($gateway) || !$gateway->asaas_credit_card_enable) {
+                return [
+                    'status' => false,
+                    'message' => 'Pagamento com cartão está desativado para o gateway Asaas'
+                ];
+            }
+
             $setting = \Helper::getSetting();
             $rules = [
-                'amount' => ['required', 'max:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
+                'amount' => ['required', 'min:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
                 'cpf' => ['required', 'max:255'],
                 'credit_card' => ['required', 'array'],
                 'credit_card.number' => ['required', 'string'],

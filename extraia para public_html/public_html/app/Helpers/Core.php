@@ -972,9 +972,9 @@ class Core
                 'digitopay_is_enable',
                 'suitpay_is_enable',
                 'sharkpay_is_enable',
-                  'bspay_is_enable',  // Adicionar isso
-                'digitopay_is_enable',
+                'bspay_is_enable',
                 'mercadopago_is_enable',
+                'asaas_is_enable',
             )->first();
 
             Cache::put('setting', $setting);

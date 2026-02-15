@@ -1,3 +1,4 @@
+# Normalize text files
 * text=auto eol=lf
 
 *.blade.php diff=html
@@ -5,6 +6,27 @@
 *.html diff=html
 *.md diff=markdown
 *.php diff=php
+
+# Binary assets used by frontend/games/install package
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary
+*.rar binary
+*.7z binary
+*.mp4 binary
+*.mp3 binary
+*.wav binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+
+# SQL dumps should not be line-ending normalized
+*.sql -text
 
 /.github export-ignore
 CHANGELOG.md export-ignore

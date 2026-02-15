@@ -92,7 +92,7 @@ trait MercadoPagoTrait
         if (self::generateCredentialsMP()) {
             $setting = \Helper::getSetting();
             $rules = [
-                'amount' => ['required', 'max:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
+                'amount' => ['required', 'min:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
                 'cpf' => ['required', 'max:255'],
             ];
 
@@ -169,9 +169,17 @@ trait MercadoPagoTrait
     public static function requestCreditCardMP($request)
     {
         if (self::generateCredentialsMP()) {
+            $gateway = \App\Models\Gateway::first();
+            if (empty($gateway) || !$gateway->mp_credit_card_enable) {
+                return [
+                    'status' => false,
+                    'message' => 'Pagamento com cartão está desativado para o gateway Mercado Pago'
+                ];
+            }
+
             $setting = \Helper::getSetting();
             $rules = [
-                'amount' => ['required', 'max:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
+                'amount' => ['required', 'min:' . $setting->min_deposit, 'max:' . $setting->max_deposit],
                 'cpf' => ['required', 'max:255'],
                 'credit_card' => ['required', 'array'],
                 'credit_card.number' => ['required', 'string'],

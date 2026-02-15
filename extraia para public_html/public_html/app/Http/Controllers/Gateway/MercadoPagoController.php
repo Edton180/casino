@@ -17,6 +17,29 @@ class MercadoPagoController extends Controller
 {
     use MercadoPagoTrait;
 
+
+    private function isValidWebhook(Request $request, ?string $expectedKey): bool
+    {
+        if (empty($expectedKey)) {
+            return true;
+        }
+
+        $possibleKeys = [
+            $request->header('x-webhook-key'),
+            $request->header('x-signature'),
+            $request->header('x-mercadopago-signature'),
+            $request->input('webhook_key'),
+        ];
+
+        foreach ($possibleKeys as $key) {
+            if (!empty($key) && str_contains((string) $key, (string) $expectedKey)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -37,11 +60,11 @@ class MercadoPagoController extends Controller
 
         $gateway = \App\Models\Gateway::first();
         
-        // Verifica se a chave do webhook está correta
-        if ($request->header('x-signature') !== $gateway->mp_webhook_key) {
+        // Se a chave estiver configurada, valida o webhook por headers/token conhecidos
+        if (!$this->isValidWebhook($request, $gateway?->mp_webhook_key)) {
             Log::error('MercadoPago Callback - Assinatura inválida', [
                 'received' => $request->header('x-signature'),
-                'expected' => $gateway->mp_webhook_key
+                'expected' => $gateway?->mp_webhook_key
             ]);
             return response()->json(['status' => false, 'message' => 'Assinatura inválida'], 401);
         }

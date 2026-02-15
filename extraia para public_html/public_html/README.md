@@ -1,66 +1,222 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Casino Platform (Laravel)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Guia técnico completo para instalar, configurar e operar a plataforma com **Mercado Pago** e **Asaas** no painel admin.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 1) Diretório correto do projeto
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Use esta pasta como raiz da aplicação:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```bash
+cd "extraia para public_html/public_html"
+```
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 2) Pré-requisitos
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- PHP 8.2+
+- Composer 2+
+- Node.js 18+ / npm
+- MySQL 8+ ou MariaDB compatível
+- Extensões PHP: `mbstring`, `openssl`, `pdo_mysql`, `bcmath`, `intl`, `curl`, `gd`, `xml`, `fileinfo`
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## 3) Instalação limpa (recomendado)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+```bash
+cp .env.example .env
+composer install
+php artisan key:generate
+npm install
+npm run build
+```
 
-### Premium Partners
+Configurar `.env`:
+- `APP_URL=https://seu-dominio.com`
+- `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+Executar:
 
-## Contributing
+```bash
+php artisan migrate
+php artisan optimize:clear
+php artisan storage:link
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## 4) Instalação com SQL legado
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Dump disponível em:
+- `INSTALL CASSINO/elitecassino.sql`
 
-## Security Vulnerabilities
+Fluxo:
+1. Criar banco vazio.
+2. Importar SQL.
+3. Ajustar `.env` para esse banco.
+4. Rodar migrações pendentes:
+   ```bash
+   php artisan migrate
+   ```
+5. Limpar cache:
+   ```bash
+   php artisan optimize:clear
+   ```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+> Importante: mesmo com SQL importado, rode `migrate` para sincronizar campos novos de gateways.
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 5) Produção (resumo)
+
+```bash
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+Também configurar worker de fila (`queue:work`) e cron (`schedule:run`) quando necessário.
+
+---
+
+## 6) Painel admin e segurança inicial
+
+- URL admin padrão: `/admin`
+- Trocar imediatamente senha padrão do administrador.
+- Garantir `APP_DEBUG=false` em produção.
+- Usar HTTPS obrigatório.
+
+---
+
+## 7) Configuração de gateway via painel admin
+
+No painel admin, menu **Gateway de Pagamentos**:
+
+### Mercado Pago
+- `mp_is_enable`
+- `mp_credit_card_enable`
+- `mp_sandbox`
+- `mp_access_token`
+- `mp_public_key`
+- `mp_webhook_key`
+
+### Asaas
+- `asaas_is_enable`
+- `asaas_credit_card_enable`
+- `asaas_sandbox`
+- `asaas_api_key`
+- `asaas_webhook_key`
+
+As URLs de callback aparecem na própria tela:
+- `/mercadopago/callback`
+- `/asaas/callback`
+
+---
+
+## 8) API de depósito (PIX e cartão)
+
+Endpoint:
+- `POST /api/wallet/deposit/payment`
+
+### Exemplo PIX
+```json
+{
+  "gateway": "mercadopago",
+  "payment_method": "pix",
+  "amount": 50,
+  "cpf": "00000000000"
+}
+```
+
+### Exemplo cartão
+```json
+{
+  "gateway": "asaas",
+  "payment_method": "credit_card",
+  "amount": 50,
+  "cpf": "00000000000",
+  "credit_card": {
+    "number": "4111111111111111",
+    "name": "NOME TESTE",
+    "expiry": "12/30",
+    "cvc": "123"
+  }
+}
+```
+
+Regras:
+- `amount` respeita `min_deposit` e `max_deposit`.
+- Cartão exige `*_credit_card_enable=true` no gateway selecionado.
+
+---
+
+## 9) Webhooks
+
+Rotas:
+- `POST /mercadopago/callback`
+- `POST /mercadopago/payment/{id}`
+- `POST /asaas/callback`
+- `POST /asaas/payment`
+
+Checklist:
+1. URL pública HTTPS.
+2. Callback cadastrado no provedor.
+3. Chave de webhook configurada no admin (quando usada).
+4. Verificação de logs do Laravel para confirmação de recebimento.
+
+---
+
+## 10) Checklist final de validação
+
+### Backend
+- `php artisan optimize:clear`
+- Confirmar migrations aplicadas.
+- Criar depósito PIX em MP e Asaas.
+- Testar cartão com flag habilitada.
+- Confirmar crédito na carteira.
+
+### Frontend
+- Login admin e menu de gateways carregando.
+- Tela de depósito exibindo gateways conforme settings.
+- Fluxo de QR Code/checkout sem erro JS.
+
+### Jogos/provedores
+- Validar chaves dos provedores de jogo.
+- Abrir jogo autenticado.
+- Confirmar reconciliação financeira em logs/tabelas.
+
+---
+
+## 11) Troubleshooting rápido
+
+### `vendor/autoload.php` ausente
+Rode:
+```bash
+composer install
+```
+
+### Gateway não aparece no frontend
+- Verifique `settings` (`mercadopago_is_enable`, `asaas_is_enable`).
+- Limpe cache: `php artisan optimize:clear`.
+
+### Callback não credita saldo
+- Conferir URL de webhook no provedor.
+- Conferir chave/assinatura configurada.
+- Inspecionar logs (`storage/logs/laravel.log`).
+
+---
+
+## 12) Comandos úteis
+
+```bash
+php artisan optimize:clear
+php artisan migrate --force
+php artisan route:list
+php artisan queue:work
+```

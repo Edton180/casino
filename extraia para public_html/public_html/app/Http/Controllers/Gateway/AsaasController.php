@@ -11,6 +11,29 @@ class AsaasController extends Controller
 {
     use AsaasTrait;
 
+
+    private function isValidWebhook(Request $request, ?string $expectedKey): bool
+    {
+        if (empty($expectedKey)) {
+            return true;
+        }
+
+        $possibleKeys = [
+            $request->header('asaas-signature'),
+            $request->header('asaas-access-token'),
+            $request->header('x-webhook-key'),
+            $request->input('webhook_key'),
+        ];
+
+        foreach ($possibleKeys as $key) {
+            if (!empty($key) && hash_equals((string) $expectedKey, (string) $key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Callback do Asaas
      * @param Request $request
@@ -22,11 +45,11 @@ class AsaasController extends Controller
 
         $gateway = \App\Models\Gateway::first();
         
-        // Verifica se a chave do webhook está correta
-        if ($request->header('asaas-signature') !== $gateway->asaas_webhook_key) {
+        // Se a chave estiver configurada, valida o webhook por headers/token conhecidos
+        if (!$this->isValidWebhook($request, $gateway?->asaas_webhook_key)) {
             Log::error('Asaas Callback - Assinatura inválida', [
                 'received' => $request->header('asaas-signature'),
-                'expected' => $gateway->asaas_webhook_key
+                'expected' => $gateway?->asaas_webhook_key
             ]);
             return response()->json(['status' => false, 'message' => 'Assinatura inválida'], 401);
         }

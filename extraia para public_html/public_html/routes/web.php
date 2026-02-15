@@ -41,14 +41,18 @@ Route::middleware(['authorize.withdrawal'])->get('/admin/permissions', function 
 
 
 // GATEWAYS
-
-include_once(__DIR__ . '/groups/gateways/bspay.php');  // Adicionar isso
+include_once(__DIR__ . '/groups/gateways/asaas.php');
+include_once(__DIR__ . '/groups/gateways/mercadopago.php');
+include_once(__DIR__ . '/groups/gateways/digitopay.php');
+include_once(__DIR__ . '/groups/gateways/stripe.php');
+include_once(__DIR__ . '/groups/gateways/sharkpay.php');
+include_once(__DIR__ . '/groups/gateways/suitpay.php');
+include_once(__DIR__ . '/groups/gateways/bspay.php');
 
 /// SOCIAL
 include_once(__DIR__ . '/groups/auth/social.php');
 
 // APP
 include_once(__DIR__ . '/groups/layouts/app.php');
-
 
 

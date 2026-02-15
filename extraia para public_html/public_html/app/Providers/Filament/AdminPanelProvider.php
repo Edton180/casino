@@ -34,7 +34,7 @@ use Filament\Navigation\NavigationBuilder;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Panel;
-use App\Filament\Admin\Pages\BsPayPayPaymentPage;
+use App\Filament\Admin\Pages\BsPayPaymentPage;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -157,13 +157,25 @@ class AdminPanelProvider extends PanelProvider
                                     ->isActiveWhen(fn () => request()->routeIs('filament.pages.gateway-page'))
                                     ->visible(fn(): bool => auth()->user()->hasRole('admin')),
 
-                                NavigationItem::make('historico-pagamentos')
+                                NavigationItem::make('historico-pagamentos-suitpay')
                                     ->icon('heroicon-o-currency-dollar')
-                                    ->label(fn (): string => 'Histórico de Pagamentos')
+                                    ->label(fn (): string => 'Histórico SuitPay')
                                     ->url(fn (): string => SuitPayPaymentPage::getUrl())
+                                    ->isActiveWhen(fn () => request()->routeIs('filament.pages.suit-pay-payment-page'))
+                                    ->visible(fn(): bool => auth()->user()->hasRole('admin')),
+
+                                NavigationItem::make('historico-pagamentos-bspay')
+                                    ->icon('heroicon-o-currency-dollar')
+                                    ->label(fn (): string => 'Histórico BsPay/PixUp')
                                     ->url(fn (): string => BsPayPaymentPage::getUrl())
+                                    ->isActiveWhen(fn () => request()->routeIs('filament.pages.bs-pay-payment-page'))
+                                    ->visible(fn(): bool => auth()->user()->hasRole('admin')),
+
+                                NavigationItem::make('historico-pagamentos-digitopay')
+                                    ->icon('heroicon-o-currency-dollar')
+                                    ->label(fn (): string => 'Histórico DigitoPay')
                                     ->url(fn (): string => DigitoPayPaymentPage::getUrl())
-                                    ->isActiveWhen(fn () => request()->routeIs('filament.admin.resources.suitpay-payments.*'))
+                                    ->isActiveWhen(fn () => request()->routeIs('filament.pages.digito-pay-payment-page'))
                                     ->visible(fn(): bool => auth()->user()->hasRole('admin')),
                             ])
                         : NavigationGroup::make()

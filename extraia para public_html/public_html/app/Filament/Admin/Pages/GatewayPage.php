@@ -5,6 +5,7 @@ use Illuminate\Support\HtmlString;
 use App\Models\Gateway;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -149,6 +150,56 @@ Section::make('BSPAY E PIXUP')
                             ->maxLength(191)
                             ->columnSpanFull(),
                     ]),
+
+                Section::make('Mercado Pago')
+                    ->description(new HtmlString('Webhook de pagamento: <b>' . url('/mercadopago/callback', [], true) . '</b>'))
+                    ->schema([
+                        Toggle::make('mp_is_enable')
+                            ->label('Ativar Mercado Pago')
+                            ->inline(false),
+                        Toggle::make('mp_credit_card_enable')
+                            ->label('Ativar cartão de crédito (Mercado Pago)')
+                            ->inline(false),
+                        Toggle::make('mp_sandbox')
+                            ->label('Modo sandbox')
+                            ->default(true)
+                            ->inline(false),
+                        TextInput::make('mp_access_token')
+                            ->label('Access Token')
+                            ->placeholder('APP_USR-... ou TEST-...')
+                            ->maxLength(255),
+                        TextInput::make('mp_public_key')
+                            ->label('Public Key')
+                            ->placeholder('APP_USR-...')
+                            ->maxLength(255),
+                        TextInput::make('mp_webhook_key')
+                            ->label('Webhook Key (opcional)')
+                            ->placeholder('Segredo para validar callback')
+                            ->maxLength(255),
+                    ])->columns(2),
+
+                Section::make('Asaas')
+                    ->description(new HtmlString('Webhook de pagamento: <b>' . url('/asaas/callback', [], true) . '</b>'))
+                    ->schema([
+                        Toggle::make('asaas_is_enable')
+                            ->label('Ativar Asaas')
+                            ->inline(false),
+                        Toggle::make('asaas_credit_card_enable')
+                            ->label('Ativar cartão de crédito (Asaas)')
+                            ->inline(false),
+                        Toggle::make('asaas_sandbox')
+                            ->label('Modo sandbox')
+                            ->default(true)
+                            ->inline(false),
+                        TextInput::make('asaas_api_key')
+                            ->label('API Key')
+                            ->placeholder('$aact_...')
+                            ->maxLength(255),
+                        TextInput::make('asaas_webhook_key')
+                            ->label('Webhook Key (opcional)')
+                            ->placeholder('Segredo para validar callback')
+                            ->maxLength(255),
+                    ])->columns(2),
             ])
             ->statePath('data');
     }
