@@ -12,14 +12,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('gateways', function (Blueprint $table) {
-            // Asaas
-            $table->string('asaas_webhook_key')->nullable()->after('asaas_api_key');
-            
-            // Mercado Pago
-            $table->string('mp_webhook_key')->nullable()->after('mp_public_key');
-            
-            // PayPal
-            $table->string('paypal_webhook_key')->nullable()->after('paypal_client_secret');
+            if (!Schema::hasColumn('gateways', 'asaas_webhook_key')) {
+                $table->string('asaas_webhook_key')->nullable();
+            }
+
+            if (!Schema::hasColumn('gateways', 'mp_webhook_key')) {
+                $table->string('mp_webhook_key')->nullable();
+            }
+
+            if (!Schema::hasColumn('gateways', 'paypal_webhook_key')) {
+                $table->string('paypal_webhook_key')->nullable();
+            }
         });
     }
 
@@ -29,11 +32,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('gateways', function (Blueprint $table) {
-            $table->dropColumn([
-                'asaas_webhook_key',
-                'mp_webhook_key',
-                'paypal_webhook_key'
-            ]);
+            foreach (['asaas_webhook_key', 'mp_webhook_key', 'paypal_webhook_key'] as $column) {
+                if (Schema::hasColumn('gateways', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
-}; 
+};

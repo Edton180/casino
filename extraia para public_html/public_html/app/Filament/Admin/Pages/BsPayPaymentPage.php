@@ -3,13 +3,13 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Livewire\LatestPixPayments;
-use App\Models\BsPayPayPayment;
+use App\Models\BsPay;
 use App\Traits\Gateways\BsPayTrait;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 
-class BsPayPayPaymentPage extends Page
+class BsPayPaymentPage extends Page
 {
     use BsPayTrait;
 
@@ -23,7 +23,7 @@ class BsPayPayPaymentPage extends Page
 
     protected static ?string $title = 'Histórico de Pagamentos';
 
-    protected static ?string $slug = 'historico-de-pagamentos';
+    protected static ?string $slug = 'bspay-pagamentos';
 
     /**
      * @dev @victormsalatiel
@@ -35,7 +35,7 @@ class BsPayPayPaymentPage extends Page
     }
 
     public ?array $data = [];
-    public BsPayPayment $BsPayPayment;
+    public ?BsPay $bsPayPayment = null;
 
     /**
      * @return void
@@ -111,7 +111,7 @@ class BsPayPayPaymentPage extends Page
             return;
         }
 
-        $payment = BsPayPayment::create([
+        $payment = BsPay::create([
             'user_id'       => $this->data['user_id'],
             'pix_key'       => $this->data['pix_key'],
             'pix_type'      => $this->data['pix_type'],

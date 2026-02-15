@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('settings', function (Blueprint $table) {
-            $table->boolean('asaas_is_enable')->default(false)->after('status');
-        });
+        if (!Schema::hasColumn('settings', 'asaas_is_enable')) {
+            Schema::table('settings', function (Blueprint $table) {
+                $table->boolean('asaas_is_enable')->default(false)->after('bspay_is_enable');
+            });
+        }
     }
 
     /**
@@ -21,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('settings', function (Blueprint $table) {
-            $table->dropColumn('asaas_is_enable');
-        });
+        if (Schema::hasColumn('settings', 'asaas_is_enable')) {
+            Schema::table('settings', function (Blueprint $table) {
+                $table->dropColumn('asaas_is_enable');
+            });
+        }
     }
-}; 
+};

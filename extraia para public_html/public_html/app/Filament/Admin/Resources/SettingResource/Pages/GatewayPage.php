@@ -114,6 +114,8 @@ class GatewayPage extends Page implements HasForms
                             ->label('Stripe Ativo'),
                         Toggle::make('mercadopago_is_enable')
                             ->label('Mercado Pago Ativo'),
+                        Toggle::make('asaas_is_enable')
+                            ->label('Asaas Ativo'),
                         Toggle::make('bspay_is_enable')
                             ->label('BsPay/PixUp Ativo'),
                     ])->columns(2)
