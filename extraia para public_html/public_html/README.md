@@ -1,10 +1,11 @@
 # Casino Platform (Laravel) — Documentação Técnica Completa
 
-Guia profissional para instalar, configurar, executar e publicar a aplicação em ambiente de desenvolvimento e produção.
+Guia profissional para instalar, configurar, executar, publicar e operar a aplicação em desenvolvimento e produção.
 
 ---
 
-## 1) Diretório correto do projeto
+# 1) Diretório correto do projeto
+
 A raiz da aplicação Laravel está em:
 
 ```bash
@@ -13,77 +14,143 @@ cd "extraia para public_html/public_html"
 
 ---
 
-## 2) Stack da aplicação
-- **Backend:** Laravel 10 (PHP 8.1+)
-- **Frontend:** Vue 3 + Vite + TailwindCSS
-- **Banco de dados:** MySQL/MariaDB
-- **Auth/API:** Sanctum + JWT
-- **Admin:** Filament
-- **Integrações:** Mercado Pago, Asaas, Stripe
+# 2) Stack da aplicação
+
+- Backend: Laravel 10 (PHP 8.1+)
+- Frontend: Vue 3 + Vite + TailwindCSS
+- Banco: MySQL 8+ ou MariaDB compatível
+- Auth/API: Sanctum + JWT
+- Admin: Filament
+- Pagamentos: Mercado Pago, Asaas, Stripe
 
 ---
 
-## 3) Pré-requisitos
-- PHP **8.1+**
-- Composer **2+**
-- Node.js **18+** e npm
-- MySQL 8+ (ou MariaDB compatível)
+# 3) Pré-requisitos obrigatórios
 
-### Extensões PHP obrigatórias (conforme `composer.json`)
-- `ext-curl`
-- `ext-intl`
-- `ext-libxml`
-- `ext-simplexml`
-- `ext-zip`
+## Sistema
+- PHP 8.1+
+- Composer 2+
+- Node.js 18+
+- npm
+- MySQL 8+ ou MariaDB
+- Git
 
-### Extensões recomendadas para Laravel
-- `mbstring`, `openssl`, `pdo_mysql`, `fileinfo`, `gd`, `bcmath`
+## Extensões PHP obrigatórias
+- ext-curl
+- ext-intl
+- ext-libxml
+- ext-simplexml
+- ext-zip
+
+## Extensões recomendadas
+- mbstring
+- openssl
+- pdo_mysql
+- fileinfo
+- gd
+- bcmath
+
+### Verificação rápida
+
+```bash
+php -v
+composer -V
+node -v
+npm -v
+php -m
+```
 
 ---
 
-## 4) Instalação limpa (recomendada)
+# 4) Instalação limpa (RECOMENDADO)
+
 ```bash
 cp .env.example .env
 composer install
-php artisan key:generate
 npm install
-npm run build
 ```
 
-Edite o `.env`:
-- `APP_URL`
-- `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
+Editar o `.env`:
 
-Depois execute:
+- APP_URL
+- DB_HOST
+- DB_PORT
+- DB_DATABASE
+- DB_USERNAME
+- DB_PASSWORD
+
+Depois executar:
 
 ```bash
+php artisan key:generate
 php artisan migrate
 php artisan storage:link
 php artisan optimize:clear
 ```
 
+Build frontend:
+
+```bash
+npm run build
+```
+
 ---
 
-## 5) Instalação com base legada (SQL)
-Existe dump SQL em:
-- `INSTALL CASSINO/elitecassino.sql`
+# 5) Exemplo mínimo de .env
 
-Fluxo recomendado:
+```env
+APP_NAME="Casino Platform"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost
+
+LOG_CHANNEL=stack
+LOG_LEVEL=debug
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=casino
+DB_USERNAME=root
+DB_PASSWORD=
+
+CACHE_DRIVER=file
+SESSION_DRIVER=file
+QUEUE_CONNECTION=sync
+```
+
+## Produção (OBRIGATÓRIO)
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://seu-dominio.com
+```
+
+---
+
+# 6) Instalação com base SQL legada
+
+Dump disponível em:
+
+INSTALL CASSINO/elitecassino.sql
+
+Fluxo:
+
 1. Criar banco vazio.
-2. Importar o SQL legado.
-3. Ajustar o `.env` para esse banco.
-4. Rodar migrações para sincronizar colunas/tabelas novas:
-   ```bash
-   php artisan migrate
-   ```
-5. Limpar cache:
-   ```bash
-   php artisan optimize:clear
-   ```
+2. Importar o dump SQL.
+3. Ajustar `.env` com as credenciais.
+4. Rodar:
+
+```bash
+php artisan migrate
+php artisan optimize:clear
+```
 
 ---
 
-## 6) Execução em desenvolvimento
+# 7) Execução em desenvolvimento
+
 Em terminais separados:
 
 ```bash
@@ -100,112 +167,204 @@ php artisan about
 
 ---
 
-## 7) Build frontend
-Para gerar assets de produção:
+# 8) Deploy em produção
 
-```bash
-npm run build
-```
-
-Para limpeza de build:
-
-```bash
-npm run clean
-```
-
----
-
-## 8) Deploy em produção
-No servidor (na pasta da aplicação):
+No servidor:
 
 ```bash
 composer install --no-dev --optimize-autoloader
 npm ci
 npm run build
 php artisan migrate --force
+php artisan storage:link
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
-php artisan storage:link
 ```
 
 Garantir permissões de escrita em:
-- `storage/`
-- `bootstrap/cache/`
+
+- storage/
+- bootstrap/cache/
 
 ---
 
-## 9) Filas e agendador
-### Worker
+# 9) Filas e Scheduler
+
+## Worker
+
 ```bash
 php artisan queue:work --tries=3 --timeout=120
 ```
 
-### Cron para scheduler
+## Cron (obrigatório)
+
 ```bash
 * * * * * php /caminho/da/aplicacao/artisan schedule:run >> /dev/null 2>&1
 ```
 
----
-
-## 10) Painel admin e segurança
-- URL admin padrão: `/admin`
-- Trocar senha padrão imediatamente.
-- Produção com `APP_DEBUG=false`.
-- Usar HTTPS obrigatório.
-- Não expor segredos de API/chaves no repositório.
+Recomendado usar Supervisor ou systemd em produção.
 
 ---
 
-## 11) Gateway de pagamentos
-Configurar no painel de administração os campos dos gateways.
+# 10) Painel Admin e Segurança
 
-### Mercado Pago
-- `mp_is_enable`
-- `mp_credit_card_enable`
-- `mp_sandbox`
-- `mp_access_token`
-- `mp_public_key`
-- `mp_webhook_key`
-
-### Asaas
-- `asaas_is_enable`
-- `asaas_credit_card_enable`
-- `asaas_sandbox`
-- `asaas_api_key`
-- `asaas_webhook_key`
-
-Callbacks usuais:
-- `/mercadopago/callback`
-- `/asaas/callback`
+- URL padrão: /admin
+- Trocar senha padrão imediatamente
+- Usar HTTPS obrigatório
+- APP_DEBUG=false em produção
+- Nunca expor chaves no repositório
 
 ---
 
-## 12) Troubleshooting
-### `vendor/autoload.php` ausente
+# 11) Gateway de Pagamentos
+
+Configurar no painel administrativo antes de liberar para clientes.
+
+## Mercado Pago
+
+Campos:
+
+- mp_is_enable
+- mp_credit_card_enable
+- mp_sandbox
+- mp_access_token
+- mp_public_key
+- mp_webhook_key
+
+## Asaas
+
+Campos:
+
+- asaas_is_enable
+- asaas_credit_card_enable
+- asaas_sandbox
+- asaas_api_key
+- asaas_webhook_key
+
+## Endpoints de callback
+
+- POST /mercadopago/callback
+- POST /mercadopago/payment/{id}
+- POST /asaas/callback
+- POST /asaas/payment
+
+## Checklist de homologação
+
+- Gateway habilitado
+- Chaves corretas
+- Webhook cadastrado com HTTPS
+- PIX testado em sandbox
+- Cartão testado em sandbox
+- Saldo creditando corretamente
+- Logs sem exceções
+
+---
+
+# 12) API de Depósito (Referência)
+
+Endpoint:
+
+POST /api/wallet/deposit/payment
+
+## Exemplo PIX
+
+```json
+{
+  "gateway": "mercadopago",
+  "payment_method": "pix",
+  "amount": 50,
+  "cpf": "00000000000"
+}
+```
+
+## Exemplo Cartão
+
+```json
+{
+  "gateway": "asaas",
+  "payment_method": "credit_card",
+  "amount": 50,
+  "cpf": "00000000000",
+  "credit_card": {
+    "number": "4111111111111111",
+    "name": "NOME TESTE",
+    "expiry": "12/30",
+    "cvc": "123"
+  }
+}
+```
+
+Regras importantes:
+
+- amount deve respeitar min_deposit e max_deposit
+- Cartão só funciona se *_credit_card_enable=true
+- Implementar idempotência para evitar crédito duplicado
+
+---
+
+# 13) Segurança (Hardening)
+
+- Forçar HTTPS e HSTS
+- Bloquear acesso a arquivos sensíveis
+- Rotacionar chaves periodicamente
+- Limitar tentativas de login no admin
+- Monitorar storage/logs/laravel.log
+- Validar assinatura dos webhooks
+
+---
+
+# 14) Troubleshooting
+
+## vendor/autoload.php ausente
+
 ```bash
 composer install
 ```
 
-### Frontend não atualiza
+## Erro de chave da aplicação
+
+```bash
+php artisan key:generate
+php artisan config:clear
+```
+
+## Frontend não carrega
+
 ```bash
 npm install
 npm run build
 php artisan optimize:clear
 ```
 
-### Falha de banco de dados
-- Revisar `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
-- Verificar se o MySQL/MariaDB está em execução.
+## Erro de permissão
 
-### Callback não credita saldo
-- Validar URL de webhook no provedor.
-- Conferir chave/assinatura configurada.
-- Analisar logs em `storage/logs/laravel.log`.
+Garantir escrita em:
+
+- storage/
+- bootstrap/cache/
+
+## Callback não credita saldo
+
+- Conferir URL no provedor
+- Validar chave webhook
+- Conferir status real da cobrança
+- Ver logs em storage/logs/laravel.log
+
+## Banco não conecta
+
+Verificar:
+
+- DB_HOST
+- DB_PORT
+- DB_DATABASE
+- DB_USERNAME
+- DB_PASSWORD
 
 ---
 
-## 13) Comandos úteis
+# 15) Comandos úteis
+
 ```bash
 php artisan optimize:clear
 php artisan migrate --force
@@ -214,3 +373,16 @@ php artisan queue:work
 php artisan config:cache
 php artisan view:cache
 ```
+
+---
+
+# 16) Checklist Final Produção
+
+- [ ] APP_DEBUG=false
+- [ ] Banco atualizado e backup feito
+- [ ] Build frontend gerado
+- [ ] Filas funcionando
+- [ ] Cron configurado
+- [ ] Gateways testados
+- [ ] Webhooks recebendo
+- [ ] Logs monitorados
