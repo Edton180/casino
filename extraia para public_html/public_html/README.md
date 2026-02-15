@@ -1,12 +1,11 @@
-# Casino Platform (Laravel)
+# Casino Platform (Laravel) — Documentação Técnica Completa
 
-Guia técnico completo para instalar, configurar e operar a plataforma com **Mercado Pago** e **Asaas** no painel admin.
+Guia profissional para instalar, configurar, executar e publicar a aplicação em ambiente de desenvolvimento e produção.
 
 ---
 
 ## 1) Diretório correto do projeto
-
-Use esta pasta como raiz da aplicação:
+A raiz da aplicação Laravel está em:
 
 ```bash
 cd "extraia para public_html/public_html"
@@ -14,18 +13,35 @@ cd "extraia para public_html/public_html"
 
 ---
 
-## 2) Pré-requisitos
-
-- PHP 8.2+
-- Composer 2+
-- Node.js 18+ / npm
-- MySQL 8+ ou MariaDB compatível
-- Extensões PHP: `mbstring`, `openssl`, `pdo_mysql`, `bcmath`, `intl`, `curl`, `gd`, `xml`, `fileinfo`
+## 2) Stack da aplicação
+- **Backend:** Laravel 10 (PHP 8.1+)
+- **Frontend:** Vue 3 + Vite + TailwindCSS
+- **Banco de dados:** MySQL/MariaDB
+- **Auth/API:** Sanctum + JWT
+- **Admin:** Filament
+- **Integrações:** Mercado Pago, Asaas, Stripe
 
 ---
 
-## 3) Instalação limpa (recomendado)
+## 3) Pré-requisitos
+- PHP **8.1+**
+- Composer **2+**
+- Node.js **18+** e npm
+- MySQL 8+ (ou MariaDB compatível)
 
+### Extensões PHP obrigatórias (conforme `composer.json`)
+- `ext-curl`
+- `ext-intl`
+- `ext-libxml`
+- `ext-simplexml`
+- `ext-zip`
+
+### Extensões recomendadas para Laravel
+- `mbstring`, `openssl`, `pdo_mysql`, `fileinfo`, `gd`, `bcmath`
+
+---
+
+## 4) Instalação limpa (recomendada)
 ```bash
 cp .env.example .env
 composer install
@@ -34,30 +50,29 @@ npm install
 npm run build
 ```
 
-Configurar `.env`:
-- `APP_URL=https://seu-dominio.com`
+Edite o `.env`:
+- `APP_URL`
 - `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
 
-Executar:
+Depois execute:
 
 ```bash
 php artisan migrate
-php artisan optimize:clear
 php artisan storage:link
+php artisan optimize:clear
 ```
 
 ---
 
-## 4) Instalação com SQL legado
-
-Dump disponível em:
+## 5) Instalação com base legada (SQL)
+Existe dump SQL em:
 - `INSTALL CASSINO/elitecassino.sql`
 
-Fluxo:
+Fluxo recomendado:
 1. Criar banco vazio.
-2. Importar SQL.
-3. Ajustar `.env` para esse banco.
-4. Rodar migrações pendentes:
+2. Importar o SQL legado.
+3. Ajustar o `.env` para esse banco.
+4. Rodar migrações para sincronizar colunas/tabelas novas:
    ```bash
    php artisan migrate
    ```
@@ -66,37 +81,84 @@ Fluxo:
    php artisan optimize:clear
    ```
 
-> Importante: mesmo com SQL importado, rode `migrate` para sincronizar campos novos de gateways.
+---
+
+## 6) Execução em desenvolvimento
+Em terminais separados:
+
+```bash
+php artisan serve
+npm run dev
+```
+
+Validações úteis:
+
+```bash
+php artisan route:list
+php artisan about
+```
 
 ---
 
-## 5) Produção (resumo)
+## 7) Build frontend
+Para gerar assets de produção:
+
+```bash
+npm run build
+```
+
+Para limpeza de build:
+
+```bash
+npm run clean
+```
+
+---
+
+## 8) Deploy em produção
+No servidor (na pasta da aplicação):
 
 ```bash
 composer install --no-dev --optimize-autoloader
-npm ci && npm run build
+npm ci
+npm run build
 php artisan migrate --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan storage:link
 ```
 
-Também configurar worker de fila (`queue:work`) e cron (`schedule:run`) quando necessário.
+Garantir permissões de escrita em:
+- `storage/`
+- `bootstrap/cache/`
 
 ---
 
-## 6) Painel admin e segurança inicial
+## 9) Filas e agendador
+### Worker
+```bash
+php artisan queue:work --tries=3 --timeout=120
+```
 
+### Cron para scheduler
+```bash
+* * * * * php /caminho/da/aplicacao/artisan schedule:run >> /dev/null 2>&1
+```
+
+---
+
+## 10) Painel admin e segurança
 - URL admin padrão: `/admin`
-- Trocar imediatamente senha padrão do administrador.
-- Garantir `APP_DEBUG=false` em produção.
+- Trocar senha padrão imediatamente.
+- Produção com `APP_DEBUG=false`.
 - Usar HTTPS obrigatório.
+- Não expor segredos de API/chaves no repositório.
 
 ---
 
-## 7) Configuração de gateway via painel admin
-
-No painel admin, menu **Gateway de Pagamentos**:
+## 11) Gateway de pagamentos
+Configurar no painel de administração os campos dos gateways.
 
 ### Mercado Pago
 - `mp_is_enable`
@@ -113,110 +175,42 @@ No painel admin, menu **Gateway de Pagamentos**:
 - `asaas_api_key`
 - `asaas_webhook_key`
 
-As URLs de callback aparecem na própria tela:
+Callbacks usuais:
 - `/mercadopago/callback`
 - `/asaas/callback`
 
 ---
 
-## 8) API de depósito (PIX e cartão)
-
-Endpoint:
-- `POST /api/wallet/deposit/payment`
-
-### Exemplo PIX
-```json
-{
-  "gateway": "mercadopago",
-  "payment_method": "pix",
-  "amount": 50,
-  "cpf": "00000000000"
-}
-```
-
-### Exemplo cartão
-```json
-{
-  "gateway": "asaas",
-  "payment_method": "credit_card",
-  "amount": 50,
-  "cpf": "00000000000",
-  "credit_card": {
-    "number": "4111111111111111",
-    "name": "NOME TESTE",
-    "expiry": "12/30",
-    "cvc": "123"
-  }
-}
-```
-
-Regras:
-- `amount` respeita `min_deposit` e `max_deposit`.
-- Cartão exige `*_credit_card_enable=true` no gateway selecionado.
-
----
-
-## 9) Webhooks
-
-Rotas:
-- `POST /mercadopago/callback`
-- `POST /mercadopago/payment/{id}`
-- `POST /asaas/callback`
-- `POST /asaas/payment`
-
-Checklist:
-1. URL pública HTTPS.
-2. Callback cadastrado no provedor.
-3. Chave de webhook configurada no admin (quando usada).
-4. Verificação de logs do Laravel para confirmação de recebimento.
-
----
-
-## 10) Checklist final de validação
-
-### Backend
-- `php artisan optimize:clear`
-- Confirmar migrations aplicadas.
-- Criar depósito PIX em MP e Asaas.
-- Testar cartão com flag habilitada.
-- Confirmar crédito na carteira.
-
-### Frontend
-- Login admin e menu de gateways carregando.
-- Tela de depósito exibindo gateways conforme settings.
-- Fluxo de QR Code/checkout sem erro JS.
-
-### Jogos/provedores
-- Validar chaves dos provedores de jogo.
-- Abrir jogo autenticado.
-- Confirmar reconciliação financeira em logs/tabelas.
-
----
-
-## 11) Troubleshooting rápido
-
+## 12) Troubleshooting
 ### `vendor/autoload.php` ausente
-Rode:
 ```bash
 composer install
 ```
 
-### Gateway não aparece no frontend
-- Verifique `settings` (`mercadopago_is_enable`, `asaas_is_enable`).
-- Limpe cache: `php artisan optimize:clear`.
+### Frontend não atualiza
+```bash
+npm install
+npm run build
+php artisan optimize:clear
+```
+
+### Falha de banco de dados
+- Revisar `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
+- Verificar se o MySQL/MariaDB está em execução.
 
 ### Callback não credita saldo
-- Conferir URL de webhook no provedor.
+- Validar URL de webhook no provedor.
 - Conferir chave/assinatura configurada.
-- Inspecionar logs (`storage/logs/laravel.log`).
+- Analisar logs em `storage/logs/laravel.log`.
 
 ---
 
-## 12) Comandos úteis
-
+## 13) Comandos úteis
 ```bash
 php artisan optimize:clear
 php artisan migrate --force
 php artisan route:list
 php artisan queue:work
+php artisan config:cache
+php artisan view:cache
 ```

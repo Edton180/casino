@@ -22,3 +22,5 @@
 
 # SQL dumps are often large snapshots; keep as raw text without eol conversion
 *.sql -text
+# Markdown should always be treated as text
+*.md text diff=markdown
