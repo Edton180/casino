@@ -1,37 +1,33 @@
-﻿# cassino
-# cassino
-# Casino Platform — Documentação Profissional
+# 🎰 Casino Platform — Documentação Oficial
 
-## Visão geral
-Esta aplicação é uma plataforma de cassino construída em **Laravel 10** com frontend em **Vite + Vue 3**. O projeto inclui painel administrativo, módulos, integrações de pagamento e infraestrutura de filas/eventos para fluxos assíncronos.
+> Plataforma de cassino com backend em **Laravel 10** e frontend em **Vue 3 + Vite**.
 
----
-
-## Sumário
-1. [Arquitetura e stack](#arquitetura-e-stack)
-2. [Pré-requisitos](#pré-requisitos)
-3. [Instalação local (desenvolvimento)](#instalação-local-desenvolvimento)
-4. [Configuração de ambiente (.env)](#configuração-de-ambiente-env)
-5. [Banco de dados e migrações](#banco-de-dados-e-migrações)
-6. [Build de frontend](#build-de-frontend)
-7. [Execução da aplicação](#execução-da-aplicação)
-8. [Deploy em produção](#deploy-em-produção)
-9. [Filas, agendador e cache](#filas-agendador-e-cache)
-10. [Segurança e boas práticas](#segurança-e-boas-práticas)
-11. [Comandos úteis](#comandos-úteis)
-12. [Troubleshooting](#troubleshooting)
+## 👤 Criador
+**Edton Braz**
 
 ---
 
-## Arquitetura e stack
+## 📌 Visão geral
+Esta aplicação oferece uma base completa para operação de cassino online, com:
+- Painel administrativo;
+- Módulos e integrações de pagamento;
+- Processamento assíncrono com filas e agendador;
+- Fluxo de build e deploy para produção.
+
+---
+
+## 🧱 Stack Tecnológica
 - **Backend:** PHP 8.1+ / Laravel 10
-- **Frontend:** Vite, Vue 3, TailwindCSS
-- **Banco:** MySQL/MariaDB
-- **Auth/API:** Laravel Sanctum e JWT
-- **Painel administrativo:** Filament
-- **Integrações importantes:** Mercado Pago, Asaas, Stripe e módulos auxiliares
+- **Frontend:** Vue 3, Vite, TailwindCSS
+- **Banco de dados:** MySQL 8+ / MariaDB compatível
+- **Autenticação/API:** Laravel Sanctum e JWT
+- **Admin:** Filament
+- **Pagamentos:** Mercado Pago, Asaas, Stripe
 
-Diretório principal da aplicação Laravel:
+---
+
+## 📂 Estrutura esperada
+A aplicação foi pensada para execução em hospedagens com estrutura tipo:
 
 ```bash
 extraia para public_html/public_html
@@ -39,8 +35,8 @@ extraia para public_html/public_html
 
 ---
 
-## Pré-requisitos
-Garanta que o servidor/ambiente tenha:
+## ✅ Pré-requisitos
+Antes da instalação, garanta:
 
 - PHP **8.1+**
 - Composer **2+**
@@ -54,12 +50,19 @@ Garanta que o servidor/ambiente tenha:
 - `libxml`
 - `simplexml`
 - `zip`
-- (recomendadas para Laravel: `mbstring`, `openssl`, `pdo_mysql`, `fileinfo`, `gd`, `bcmath`)
+
+### Extensões recomendadas para Laravel
+- `mbstring`
+- `openssl`
+- `pdo_mysql`
+- `fileinfo`
+- `gd`
+- `bcmath`
 
 ---
 
-## Instalação local (desenvolvimento)
-No diretório raiz do repositório:
+## 🚀 Instalação local (desenvolvimento)
+No diretório raiz do projeto:
 
 ```bash
 cd "extraia para public_html/public_html"
@@ -69,7 +72,7 @@ php artisan key:generate
 npm install
 ```
 
-Depois, configure o banco no `.env` e execute:
+Depois configure o banco no arquivo `.env` e execute:
 
 ```bash
 php artisan migrate
@@ -77,7 +80,7 @@ php artisan storage:link
 php artisan optimize:clear
 ```
 
-Para desenvolvimento frontend:
+Para iniciar o frontend em modo desenvolvimento:
 
 ```bash
 npm run dev
@@ -85,8 +88,8 @@ npm run dev
 
 ---
 
-## Configuração de ambiente (.env)
-Parâmetros mínimos que você deve ajustar:
+## ⚙️ Configuração de ambiente (.env)
+Exemplo mínimo:
 
 ```env
 APP_NAME="Casino Platform"
@@ -102,24 +105,24 @@ DB_USERNAME=seu_usuario
 DB_PASSWORD=sua_senha
 ```
 
-### Recomendações por ambiente
+### Recomendações
 - **Desenvolvimento:** `APP_DEBUG=true`
 - **Produção:** `APP_DEBUG=false`
-- Configure `QUEUE_CONNECTION`, `CACHE_DRIVER` e `SESSION_DRIVER` conforme infraestrutura.
+- Ajuste `QUEUE_CONNECTION`, `CACHE_DRIVER` e `SESSION_DRIVER` conforme sua infraestrutura.
 
 ---
 
-## Banco de dados e migrações
-### Cenário A — instalação limpa
+## 🗄️ Banco de dados e migrações
+### Cenário A — Instalação limpa
 ```bash
 php artisan migrate
 ```
 
-### Cenário B — base legada (dump SQL)
-1. Criar banco vazio.
-2. Importar o dump legado.
-3. Ajustar `.env` para apontar ao banco importado.
-4. Rodar migrações pendentes para sincronizar estrutura:
+### Cenário B — Base legada (dump SQL)
+1. Criar banco vazio;
+2. Importar dump legado;
+3. Ajustar `.env`;
+4. Rodar migrações pendentes:
 
 ```bash
 php artisan migrate
@@ -127,22 +130,7 @@ php artisan migrate
 
 ---
 
-## Build de frontend
-Para compilar assets otimizados:
-
-```bash
-npm run build
-```
-
-Se houver necessidade de limpeza de assets:
-
-```bash
-npm run clean
-```
-
----
-
-## Execução da aplicação
+## 🧪 Execução da aplicação
 ### Desenvolvimento
 Em terminais separados:
 
@@ -151,7 +139,7 @@ php artisan serve
 npm run dev
 ```
 
-### Testes e validações básicas
+### Verificações básicas
 ```bash
 php artisan route:list
 php artisan about
@@ -159,8 +147,23 @@ php artisan about
 
 ---
 
-## Deploy em produção
-No servidor, dentro da pasta da aplicação:
+## 🏗️ Build de frontend
+Para gerar assets otimizados:
+
+```bash
+npm run build
+```
+
+Se precisar limpar assets:
+
+```bash
+npm run clean
+```
+
+---
+
+## 🌐 Deploy em produção
+Dentro da pasta da aplicação no servidor:
 
 ```bash
 composer install --no-dev --optimize-autoloader
@@ -177,40 +180,38 @@ php artisan view:cache
 php artisan storage:link
 ```
 
-Garanta permissões de escrita em `storage/` e `bootstrap/cache/`.
+Garanta escrita em `storage/` e `bootstrap/cache/`.
 
 ---
 
-## Filas, agendador e cache
+## 🕒 Filas, scheduler e cache
 ### Worker de filas
 ```bash
 php artisan queue:work --tries=3 --timeout=120
 ```
 
-### Scheduler (cron)
-Adicionar no crontab:
-
+### Cron do scheduler
 ```bash
 * * * * * php /caminho/da/aplicacao/artisan schedule:run >> /dev/null 2>&1
 ```
 
-### Limpeza geral de cache
+### Limpeza geral
 ```bash
 php artisan optimize:clear
 ```
 
 ---
 
-## Segurança e boas práticas
-- Use **HTTPS** obrigatório em produção.
-- Nunca versionar `.env` com dados sensíveis.
-- Configure chaves e webhooks dos gateways no painel admin.
-- Monitore `storage/logs/laravel.log` regularmente.
-- Restrinja acesso ao painel administrativo por política de senha forte e controle de permissões.
+## 🔒 Segurança e boas práticas
+- Usar **HTTPS** em produção;
+- Nunca versionar `.env` com dados sensíveis;
+- Configurar chaves/webhooks dos gateways no painel admin;
+- Monitorar `storage/logs/laravel.log`;
+- Restringir acesso ao painel administrativo com políticas de senha e permissões.
 
 ---
 
-## Comandos úteis
+## 🧰 Comandos úteis
 ```bash
 php artisan optimize:clear
 php artisan migrate --force
@@ -222,13 +223,13 @@ php artisan view:cache
 
 ---
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 ### Erro `vendor/autoload.php` não encontrado
 ```bash
 composer install
 ```
 
-### Frontend sem atualizar
+### Frontend não atualiza
 ```bash
 npm install
 npm run build
@@ -236,13 +237,25 @@ php artisan optimize:clear
 ```
 
 ### Erro de conexão com banco
-- Verifique `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
-- Confirme se o serviço MySQL está ativo.
+Verifique:
+- `DB_HOST`
+- `DB_PORT`
+- `DB_DATABASE`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+
+E confirme se o MySQL está ativo.
 
 ### Erro de permissão em cache/storage
-- Ajuste dono/grupo da aplicação e permissões de escrita em `storage/` e `bootstrap/cache/`.
+Ajuste dono/grupo da aplicação e permissões de escrita em:
+- `storage/`
+- `bootstrap/cache/`
 
 ---
 
-## Observação final
-Se desejar, eu também posso criar uma versão desta documentação com seção de **CI/CD (GitHub Actions)**, **Nginx/Apache pronto para produção** e **checklist de go-live**.
+## 📄 Licença
+Defina aqui o modelo de licenciamento do projeto (ex.: MIT, Proprietária, etc.).
+
+---
+
+Desenvolvido por **Edton Braz**.
