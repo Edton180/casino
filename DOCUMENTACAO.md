@@ -1,90 +1,100 @@
-# Casino Platform — Documentação Profissional
+# Casino Platform — Documentação completa (instalação, operação e suporte)
 
-## Visão geral
-Esta aplicação é uma plataforma de cassino construída em **Laravel 10** com frontend em **Vite + Vue 3**. O projeto inclui painel administrativo, módulos, integrações de pagamento e infraestrutura de filas/eventos para fluxos assíncronos.
-
----
-
-## Sumário
-1. [Arquitetura e stack](#arquitetura-e-stack)
-2. [Pré-requisitos](#pré-requisitos)
-3. [Instalação local (desenvolvimento)](#instalação-local-desenvolvimento)
-4. [Configuração de ambiente (.env)](#configuração-de-ambiente-env)
-5. [Banco de dados e migrações](#banco-de-dados-e-migrações)
-6. [Build de frontend](#build-de-frontend)
-7. [Execução da aplicação](#execução-da-aplicação)
-8. [Deploy em produção](#deploy-em-produção)
-9. [Filas, agendador e cache](#filas-agendador-e-cache)
-10. [Segurança e boas práticas](#segurança-e-boas-práticas)
-11. [Comandos úteis](#comandos-úteis)
-12. [Troubleshooting](#troubleshooting)
+Este documento é uma versão detalhada para times técnicos e também para pessoas iniciantes.
+Se você quer apenas começar rápido, leia primeiro o `README.md`.
 
 ---
 
-## Arquitetura e stack
-- **Backend:** PHP 8.1+ / Laravel 10
-- **Frontend:** Vite, Vue 3, TailwindCSS
-- **Banco:** MySQL/MariaDB
-- **Auth/API:** Laravel Sanctum e JWT
-- **Painel administrativo:** Filament
-- **Integrações importantes:** Mercado Pago, Asaas, Stripe e módulos auxiliares
+## 1) Visão geral
+A Casino Platform é uma aplicação Laravel com frontend Vue, preparada para:
+- Gestão de operações de cassino
+- Painel administrativo
+- Integrações de pagamento
+- Processamento assíncrono com filas
+- Execução de tarefas agendadas
 
-Diretório principal da aplicação Laravel:
+**Stack principal**
+- Backend: PHP 8.1+ / Laravel 10
+- Frontend: Vue 3 + Vite + TailwindCSS
+- Banco: MySQL/MariaDB
+- Auth/API: Sanctum + JWT
+- Admin: Filament
+
+---
+
+## 2) Estrutura de diretórios esperada
+A pasta principal da aplicação Laravel está em:
 
 ```bash
 extraia para public_html/public_html
 ```
 
+Na maioria dos cenários, todos os comandos serão executados nessa pasta.
+
 ---
 
-## Pré-requisitos
-Garanta que o servidor/ambiente tenha:
+## 3) Pré-requisitos detalhados
 
-- PHP **8.1+**
-- Composer **2+**
-- Node.js **18+** e npm
-- MySQL 8+ (ou MariaDB compatível)
+### 3.1 Ferramentas obrigatórias
 - Git
+- PHP 8.1+
+- Composer 2+
+- Node.js 18+
+- npm
+- MySQL 8+ (ou MariaDB compatível)
 
-### Extensões PHP obrigatórias
+### 3.2 Extensões PHP recomendadas
 - `curl`
 - `intl`
 - `libxml`
 - `simplexml`
 - `zip`
-- (recomendadas para Laravel: `mbstring`, `openssl`, `pdo_mysql`, `fileinfo`, `gd`, `bcmath`)
+- `mbstring`
+- `openssl`
+- `pdo_mysql`
+- `fileinfo`
+- `gd`
+- `bcmath`
+
+### 3.3 Verificações úteis
+```bash
+php -v
+composer -V
+node -v
+npm -v
+```
 
 ---
 
-## Instalação local (desenvolvimento)
-No diretório raiz do repositório:
+## 4) Instalação local completa (do zero)
 
+## Passo 1 — entrar no diretório da aplicação
 ```bash
 cd "extraia para public_html/public_html"
+```
+
+## Passo 2 — criar o arquivo de ambiente
+```bash
 cp .env.example .env
+```
+
+## Passo 3 — instalar dependências PHP
+```bash
 composer install
+```
+
+## Passo 4 — gerar chave da aplicação
+```bash
 php artisan key:generate
+```
+
+## Passo 5 — instalar dependências JS
+```bash
 npm install
 ```
 
-Depois, configure o banco no `.env` e execute:
-
-```bash
-php artisan migrate
-php artisan storage:link
-php artisan optimize:clear
-```
-
-Para desenvolvimento frontend:
-
-```bash
-npm run dev
-```
-
----
-
-## Configuração de ambiente (.env)
-Parâmetros mínimos que você deve ajustar:
+## Passo 6 — configurar banco no `.env`
+Exemplo:
 
 ```env
 APP_NAME="Casino Platform"
@@ -100,24 +110,56 @@ DB_USERNAME=seu_usuario
 DB_PASSWORD=sua_senha
 ```
 
-### Recomendações por ambiente
-- **Desenvolvimento:** `APP_DEBUG=true`
-- **Produção:** `APP_DEBUG=false`
-- Configure `QUEUE_CONNECTION`, `CACHE_DRIVER` e `SESSION_DRIVER` conforme infraestrutura.
-
----
-
-## Banco de dados e migrações
-### Cenário A — instalação limpa
+## Passo 7 — rodar migrações
 ```bash
 php artisan migrate
 ```
 
-### Cenário B — base legada (dump SQL)
-1. Criar banco vazio.
-2. Importar o dump legado.
-3. Ajustar `.env` para apontar ao banco importado.
-4. Rodar migrações pendentes para sincronizar estrutura:
+## Passo 8 — criar link simbólico de storage
+```bash
+php artisan storage:link
+```
+
+## Passo 9 — limpar caches
+```bash
+php artisan optimize:clear
+```
+
+---
+
+## 5) Modos de execução local
+
+### 5.1 Modo simples (mais fácil)
+```bash
+php artisan serve --host=127.0.0.1 --port=8000
+```
+Acesso: `http://127.0.0.1:8000`
+
+### 5.2 Modo com frontend separado (HMR)
+Em outro terminal:
+```bash
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+### 5.3 Usando Apache/Nginx local
+- `DocumentRoot` apontando para `.../public`
+- Ajustar `APP_URL`
+- Garantir permissão em `storage/` e `bootstrap/cache/`
+
+---
+
+## 6) Banco de dados e cenários de migração
+
+### Cenário A — banco novo
+```bash
+php artisan migrate
+```
+
+### Cenário B — banco legado (dump SQL)
+1. Criar um banco vazio.
+2. Importar dump SQL antigo.
+3. Ajustar `.env` com os dados corretos.
+4. Rodar migrações para completar estrutura:
 
 ```bash
 php artisan migrate
@@ -125,41 +167,20 @@ php artisan migrate
 
 ---
 
-## Build de frontend
-Para compilar assets otimizados:
+## 7) Build e publicação
 
+### 7.1 Build frontend
 ```bash
 npm run build
 ```
 
-Se houver necessidade de limpeza de assets:
-
+### 7.2 Limpeza de assets (quando necessário)
 ```bash
 npm run clean
+npm run build
 ```
 
----
-
-## Execução da aplicação
-### Desenvolvimento
-Em terminais separados:
-
-```bash
-php artisan serve
-npm run dev
-```
-
-### Testes e validações básicas
-```bash
-php artisan route:list
-php artisan about
-```
-
----
-
-## Deploy em produção
-No servidor, dentro da pasta da aplicação:
-
+### 7.3 Deploy em produção
 ```bash
 composer install --no-dev --optimize-autoloader
 npm ci
@@ -170,77 +191,86 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-### Permissões e links
-```bash
-php artisan storage:link
-```
+---
 
-Garanta permissões de escrita em `storage/` e `bootstrap/cache/`.
+## 8) Checklist de produção
+
+### 8.1 Variáveis críticas
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `APP_URL=https://seu-dominio`
+
+### 8.2 Segurança
+- HTTPS ativo
+- Não versionar `.env`
+- Senhas fortes e acesso restrito ao admin
+- Chaves e webhooks configurados corretamente
+
+### 8.3 Operação contínua
+- Worker de fila rodando de forma persistente
+- Cron ativo para scheduler
+- Backup automático do banco
+- Monitoramento de logs
 
 ---
 
-## Filas, agendador e cache
-### Worker de filas
+## 9) Filas, scheduler e manutenção
+
+### 9.1 Worker de fila
 ```bash
 php artisan queue:work --tries=3 --timeout=120
 ```
 
-### Scheduler (cron)
-Adicionar no crontab:
-
+### 9.2 Scheduler no cron
 ```bash
 * * * * * php /caminho/da/aplicacao/artisan schedule:run >> /dev/null 2>&1
 ```
 
-### Limpeza geral de cache
+### 9.3 Limpeza de cache
 ```bash
 php artisan optimize:clear
 ```
 
 ---
 
-## Segurança e boas práticas
-- Use **HTTPS** obrigatório em produção.
-- Nunca versionar `.env` com dados sensíveis.
-- Configure chaves e webhooks dos gateways no painel admin.
-- Monitore `storage/logs/laravel.log` regularmente.
-- Restrinja acesso ao painel administrativo por política de senha forte e controle de permissões.
-
----
-
-## Comandos úteis
+## 10) Comandos de diagnóstico
 ```bash
-php artisan optimize:clear
-php artisan migrate --force
+php artisan about
 php artisan route:list
-php artisan queue:work
 php artisan config:cache
 php artisan view:cache
+php artisan migrate --force
 ```
 
 ---
 
-## Troubleshooting
-### Erro `vendor/autoload.php` não encontrado
+## 11) Troubleshooting (erros comuns)
+
+### Erro: `vendor/autoload.php` não encontrado
 ```bash
 composer install
 ```
 
-### Frontend sem atualizar
+### Frontend não atualiza
 ```bash
 npm install
 npm run build
 php artisan optimize:clear
 ```
 
-### Erro de conexão com banco
-- Verifique `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
-- Confirme se o serviço MySQL está ativo.
+### Falha de conexão com banco
+- Conferir credenciais no `.env`
+- Confirmar se MySQL/MariaDB está ativo
+- Validar porta (`3306` por padrão)
 
-### Erro de permissão em cache/storage
-- Ajuste dono/grupo da aplicação e permissões de escrita em `storage/` e `bootstrap/cache/`.
+### Permissão negada em cache/storage
+- Ajustar proprietário/grupo do projeto
+- Garantir escrita em `storage/` e `bootstrap/cache/`
 
 ---
 
-## Observação final
-Se desejar, eu também posso criar uma versão desta documentação com seção de **CI/CD (GitHub Actions)**, **Nginx/Apache pronto para produção** e **checklist de go-live**.
+## 12) Boas práticas para quem está começando
+- Execute um comando por vez e leia o erro com calma.
+- Se um comando falhar, resolva antes de ir para o próximo.
+- Mantenha um backup do `.env` antes de alterar configurações críticas.
+- Faça deploy primeiro em ambiente de homologação antes de produção.
