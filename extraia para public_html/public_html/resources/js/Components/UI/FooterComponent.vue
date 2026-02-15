@@ -90,17 +90,7 @@ Com o objetivo de proporcionar a melhor experiência de jogos aos seus usuários
     
     <hr class="border-t border-gray-300 w-full"> <!-- Linha superior -->
 
-    <div class="flex flex-col justify-center items-center mt-5" href="https://t.me/vinixxxxxxxxxxxxxxxxxxxxx">
-        <a href="https://t.me/vinixxxxxxxxxxxxxxxxxxxxx" target="_blank" class="flex flex-col items-center">
-            <div class="relative flex justify-center items-center">
-                <img src="/public/logologo.jpg" alt="Logo" class="h-10 mb-2 relative z-10"> <!-- Ajuste o tamanho da logo conforme necessário -->
-            </div>
-            <span class="text-gray-700 dark:text-white text-sm "> 💚REVISADO POR VINIX ELITE GAMING💚</span>
-
-        </a>
-    </div>
-    <br>
-    <hr class="border-t border-gray-300 w-full"> <!-- Linha superior -->
+    <hr class="border-t border-gray-300 w-full mt-5"> <!-- Linha superior -->
 
 <div class="flex justify-center items-center mt-5 space-x-4">
     <img src="/public/ssl.svg" alt="Image 1" class="h-12"> <!-- Ajuste o caminho e o tamanho da imagem conforme necessário -->
