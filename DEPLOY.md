@@ -1,23 +1,34 @@
 # DEPLOY.md
 
-## VPS (Ubuntu/Debian + NGINX + systemd + SSL)
-1. Deploy do código e `composer install --no-dev`.
-2. `npm ci && npm run build`.
-3. `php artisan migrate --force`.
-4. Configurar Nginx apontando para `public/`.
-5. SSL com Certbot e redirect HTTP->HTTPS.
-6. Queue worker via systemd.
-7. Scheduler no cron.
+## Deploy de Produção (VPS)
 
-## cPanel
-1. Aplicação fora de `public_html` quando possível.
-2. Conteúdo de `public/` em `public_html`.
-3. Ajustar `index.php` paths.
-4. Configurar `.env` e permissões.
-5. Rodar `php artisan migrate --force` no terminal cPanel.
+> Criador: **Edton Braz**
 
-## Produção
-- `APP_ENV=production`
-- `APP_DEBUG=false`
-- `SESSION_SECURE_COOKIE=true`
-- Logs centralizados e rotação.
+1. Clonar projeto em `/opt/casino`.
+2. Configurar `.env` com `APP_ENV=production` e `APP_DEBUG=false`.
+3. Instalar dependências e build:
+
+```bash
+cd /opt/casino
+composer install --no-dev --optimize-autoloader
+npm install
+npm run build
+php artisan key:generate
+php artisan migrate --force
+php artisan optimize
+```
+
+4. Configurar Nginx apontando para `/opt/casino/public`.
+5. Ativar SSL com Certbot:
+
+```bash
+certbot --nginx -d seu-dominio.com -m admin@seu-dominio.com --agree-tos --redirect
+```
+
+6. Configurar cron:
+
+```bash
+* * * * * cd /opt/casino && php artisan schedule:run >> /dev/null 2>&1
+```
+
+7. Configurar Supervisor para filas (se necessário).
