@@ -81,6 +81,38 @@ npm -v
 
 ---
 
+## 3.4 Auto instalador profissional (recomendado)
+
+Para provisionamento rápido em padrão profissional, utilize o script oficial de instalação automática na raiz do repositório:
+
+```bash
+bash scripts/auto-installer.sh
+```
+
+Esse instalador executa:
+- validação de pré-requisitos (`php`, `composer`, `node`, `npm`)
+- criação de `.env` a partir de `.env.example`
+- instalação de dependências PHP/Node
+- geração de `APP_KEY`
+- execução de migrações (com opção `--force`)
+- criação de `storage:link`
+- limpeza de cache (`optimize:clear`)
+
+Exemplos:
+
+```bash
+# Instalação para servidor + seed
+bash scripts/auto-installer.sh --force --with-seed
+
+# Caminho customizado do app Laravel
+bash scripts/auto-installer.sh --app-dir "extraia para public_html/public_html"
+
+# Modo não interativo (CI/CD)
+bash scripts/auto-installer.sh --no-interaction
+```
+
+---
+
 ## 4) Instalação local (passo a passo)
 
 ### 4.1 Entrar na pasta da aplicação
@@ -368,3 +400,30 @@ php artisan route:list
 php artisan migrate:status
 php artisan optimize:clear
 ```
+
+
+---
+
+
+## 🧠 Auto Instalador Web Inteligente (SaaS)
+
+Além do script Bash, o sistema agora possui instalador **web e CLI** com detecção automática de ambiente.
+
+### Acesso web
+```bash
+/install
+```
+
+### Recursos principais
+- detecção automática de SO (`linux/windows`), hospedagem (`ubuntu-vps/cpanel/windows-localhost`) e HTTPS;
+- auto preenchimento de `APP_URL`, `APP_ENV`, `APP_DEBUG` e host de banco;
+- wizard visual com teste de conexão PDO e criação de super admin;
+- execução automática de `key:generate`, `migrate --force`, `storage:link`, `optimize:clear`, `config:cache`, `route:cache`, `view:cache`;
+- bloqueio de reexecução após concluir (`storage/installed.lock`) + middleware de proteção.
+
+### Modo CLI
+```bash
+cd "extraia para public_html/public_html"
+php artisan system:install
+```
+

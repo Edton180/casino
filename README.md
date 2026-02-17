@@ -64,6 +64,31 @@ npm -v
 
 ## ⚙️ Instalação local completa
 
+## 🚀 Auto instalador profissional (recomendado)
+
+Para acelerar o setup com validações e fluxo padronizado, use o instalador automático:
+
+```bash
+bash scripts/auto-installer.sh
+```
+
+### Opções úteis
+
+```bash
+# Instalação forçada (ambiente de servidor) + seeders
+bash scripts/auto-installer.sh --force --with-seed
+
+# Informar pasta customizada da aplicação
+bash scripts/auto-installer.sh --app-dir "extraia para public_html/public_html"
+
+# Pular etapas específicas
+bash scripts/auto-installer.sh --skip-composer --skip-npm
+```
+
+> O script valida pré-requisitos, cria `.env` quando necessário, instala dependências, gera `APP_KEY`, executa migrações, cria `storage:link` e limpa cache.
+
+---
+
 ## 1) Acesse a pasta da aplicação
 ```bash
 cd "extraia para public_html/public_html"
@@ -267,3 +292,30 @@ php artisan view:cache
 
 ## 📚 Documentação complementar
 Para material adicional de operação e suporte, consulte também `DOCUMENTACAO.md`.
+
+
+---
+
+
+## 🧠 Auto Instalador Web Inteligente (SaaS)
+
+Além do script Bash, o sistema agora possui instalador **web e CLI** com detecção automática de ambiente.
+
+### Acesso web
+```bash
+/install
+```
+
+### Recursos principais
+- detecção automática de SO (`linux/windows`), hospedagem (`ubuntu-vps/cpanel/windows-localhost`) e HTTPS;
+- auto preenchimento de `APP_URL`, `APP_ENV`, `APP_DEBUG` e host de banco;
+- wizard visual com teste de conexão PDO e criação de super admin;
+- execução automática de `key:generate`, `migrate --force`, `storage:link`, `optimize:clear`, `config:cache`, `route:cache`, `view:cache`;
+- bloqueio de reexecução após concluir (`storage/installed.lock`) + middleware de proteção.
+
+### Modo CLI
+```bash
+cd "extraia para public_html/public_html"
+php artisan system:install
+```
+
