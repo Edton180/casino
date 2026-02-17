@@ -11,6 +11,7 @@ ENABLE_SSL=0
 NON_INTERACTIVE=0
 
 print_banner() {
+echo -e "\e[1;35m"
 cat <<'BANNER'
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
@@ -22,40 +23,108 @@ cat <<'BANNER'
 ║   ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝          ║
 ║                                                            ║
 ║        🎰 CASINO PLATFORM - INSTALLER v8.0.0              ║
-║        Laravel 10 • Vue 3 • MySQL • Nginx • PHP 8.2       ║
+║        Sistema Profissional de Apostas Online             ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 BANNER
+echo -e "\e[0m"
+}
+
+print_legal_notice() {
+echo -e "\e[1;33m"
+cat <<'LEGAL'
+
+══════════════════════════════════════════════════════════════
+                    AVISO LEGAL IMPORTANTE
+══════════════════════════════════════════════════════════════
+
+Este software é protegido por direitos autorais.
+
+© 2026 Edton180 - Todos os direitos reservados.
+
+• Proibida revenda não autorizada
+• Proibida redistribuição sem licença
+• Modificação apenas para uso próprio
+• Uso comercial sob responsabilidade do operador
+
+O uso deste sistema deve respeitar as leis locais
+sobre apostas e jogos online do seu país.
+
+══════════════════════════════════════════════════════════════
+
+LEGAL
+echo -e "\e[0m"
+}
+
+require_legal_acceptance() {
+  local confirm
+  read -rp "Digite 'EU ACEITO' para continuar: " confirm
+
+  if [[ "${confirm}" != "EU ACEITO" ]]; then
+    echo "Instalação cancelada."
+    exit 1
+  fi
 }
 
 print_menu() {
+echo -e "\e[1;36m"
 cat <<'MENU'
 ╔════════════════════════════════════════════════════════════╗
 ║                    MENU DE INSTALAÇÃO                     ║
 ╠════════════════════════════════════════════════════════════╣
 ║                                                            ║
-║  1) VPS Produção Completa (Recomendado)                  ║
-║     PHP 8.2 + MySQL + Nginx + SSL                        ║
+║  1) 🚀 VPS Produção Completa                              ║
+║     PHP 8.2 + MySQL + Nginx + SSL                         ║
 ║                                                            ║
-║  2) Instalação Docker                                     ║
-║     Ambiente containerizado                               ║
+║  2) 🐳 Instalação Docker                                  ║
+║     Ambiente isolado em containers                        ║
 ║                                                            ║
-║  3) Localhost / Desenvolvimento                           ║
-║     Ambiente para dev Laravel                             ║
+║  3) 💻 Localhost / Desenvolvimento                        ║
+║     Ambiente para desenvolvimento Laravel                 ║
 ║                                                            ║
-║  4) Instruções cPanel                                     ║
+║  4) 🌐 Instruções cPanel                                  ║
 ║     Hosting compartilhado                                 ║
 ║                                                            ║
-║  5) VirtualBox / VM                                       ║
+║  5) 🧪 VirtualBox / VM                                    ║
 ║     Ambiente de testes                                    ║
 ║                                                            ║
-║  6) Diagnóstico do Sistema                                ║
-║     Verificar requisitos PHP/MySQL                        ║
+║  6) 🔍 Diagnóstico do Sistema                             ║
+║     Verificar requisitos                                  ║
 ║                                                            ║
-║  0) Sair                                                  ║
+║  0) ❌ Sair                                               ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 MENU
+echo -e "\e[0m"
+}
+
+print_install_identification() {
+  local install_date server_ip
+  install_date="$(date)"
+  server_ip="$(hostname -I | awk '{print $1}')"
+  echo "Instalação iniciada em: ${install_date}"
+  echo "IP do servidor: ${server_ip:-não detectado}"
+}
+
+print_success_footer() {
+echo -e "\e[1;32m"
+cat <<'FOOTER'
+
+══════════════════════════════════════════════════════════════
+
+🎰 CASINO PLATFORM INSTALADO COM SUCESSO
+
+Desenvolvido por: Edton180
+Versão: 8.0.0
+Ano: 2026
+
+Para suporte e atualizações oficiais,
+utilize apenas o repositório autorizado.
+
+══════════════════════════════════════════════════════════════
+
+FOOTER
+echo -e "\e[0m"
 }
 
 usage() {
@@ -192,6 +261,8 @@ run_diagnose() {
 }
 
 handle_mode() {
+  print_install_identification
+
   case "$MODE" in
     vps)
       require_root
@@ -200,7 +271,7 @@ handle_mode() {
       configure_nginx
       configure_cron
       create_backup_script
-      echo "Instalação VPS concluída com sucesso."
+      print_success_footer
       ;;
     docker)
       echo "Modo docker: configure via docker-compose do projeto."
@@ -238,7 +309,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${MODE}" && ${NON_INTERACTIVE} -eq 0 ]]; then
+  clear
   print_banner
+  print_legal_notice
+  require_legal_acceptance
   print_menu
   read -rp "Selecione uma opção: " option
   case "${option}" in
