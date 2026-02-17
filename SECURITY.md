@@ -1,14 +1,14 @@
 # SECURITY.md
 
-## Práticas recomendadas
-- Forçar HTTPS + HSTS.
-- `APP_DEBUG=false` em produção.
-- Não expor `.env`.
-- Usar senha forte para super admin.
-- Restringir acesso administrativo por IP/VPN quando possível.
+## Guia de Segurança de Produção
 
-## Operação segura
-- Backup automático do banco (diário).
-- Monitoramento de logs e alertas.
-- Atualizações periódicas de dependências.
-- Revisão de permissões de pastas sensíveis.
+> Criador: **Edton Braz**
+
+- Obrigatório usar HTTPS.
+- Definir `APP_ENV=production`.
+- Definir `APP_DEBUG=false`.
+- Restringir permissões de escrita apenas para `storage/` e `bootstrap/cache`.
+- Ativar firewall (UFW/Cloud Firewall).
+- Rotacionar senhas e chaves sensíveis.
+- Executar backup diário com retenção.
+- Monitorar logs de aplicação e servidor.
