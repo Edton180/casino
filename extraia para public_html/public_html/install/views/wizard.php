@@ -11,21 +11,20 @@
 <div class="max-w-5xl mx-auto px-4 py-8">
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">🚀 Instalador Inteligente Casino</h1>
-        <div class="text-sm text-slate-300">Status: <?= $installed ? 'Instalado' : 'Pendente' ?></div>
+        <div class="text-sm text-slate-300">Modo sugerido: <?= e($detected['hosting']) ?></div>
     </div>
 
     <?php if (session('installer_error')): ?>
         <div class="mb-4 p-3 rounded bg-red-500/20 border border-red-500"><?= e(session('installer_error')) ?></div>
     <?php endif; ?>
 
-    <div class="bg-slate-900 rounded-xl p-6 border border-slate-700 space-y-6">
-        <div>
-            <div class="h-2 rounded bg-slate-700 overflow-hidden">
-                <div class="h-full w-full bg-emerald-500"></div>
-            </div>
-            <p class="text-xs text-slate-400 mt-2">Wizard SaaS multi-ambiente</p>
+    <?php if (! $requirements['ok']): ?>
+        <div class="mb-4 p-3 rounded bg-amber-500/20 border border-amber-500 text-amber-200 text-sm">
+            Existem pendências de requisitos. Corrija antes de instalar.
         </div>
+    <?php endif; ?>
 
+    <div class="bg-slate-900 rounded-xl p-6 border border-slate-700 space-y-6">
         <section class="grid md:grid-cols-2 gap-4">
             <div class="p-4 rounded bg-slate-800">
                 <h2 class="font-semibold mb-3">1) Diagnóstico Inteligente</h2>
@@ -52,7 +51,8 @@
 
         <section class="p-4 rounded bg-slate-800">
             <h2 class="font-semibold mb-3">2) Banco de Dados (Teste de Conexão)</h2>
-            <div class="grid md:grid-cols-5 gap-2">
+            <div class="grid md:grid-cols-6 gap-2">
+                <select id="t_driver" class="inp"><option value="mysql">mysql</option><option value="pgsql">pgsql</option></select>
                 <input id="t_host" class="inp" placeholder="DB_HOST" value="<?= e($detected['default_db_host']) ?>">
                 <input id="t_port" class="inp" placeholder="DB_PORT" value="3306">
                 <input id="t_database" class="inp" placeholder="DB_DATABASE">
@@ -67,8 +67,20 @@
             <h2 class="font-semibold mb-3">3,4,5) Configuração + Super Admin + Execução</h2>
             <form method="POST" action="/install/run" class="grid md:grid-cols-2 gap-3">
                 <input type="hidden" name="_token" value="<?= csrf_token() ?>">
+
+                <select class="inp" name="install_mode">
+                    <option value="vps">vps</option><option value="cpanel">cpanel</option><option value="localhost">localhost</option><option value="docker">docker</option>
+                </select>
+                <input class="inp" name="domain" placeholder="Domínio" value="<?= e($detected['domain']) ?>">
+
+                <select class="inp" name="ssl_enabled">
+                    <option value="1" <?= $detected['https'] ? 'selected' : '' ?>>SSL: sim</option>
+                    <option value="0" <?= ! $detected['https'] ? 'selected' : '' ?>>SSL: não</option>
+                </select>
                 <input class="inp" name="app_name" placeholder="APP_NAME" value="Casino Platform">
+
                 <input class="inp" name="app_url" placeholder="APP_URL" value="<?= e($detected['app_url']) ?>">
+                <input class="inp" name="timezone" value="America/Sao_Paulo" placeholder="Timezone">
 
                 <select class="inp" name="app_env">
                     <option value="production" <?= $detected['production'] ? 'selected' : '' ?>>production</option>
@@ -81,7 +93,7 @@
                     <option value="true" <?= ! $detected['production'] ? 'selected' : '' ?>>true</option>
                 </select>
 
-                <input class="inp" name="timezone" value="America/Sao_Paulo" placeholder="Timezone">
+                <select class="inp" name="db_connection"><option value="mysql">mysql</option><option value="pgsql">pgsql</option></select>
                 <input class="inp" name="db_host" value="<?= e($detected['default_db_host']) ?>" placeholder="DB_HOST">
                 <input class="inp" name="db_port" value="3306" placeholder="DB_PORT">
                 <input class="inp" name="db_database" placeholder="DB_DATABASE">
@@ -94,14 +106,13 @@
             </form>
             <div class="mt-2 text-xs text-slate-400">Após concluir, o instalador será bloqueado via <code>storage/installed.lock</code>.</div>
         </section>
-
-        <div class="text-xs text-slate-400">Pronto para futura validação de licença, auto update GitHub e modo SaaS multi-tenant.</div>
     </div>
 </div>
 <script>
 const btn = document.getElementById('btnTest');
 btn?.addEventListener('click', async () => {
   const body = {
+    driver: document.getElementById('t_driver').value,
     host: document.getElementById('t_host').value,
     port: document.getElementById('t_port').value,
     database: document.getElementById('t_database').value,

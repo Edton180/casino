@@ -12,9 +12,14 @@ class InstallerController
         require_once __DIR__ . '/helpers.php';
 
         $detector = new EnvironmentDetector();
+        $service = new InstallerService();
         $detected = $detector->detect();
+        $requirements = $service->validateRequirements($detected);
+        $installed = $service->isInstalled();
 
-        $installed = file_exists(storage_path('installed.lock'));
+        if ($installed) {
+            return response('Instalação já concluída. O instalador está bloqueado por segurança.', 423);
+        }
 
         ob_start();
         $viewFile = __DIR__ . '/views/wizard.php';
@@ -28,6 +33,7 @@ class InstallerController
         require_once __DIR__ . '/helpers.php';
 
         $validator = Validator::make($request->all(), [
+            'driver' => ['nullable', 'in:mysql,pgsql'],
             'host' => ['required', 'string'],
             'port' => ['required', 'numeric'],
             'database' => ['required', 'string'],
@@ -40,6 +46,7 @@ class InstallerController
         }
 
         $service = new InstallerService();
+
         return response()->json($service->testDatabaseConnection($validator->validated()));
     }
 
@@ -48,11 +55,15 @@ class InstallerController
         require_once __DIR__ . '/helpers.php';
 
         $validator = Validator::make($request->all(), [
+            'install_mode' => ['required', 'in:vps,cpanel,localhost,docker'],
+            'domain' => ['required', 'string', 'max:255'],
+            'ssl_enabled' => ['required', 'boolean'],
             'app_name' => ['required', 'string', 'max:120'],
             'app_env' => ['required', 'in:local,production,staging'],
             'app_debug' => ['required', 'in:true,false'],
             'app_url' => ['required', 'url'],
             'timezone' => ['required', 'string', 'max:120'],
+            'db_connection' => ['required', 'in:mysql,pgsql'],
             'db_host' => ['required', 'string'],
             'db_port' => ['required', 'numeric'],
             'db_database' => ['required', 'string'],
