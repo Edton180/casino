@@ -13,10 +13,11 @@ A Casino Platform é uma aplicação web para operação de cassino online com:
 - frontend em Vue com Vite
 - painel administrativo com Filament
 - autenticação via Sanctum + JWT
+- gestão de jogos e apostas com integrações de provedores
 - suporte a filas, scheduler e integrações externas (pagamentos, e-mail e realtime quando habilitado)
 
 ### Stack principal
-- **Backend:** PHP 8.1+ / Laravel 10
+- **Backend:** PHP 8.2+ / Laravel 10
 - **Frontend:** Vue 3 + Vite + TailwindCSS
 - **Banco de dados:** MySQL 8+ ou MariaDB compatível
 - **Admin:** Filament
@@ -52,9 +53,9 @@ Exemplos importantes (relativos ao diretório da aplicação):
 
 ### 3.1 Ferramentas obrigatórias
 - Git
-- PHP 8.1+
+- PHP 8.2+
 - Composer 2+
-- Node.js 18+
+- Node.js 20+
 - npm
 - MySQL 8+ (ou MariaDB compatível)
 

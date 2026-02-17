@@ -25,7 +25,6 @@ Conhecimentos necessários:
 - Node.js 20+
 - MySQL 8+
 - Nginx ou Apache
-- PM2 (se usar SSR)
 - Docker (opcional)
 
 ---
@@ -82,7 +81,7 @@ sudo bash auto-install.sh
 Parâmetros CLI:
 
 ```bash
---mode vps|docker|localhost|cpanel|diagnose
+--mode vps|docker|localhost|cpanel|virtualbox|diagnose
 --domain meusite.com
 --email admin@meusite.com
 --ssl
@@ -148,6 +147,7 @@ npm install
 npm run build
 php artisan key:generate
 php artisan migrate --force
+php artisan storage:link
 php artisan optimize
 ```
 
@@ -236,6 +236,7 @@ git pull
 composer install
 npm run build
 php artisan migrate --force
+php artisan storage:link
 php artisan optimize
 ```
 

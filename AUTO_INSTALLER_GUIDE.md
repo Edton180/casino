@@ -9,7 +9,6 @@ Script: `scripts/auto-install.sh`
 ### Modos
 - `vps`
 - `docker`
-- `backend`
 - `cpanel`
 - `localhost`
 - `virtualbox`
@@ -25,6 +24,6 @@ sudo bash scripts/auto-install.sh --mode vps --domain casino.com --email admin@c
 - Instala pacotes base de produção.
 - Clona o projeto em `/opt/casino`.
 - Configura dependências PHP/Node.
-- Roda build e migrações.
+- Roda build, migrações e storage link.
 - Cria lock de instalação.
 - Configura cron do Laravel.

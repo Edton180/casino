@@ -10,20 +10,49 @@ EMAIL=""
 ENABLE_SSL=0
 NON_INTERACTIVE=0
 
+print_banner() {
+cat <<'BANNER'
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║   ██████╗  █████╗ ███████╗██╗███╗   ██╗ ██████╗          ║
+║  ██╔════╝ ██╔══██╗██╔════╝██║████╗  ██║██╔═══██╗         ║
+║  ██║      ███████║███████╗██║██╔██╗ ██║██║   ██║         ║
+║  ██║      ██╔══██║╚════██║██║██║╚██╗██║██║   ██║         ║
+║  ╚██████╗ ██║  ██║███████║██║██║ ╚████║╚██████╔╝         ║
+║   ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝          ║
+║                                                            ║
+║        🎰 CASINO PLATFORM - INSTALLER v8.0.0              ║
+║        Laravel 10 • Vue 3 • MySQL • Nginx • PHP 8.2       ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+BANNER
+}
+
 print_menu() {
 cat <<'MENU'
 ╔════════════════════════════════════════════════════════════╗
-║               🎰 CASINO PLATFORM - INSTALADOR v8.0.0      ║
+║                    MENU DE INSTALAÇÃO                     ║
 ╠════════════════════════════════════════════════════════════╣
 ║                                                            ║
-║  [1] VPS Produção (Completo) ⭐ RECOMENDADO               ║
-║  [2] Apenas Docker                                        ║
-║  [3] Apenas Banco + Backend                               ║
-║  [4] cPanel / Hospedagem Compartilhada                    ║
-║  [5] Localhost (Desenvolvimento)                          ║
-║  [6] VirtualBox                                           ║
-║  [7] Diagnóstico do Sistema                               ║
-║  [0] Sair                                                 ║
+║  1) VPS Produção Completa (Recomendado)                  ║
+║     PHP 8.2 + MySQL + Nginx + SSL                        ║
+║                                                            ║
+║  2) Instalação Docker                                     ║
+║     Ambiente containerizado                               ║
+║                                                            ║
+║  3) Localhost / Desenvolvimento                           ║
+║     Ambiente para dev Laravel                             ║
+║                                                            ║
+║  4) Instruções cPanel                                     ║
+║     Hosting compartilhado                                 ║
+║                                                            ║
+║  5) VirtualBox / VM                                       ║
+║     Ambiente de testes                                    ║
+║                                                            ║
+║  6) Diagnóstico do Sistema                                ║
+║     Verificar requisitos PHP/MySQL                        ║
+║                                                            ║
+║  0) Sair                                                  ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 MENU
@@ -37,7 +66,7 @@ Uso:
   bash scripts/auto-install.sh [opções]
 
 Opções:
-  --mode vps|docker|backend|cpanel|localhost|virtualbox|diagnose
+  --mode vps|docker|localhost|cpanel|virtualbox|diagnose
   --domain <dominio>
   --email <email>
   --ssl
@@ -91,6 +120,7 @@ install_app() {
   run_cmd npm run build
   run_cmd php artisan key:generate --force
   run_cmd php artisan migrate --force
+  run_cmd php artisan storage:link
   run_cmd php artisan optimize
 
   run_cmd mkdir -p storage
@@ -175,9 +205,6 @@ handle_mode() {
     docker)
       echo "Modo docker: configure via docker-compose do projeto."
       ;;
-    backend)
-      echo "Modo backend: instalar apenas dependências de app e banco."
-      ;;
     cpanel)
       echo "Modo cPanel: siga o arquivo MANUAL_INSTALL_CPANEL.md"
       ;;
@@ -211,16 +238,16 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${MODE}" && ${NON_INTERACTIVE} -eq 0 ]]; then
+  print_banner
   print_menu
   read -rp "Selecione uma opção: " option
   case "${option}" in
     1) MODE="vps" ;;
     2) MODE="docker" ;;
-    3) MODE="backend" ;;
+    3) MODE="localhost" ;;
     4) MODE="cpanel" ;;
-    5) MODE="localhost" ;;
-    6) MODE="virtualbox" ;;
-    7) MODE="diagnose" ;;
+    5) MODE="virtualbox" ;;
+    6) MODE="diagnose" ;;
     0) echo "Saindo."; exit 0 ;;
     *) echo "Opção inválida."; exit 1 ;;
   esac

@@ -1,6 +1,6 @@
 # 🎰 Casino Platform — Premium Documentation
 
-![version](https://img.shields.io/badge/version-2.0.0-blue)
+![version](https://img.shields.io/badge/version-8.0.0-blue)
 ![status](https://img.shields.io/badge/status-production_ready-brightgreen)
 ![license](https://img.shields.io/badge/license-Commercial-important)
 
@@ -18,10 +18,10 @@ Casino Platform é uma solução profissional para operação de cassino online 
 - Instalador multi-modo (VPS, cPanel, localhost, docker, diagnose).
 
 ## Stack tecnológica
-- **Backend:** Laravel 10 / PHP 8.1+
+- **Backend:** Laravel 10 / PHP 8.2+
 - **Frontend:** Vue 3 + Vite + TailwindCSS
-- **Banco:** MySQL 8+, MariaDB e opção PostgreSQL
-- **Infra:** Nginx/Apache, queue workers, cron scheduler
+- **Banco:** MySQL 8+
+- **Infra:** Nginx, Supervisor (queue workers), cron scheduler
 
 ## Arquitetura (visão geral)
 - Código Laravel em `extraia para public_html/public_html`
