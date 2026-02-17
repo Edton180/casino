@@ -33,6 +33,7 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
+            \App\Http\Middleware\CheckInstalled::class,
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
@@ -70,5 +71,6 @@ class Kernel extends HttpKernel
         'auth.jwt' => \App\Http\Middleware\JwtMiddleWare::class,
         'admin.filament' => \App\Http\Middleware\RedirectIfNotFilamentAdmin::class,
         'authorize.withdrawal' => \App\Http\Middleware\AuthorizeWithdrawalApproval::class,
+        'check.installed' => \App\Http\Middleware\CheckInstalled::class,
     ];
 }
