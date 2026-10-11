@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Games;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Games\SpinData\FortuneTiger\FortuneTigerIcons;
+use App\Http\Controllers\Games\SpinData\HoodVsWoolf\HoodVsWoolfIcons;
 use App\Http\Controllers\Games\SpinData\HoodVsWoolf\HoodVsWoolfBonus;
 use App\Http\Controllers\Games\SpinData\HoodVsWoolf\HoodVsWoolfDemo;
 use App\Http\Controllers\Games\SpinData\HoodVsWoolf\HoodVsWoolfLose;
@@ -100,6 +100,7 @@ class HoodvswoolfController extends Controller
             "cpl"       => $request->cpl,
             "betamount" => $request->betamount,
             "num_line"  => $request->numline,
+            "lines"     => 5, // linhas fixas do jogo (não confiar no cliente)
             "jackpot"   => 0,
             "free_spin" => 0,
             "free_num"  => 0,
@@ -134,9 +135,10 @@ class HoodvswoolfController extends Controller
     /**
      * Freenum
      */
-    public function freenum(Request $request)
+    public function freenum(Request $request, $token)
     {
-        //
+        // este jogo não possui compra de rodadas grátis
+        return self::FreeNumStructure($request, $token);
     }
 
     /**
@@ -144,6 +146,6 @@ class HoodvswoolfController extends Controller
      */
     public function icons()
     {
-        return FortuneTigerIcons::getIcons();
+        return HoodVsWoolfIcons::getIcons();
     }
 }

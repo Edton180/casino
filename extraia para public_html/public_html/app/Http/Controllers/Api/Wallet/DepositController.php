@@ -4,63 +4,91 @@ namespace App\Http\Controllers\Api\Wallet;
 
 use App\Http\Controllers\Controller;
 use App\Models\Deposit;
-use App\Traits\Gateways\AsaasTrait;
-use App\Traits\Gateways\MercadoPagoTrait;
-use App\Traits\Gateways\PayPalTrait;
+use App\Models\Setting;
+use App\Services\Payments\DepositService;
+use App\Services\Payments\PaymentException;
+use App\Services\Payments\PaymentManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class DepositController extends Controller
 {
-    use AsaasTrait, MercadoPagoTrait, PayPalTrait;
+    public function __construct(
+        private DepositService $deposits,
+        private PaymentManager $payments,
+    ) {
+    }
 
     /**
-     * @param Request $request
-     * @return array|false[]
+     * Métodos de pagamento habilitados (Mercado Pago, PagSeguro, Pagar.me, Asaas, Stripe).
+     */
+    public function methods()
+    {
+        return response()->json(['methods' => $this->payments->availableMethods()]);
+    }
+
+    /**
+     * Inicia um depósito via PIX ou cartão de crédito.
      */
     public function submitPayment(Request $request)
     {
-        \Log::info($request->gateway);
-        \Log::info($request->payment_method);
+        $setting = Setting::first();
+        $request->merge([
+            'amount' => \Helper::amountPrepare((string) $request->input('amount')),
+            'cpf'    => $request->input('cpf') ?: auth('api')->user()->cpf,
+        ]);
 
-        switch ($request->gateway) {
-            case 'asaas':
-                if ($request->payment_method === 'credit_card') {
-                    return self::requestCreditCardAsaas($request);
-                }
-                return self::requestQrcodeAsaas($request);
+        $validator = Validator::make($request->all(), [
+            'gateway'        => ['required', Rule::in(array_keys(PaymentManager::GATEWAYS))],
+            'payment_method' => ['required', Rule::in(['pix', 'credit_card'])],
+            'amount'         => ['required', 'numeric', 'min:' . (float) $setting->min_deposit, 'max:' . (float) $setting->max_deposit],
+            'cpf'            => [Rule::requiredIf($request->input('gateway') !== 'stripe'), 'nullable', 'cpf_ou_cnpj'],
+            'accept_bonus'   => ['nullable', 'boolean'],
+        ], [
+            'cpf.required'    => 'Informe seu CPF ou CNPJ.',
+            'cpf.cpf_ou_cnpj' => 'CPF ou CNPJ inválido.',
+            'amount.min'      => 'O valor mínimo de depósito é ' . $setting->min_deposit . '.',
+            'amount.max'      => 'O valor máximo de depósito é ' . $setting->max_deposit . '.',
+        ]);
 
-            case 'mercadopago':
-                if ($request->payment_method === 'credit_card') {
-                    return self::requestCreditCardMP($request);
-                }
-                return self::requestQrcodeMP($request);
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
 
-            case 'paypal':
-                if ($request->payment_method === 'credit_card') {
-                    return self::requestCreditCardPayPal($request);
-                }
-                return self::requestQrcodePayPal($request);
+        try {
+            $result = $this->deposits->start(
+                auth('api')->user(),
+                $request->input('gateway'),
+                $request->input('payment_method'),
+                (float) $request->input('amount'),
+                (string) $request->input('cpf'),
+                $request->boolean('accept_bonus', true),
+            );
 
-            default:
-                return ['status' => false, 'message' => 'Gateway não encontrado'];
+            return response()->json($result);
+        } catch (PaymentException $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
         }
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Consulta o status de um depósito (usado pelo polling da tela do PIX).
      */
-    public function consultStatusTransactionPix(Request $request)
+    public function status(Request $request)
     {
-        switch ($request->gateway) {
-            case 'asaas':
-                return self::consultStatusTransactionAsaas($request);
-            case 'mercadopago':
-                return self::consultStatusTransactionMP($request);
-            case 'paypal':
-                return self::consultStatusTransactionPayPal($request);
-            default:
-                return response()->json(['status' => 'ERROR']);
+        $reference = (string) $request->input('idTransaction');
+        if ($reference === '') {
+            return response()->json(['error' => 'Transação inválida'], 400);
         }
+
+        try {
+            $status = $this->deposits->checkStatus(auth('api')->user(), $reference);
+        } catch (PaymentException $e) {
+            $status = 'PENDING';
+        }
+
+        return response()->json(['status' => $status], $status === 'NOT_FOUND' ? 404 : 200);
     }
 
     /**
@@ -68,7 +96,7 @@ class DepositController extends Controller
      */
     public function index()
     {
-        $deposits = Deposit::whereUserId(auth('api')->id())->paginate();
+        $deposits = Deposit::whereUserId(auth('api')->id())->latest()->paginate();
         return response()->json(['deposits' => $deposits], 200);
     }
 }

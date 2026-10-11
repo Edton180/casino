@@ -43,14 +43,8 @@ Route::middleware(['authorize.withdrawal'])->get('/admin/permissions', function 
 });
 
 
-// GATEWAYS
-include_once(__DIR__ . '/groups/gateways/asaas.php');
-include_once(__DIR__ . '/groups/gateways/mercadopago.php');
-include_once(__DIR__ . '/groups/gateways/digitopay.php');
-include_once(__DIR__ . '/groups/gateways/stripe.php');
-include_once(__DIR__ . '/groups/gateways/sharkpay.php');
-include_once(__DIR__ . '/groups/gateways/suitpay.php');
-include_once(__DIR__ . '/groups/gateways/bspay.php');
+// GATEWAYS (Mercado Pago, PagSeguro, Pagar.me, Asaas e Stripe)
+include_once(__DIR__ . '/groups/gateways/payments.php');
 
 /// SOCIAL
 include_once(__DIR__ . '/groups/auth/social.php');

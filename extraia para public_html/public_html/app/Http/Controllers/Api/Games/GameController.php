@@ -189,7 +189,7 @@ class GameController extends Controller
                                     'gameUrl'=> $apipg12Launch['launchUrl']
                                 ]);
                             } else {
-                                return response()->json($centergamingpgLaunch);
+                                return response()->json(['error' => $apipg12Launch, 'status' => false], 400);
                             }
                         case 'apipragmatic40':
                         $apiPragmatic40Launch = self::ApiPragmaticGameLaunch($game->provider->code, $game->game_id, 'pt', auth('api')->user()->email);

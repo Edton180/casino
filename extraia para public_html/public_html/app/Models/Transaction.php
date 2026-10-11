@@ -26,6 +26,8 @@ class Transaction extends Model
         'user_id',
         'payment_method',
         'gateway',
+        'gateway_payment_id',
+        'accept_bonus',
         'gateway_response',
         'gateway_error',
         'price',

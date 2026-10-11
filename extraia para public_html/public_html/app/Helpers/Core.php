@@ -119,7 +119,6 @@ class Core
      * Paga e atualiza o bonus vip
      *
      * @dev victormsalatiel - Corra de golpista, me chame no instagram
-     * * Use Digitopay - o melhor gateway de pagamentos para sua plataforma - 048 98814-2566
      * @param Wallet $wallet
      * @param $price
      * @return void
@@ -157,7 +156,6 @@ class Core
 
     /**
      * @dev victormsalatiel - Corra de golpista, me chame no instagram
-     * * Use Digitopay - o melhor gateway de pagamentos para sua plataforma - 048 98814-2566
      * @param $userId
      * @param $changeBonus
      * @param $WinAmount
@@ -179,7 +177,7 @@ class Core
                             $wallet->decrement('balance_bonus_rollover', $bet); /// reduzindo o valor
 
                             $ordersCount = Order::where('user_id', $userId)->where('type_money', 'balance_bonus')->count();
-                            if($wallet->balance_bonus_rollover === 0 && $ordersCount >= $setting->rollover_protection) {
+                            if((float) $wallet->balance_bonus_rollover <= 0 && $ordersCount >= $setting->rollover_protection) {
                                 /// zerando balance bonus
                                 $wallet->increment('balance_withdrawal', $wallet->balance_bonus); /// colocou toda essa soma para carteira de saque
                                 $wallet->update(['balance_bonus' => 0]); /// zerou o balance
@@ -201,7 +199,7 @@ class Core
                         if($wallet->balance_deposit_rollover >=  $bet) {
                             $wallet->decrement('balance_deposit_rollover', $bet); /// reduzindo o valor
 
-                            if($wallet->balance_deposit_rollover === 0) {
+                            if((float) $wallet->balance_deposit_rollover <= 0) {
                                 /// zerando balance
                                 $wallet->increment('balance_withdrawal', $wallet->balance); /// colocou toda essa soma para carteira de saque
                                 $wallet->update(['balance' => 0]); /// zerou o balance
@@ -228,9 +226,9 @@ class Core
                             if($wallet->balance_bonus_rollover >= $bet) {
                                 $wallet->decrement('balance_bonus_rollover', $bet); /// reduzindo o valor
 
-                                if($wallet->balance_bonus_rollover === 0 && $ordersCount >= $setting->rollover_protection) {
-                                    /// zerando balance bonus
-                                    $wallet->increment('balance_withdrawal', $wallet->balance_bonus); /// colocou toda essa soma para carteira de saque
+                                if((float) $wallet->balance_bonus_rollover <= 0 && $ordersCount >= $setting->rollover_protection) {
+                                    /// zerando balance bonus (o prêmio desta rodada também é liberado)
+                                    $wallet->increment('balance_withdrawal', $wallet->balance_bonus + $win); /// colocou toda essa soma para carteira de saque
                                     $wallet->update(['balance_bonus' => 0]); /// zerou o balance
                                 }else{
                                     $wallet->increment('balance_bonus', $win);
@@ -242,12 +240,15 @@ class Core
                                     $totalPay = ($wallet->balance_bonus + $win); /// pegou o bonus e somou com o ganho
                                     $wallet->increment('balance_withdrawal', $totalPay); /// converteu em saldo de saque
                                     $wallet->update(['balance_bonus' => 0]); /// zerou o bonus
+                                }else{
+                                    /// proteção de rodadas ainda não atingida: o prêmio volta como bônus
+                                    $wallet->increment('balance_bonus', $win);
                                 }
                             }
                         }
                     }
 
-                    if(in_array($changeBonus, ['balance', 'balance_withdrawal'])) {
+                    if(in_array($changeBonus, ['balance', 'balance_withdrawal', 'balance_withdrawal_and_bonus'])) {
                         if(empty($wallet->balance_deposit_rollover) || $wallet->balance_deposit_rollover <= 0) {
                             /// pagando o ganhos na carteira de saque
                             $wallet->increment('balance_withdrawal', $win);
@@ -257,9 +258,9 @@ class Core
                             if($wallet->balance_deposit_rollover >= $bet) {
                                 $wallet->decrement('balance_deposit_rollover', $bet); /// reduzindo o valor
 
-                                if($wallet->balance_deposit_rollover === 0) {
-                                    /// zerando balance
-                                    $wallet->increment('balance_withdrawal', $wallet->balance); /// colocou toda essa soma para carteira de saque
+                                if((float) $wallet->balance_deposit_rollover <= 0) {
+                                    /// zerando balance (o prêmio desta rodada também é liberado)
+                                    $wallet->increment('balance_withdrawal', $wallet->balance + $win); /// colocou toda essa soma para carteira de saque
                                     $wallet->update(['balance' => 0]); /// zerou o balance
                                 }else{
                                     // volta com o dinheiro para jogar
@@ -612,7 +613,8 @@ class Core
      */
     public static function createController($controllerName)
     {
-        $fullControllerName = "App\Http\Controllers\Games\\" . ucfirst($controllerName) . "Controller";
+        // os controllers seguem o padrão "Fortunetiger"; game_code pode vir como "FortuneRabbit"
+        $fullControllerName = "App\Http\Controllers\Games\\" . ucfirst(strtolower($controllerName)) . "Controller";
 
         if (class_exists($fullControllerName)) {
             return new $fullControllerName();
@@ -695,7 +697,7 @@ class Core
                 //->where('status', 0)
                 ->first();
 
-            if(!empty($affHistoryRevshare) && in_array($changeBonus, ['balance', 'balance_withdrawal'])) {
+            if(!empty($affHistoryRevshare) && in_array($changeBonus, ['balance', 'balance_withdrawal', 'balance_withdrawal_and_bonus'])) {
 
                 /// verificar qual revshare pagar, o fake ou o padrão
                 $revshare = $affiliate->affiliate_revenue_share;
@@ -772,7 +774,7 @@ class Core
 
         /// subtrair afiliado ganhos
         if($setting->revshare_reverse) {
-            if($type == 'win' && !empty($user->inviter) && in_array($changeBonus, ['balance', 'balance_withdrawal'])) {
+            if($type == 'win' && !empty($user->inviter) && in_array($changeBonus, ['balance', 'balance_withdrawal', 'balance_withdrawal_and_bonus'])) {
                 if(!empty($affiliate)) {
                     $affHistoryRevshare = AffiliateHistory::where('user_id', $user->id)
                         ->where('commission_type', 'revshare')
@@ -969,12 +971,6 @@ class Core
                 'min_withdrawal',
                 'max_withdrawal',
                 'initial_bonus',
-                'digitopay_is_enable',
-                'suitpay_is_enable',
-                'sharkpay_is_enable',
-                'bspay_is_enable',
-                'mercadopago_is_enable',
-                'asaas_is_enable',
             )->first();
 
             Cache::put('setting', $setting);
@@ -1002,7 +998,6 @@ class Core
     /**
      * Amount Format Decimal
      * @dev victormsalatiel - Corra de golpista, me chame no instagram
-     * * Use Digitopay - o melhor gateway de pagamentos para sua plataforma - 048 98814-2566
      *
      * @param $value
      * @return string

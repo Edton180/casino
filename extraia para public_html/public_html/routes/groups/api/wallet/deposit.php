@@ -7,6 +7,7 @@ Route::prefix('deposit')
     ->group(function ()
     {
         Route::get('/', [DepositController::class, 'index']);
+        Route::get('/methods', [DepositController::class, 'methods']);
         Route::post('/payment', [DepositController::class, 'submitPayment']);
+        Route::post('/status', [DepositController::class, 'status']);
     });
-

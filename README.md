@@ -13,7 +13,7 @@ Casino Platform é uma solução profissional para operação de cassino online 
 ## Recursos principais
 - Lobby de jogos e apostas com integração de provedores.
 - Relatórios operacionais e gestão administrativa.
-- Estrutura de pagamentos e wallet.
+- Pagamentos via Mercado Pago, PagSeguro, Pagar.me, Asaas e Stripe (PIX e cartão) — veja `PAGAMENTOS.md`.
 - Fluxos com RNG/rotação de jogos e experiência responsiva.
 - Instalador multi-modo (VPS, cPanel, localhost, docker, diagnose).
 
@@ -53,6 +53,7 @@ Consulte guias dedicados:
 - `CLI_USAGE.md`
 - `TROUBLESHOOTING.md`
 - `SECURITY.md`
+- `PAGAMENTOS.md`
 
 ## Segurança
 - HTTPS obrigatório em produção.

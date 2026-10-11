@@ -100,6 +100,8 @@ class TreasuresofaztecController extends Controller
             "cpl"       => $request->cpl,
             "betamount" => $request->betamount,
             "num_line"  => $request->numline,
+            "lines"     => 5, // linhas fixas do jogo (não confiar no cliente)
+            "payout_base" => 20, // resultados gerados para 20 linhas
             "jackpot"   => 0,
             "free_spin" => 0,
             "free_num"  => 0,
@@ -134,9 +136,10 @@ class TreasuresofaztecController extends Controller
     /**
      * Freenum
      */
-    public function freenum(Request $request)
+    public function freenum(Request $request, $token)
     {
-        //
+        // este jogo não possui compra de rodadas grátis
+        return self::FreeNumStructure($request, $token);
     }
 
     /**

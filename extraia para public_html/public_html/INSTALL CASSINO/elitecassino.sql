@@ -9540,7 +9540,7 @@ CREATE TABLE IF NOT EXISTS `gateways` (
 -- Copiando dados para a tabela elitecassino.gateways: 1 rows
 /*!40000 ALTER TABLE `gateways` DISABLE KEYS */;
 INSERT INTO `gateways` (`id`, `suitpay_uri`, `suitpay_cliente_id`, `suitpay_cliente_secret`, `stripe_production`, `stripe_public_key`, `stripe_secret_key`, `stripe_webhook_key`, `bspay_uri`, `bspay_cliente_id`, `bspay_cliente_secret`, `created_at`, `updated_at`, `public_key`, `private_key`, `mp_client_id`, `mp_client_secret`, `mp_public_key`, `mp_access_token`, `digitopay_uri`, `digitopay_cliente_id`, `digitopay_cliente_secret`) VALUES
-	(1, 'https://ws.suitpay.app/api/v1/', 'coderbispo_1715176854114', '01db3fa8edaf07b0d66e95e5182474dd86e16d0bfb6ed264d575e59315937d40ccfa107b48564b3ea58af57513b8fbe4', 0, NULL, NULL, NULL, 'https://api.pixupbr.com/v2/', 'Brenoking011_6065670951', '58b46560e61771433f41d87a0594f8216d60c21ece931a57e4ff2dce75b24a04', '2023-11-30 21:05:51', '2024-11-18 16:09:20', NULL, NULL, NULL, NULL, NULL, NULL, 'https://api.digitopayoficial.com.br/', '', '');
+	(1, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, '2023-11-30 21:05:51', '2024-11-18 16:09:20', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 /*!40000 ALTER TABLE `gateways` ENABLE KEYS */;
 
 -- Copiando estrutura para tabela elitecassino.ggds_spin_config
