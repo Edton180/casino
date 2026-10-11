@@ -1,5 +1,19 @@
 # CHANGELOG.md
 
+## v9.3.0
+
+### Assistente de instalação (novo)
+- `bash instalar.sh` / `instalar-windows.bat`: menu com setas, etapas com barra de progresso, animação e quadros; **identifica o sistema**, mostra um diagnóstico (internet, disco, memória, PHP, extensões, banco, composer, porta, DNS), lista o que vai instalar e **instala sozinho** PHP, MariaDB, Nginx, Composer e dependências.
+- Resolve o acesso ao MySQL no Ubuntu (cria banco e usuário próprio via socket/sudo), escolhe porta livre, verifica se o site realmente respondeu antes de dizer "concluído".
+- Funciona a partir do código já baixado (sem `curl`) e com **repositório privado** (`--token`, ou orientação passo a passo); `--source` aceita pasta ou .zip.
+- Modo local sem root, com `--start`, `--stop`, `--status`, `--lan`; `--update` para atualizar; `--diagnose`; `--system-upgrade` para atualizar o sistema.
+- Windows: `install-windows.ps1` baixa PHP 8.3 e Composer sozinho, ativa as extensões, usa o MySQL do XAMPP/Laragon ou instala o MariaDB via winget.
+- Docker com a mesma identidade visual; erros mostram dica específica e o caminho do log.
+
+### Documentação
+- Guia de instalação reorganizado (como obter o código com repositório privado, VPS, localhost por sistema); tabela de problemas do assistente.
+
+
 ## v9.2.0
 
 ### Plataforma

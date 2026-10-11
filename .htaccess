@@ -23,7 +23,7 @@ Options -Indexes
 
     # Bloqueia pastas e arquivos internos
     RewriteRule ^(app/.*|bootstrap|config|database|lang|resources|routes|tests|vendor|node_modules|stubs|docs|scripts|docker|dist)(/.*)?$ - [F,L,NC]
-    RewriteRule ^(\.env.*|\.git.*|\.docker.*|artisan|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|vite\.config\.js|docker-compose\.yml|.*\.(sql|log|md|zip|py|sh|bat|yml))$ - [F,L,NC]
+    RewriteRule ^(\.env.*|\.git.*|\.docker.*|artisan|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|vite\.config\.js|docker-compose\.yml|.*\.(sql|log|md|zip|py|sh|bat|ps1|yml))$ - [F,L,NC]
 
     # Tudo o mais vai para public/
     RewriteCond %{REQUEST_URI} !^/public/

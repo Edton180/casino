@@ -42,16 +42,26 @@ php artisan tinker --execute="App\Models\User::where('email','seu@email.com')->f
 
 A senha é criptografada automaticamente. Depois entre em `/admin` com a nova senha.
 
-## Instalação local (localhost)
+## Assistente de instalação (`instalar.sh`, `instalar-windows.bat`)
 
 | Sintoma | Solução |
 |---|---|
-| `install-local.sh`: "Extensões PHP faltando" | Ubuntu/WSL: `sudo apt install php-mysql php-mbstring php-xml php-curl php-zip php-intl php-gd php-bcmath`. macOS: `brew install php` já inclui. |
-| "usuário ou senha incorretos" (MySQL local) | No Ubuntu o `root` do MariaDB usa *unix_socket* e não aceita senha via rede. Crie um usuário: `sudo mysql -e "CREATE USER 'dev'@'127.0.0.1' IDENTIFIED BY 'dev123'; GRANT ALL ON *.* TO 'dev'@'127.0.0.1';"` e use `--db-user dev --db-pass dev123`. |
-| XAMPP (Windows): requisito *intl*, *zip* ou *gd* em vermelho | Abra `C:\xampp\php\php.ini`, tire o `;` de `extension=intl`, `extension=zip` e `extension=gd`, salve e rode o instalador de novo. |
-| `auto-install.sh --local`: "A porta 80 já está em uso" | Outro servidor (Apache/XAMPP) está na porta 80. Pare-o (`sudo systemctl stop apache2`) ou instale em outra porta: `--port 8080`. |
-| Abriu o site, mas os jogos/login não carregam | Acesse exatamente o endereço mostrado no fim da instalação (ex.: `http://127.0.0.1:8000`, não `localhost:8000`), ou ajuste `APP_URL` no `.env` e rode `php artisan optimize:clear`. |
-| Docker: o site não abre | A 1ª subida leva alguns minutos (instala as dependências). Acompanhe com `docker compose logs -f app`. |
+| `curl ... 404` ao baixar o `auto-install.sh` | O repositório é **privado**; o endereço `raw.githubusercontent.com` não funciona sem login. Baixe o ZIP logado no GitHub, ou `git clone` (pede usuário e token), ou use `--token`. Veja [INSTALACAO.md](INSTALACAO.md#antes-de-b-e-d-como-obter-o-assistente-de-instalação). |
+| "Não consegui baixar o código" | Mesmo motivo (repositório privado) ou sem internet. O assistente mostra as 3 opções e, em terminal, pede o token. |
+| "PHP não encontrado" / faltam extensões | Rode `bash instalar.sh`: ele mostra o que falta e instala com apt (pede sua senha). No macOS: `brew install php composer mariadb`. |
+| "Não rode o modo local com sudo" | Rode sem `sudo`: `bash instalar.sh`. Ele pede a senha só quando precisa instalar pacotes. |
+| "Não consegui acessar o MySQL como administrador" | O assistente tenta o socket do `root`, depois `sudo mysql` e, por último, pergunta a senha. Se ainda falhar, informe um usuário: `--db-user NOME --db-pass SENHA`. |
+| O apt está ocupado / "Could not get lock" | Outra atualização está rodando. Aguarde uns minutos (ou `sudo dpkg --configure -a`) e rode de novo. |
+| Faltou memória durante o Composer | Crie um swap de 2 GB (o assistente mostra o comando) e rode de novo. |
+| "A porta 80 já está em uso" (VPS/`--stack`) | Se for o Apache, o assistente oferece desativá-lo. Ou use `--port 8080`. |
+| O site não abre em `localhost:8000` | Use o endereço mostrado no fim (`http://127.0.0.1:8000`). Para ver o estado: `bash instalar.sh --status`; para tudo: `bash instalar.sh --diagnose`. |
+| Quero outra porta / acessar do celular | `bash instalar.sh --stop`, depois `bash instalar.sh --start --port 8080 --lan`. |
+| Windows: "O Windows protegeu o computador" | *Mais informações → Executar assim mesmo* (o arquivo é do seu repositório). |
+| Windows: MySQL não encontrado | Inicie o MySQL do XAMPP/Laragon, ou deixe o assistente instalar o MariaDB (winget). Para outro MySQL: `-DbUsuario root -DbSenha SENHA`. |
+| Docker: o site não abre | A 1ª subida leva alguns minutos. Acompanhe com `docker compose logs -f app`. |
+| XAMPP: requisito *intl*, *zip* ou *gd* em vermelho | Em `C:\xampp\php\php.ini` tire o `;` de `extension=intl`, `extension=zip` e `extension=gd` e rode de novo. |
+
+O registro completo de cada execução fica em `/tmp/casino-install-AAAAMMDD-HHMMSS.log` (no Windows: `%TEMP%`).
 
 ## VPS
 

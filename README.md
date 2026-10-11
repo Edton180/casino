@@ -1,6 +1,6 @@
 # 🎰 Casino Platform
 
-![versão](https://img.shields.io/badge/versão-9.2.0-blue)
+![versão](https://img.shields.io/badge/versão-9.3.0-blue)
 ![php](https://img.shields.io/badge/PHP-8.2%20%7C%208.3%20%7C%208.4-777bb4)
 ![laravel](https://img.shields.io/badge/Laravel-12-ff2d20)
 ![filament](https://img.shields.io/badge/Filament-3.3-f59e0b)
@@ -14,13 +14,17 @@ Plataforma de cassino online com programa de indicação (afiliados com revshare
 
 ## ⚡ Instalação rápida
 
-| Onde | Como | Guia |
-|---|---|---|
-| **Hospedagem compartilhada** (cPanel, Hostinger, HostGator...) | Baixe `casino-pronto-para-hospedagem.zip` em **[Releases](../../releases)**, extraia no `public_html`, crie um banco MySQL e abra `https://seu-dominio/install/` | [Seção A](docs/INSTALACAO.md#a-hospedagem-compartilhada-cpanel-hostinger-hostgator) |
-| **VPS** (Ubuntu 22.04/24.04, Debian 12) | `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/scripts/auto-install.sh -o auto-install.sh`<br>`sudo bash auto-install.sh --domain meusite.com --email voce@meusite.com --ssl` | [Seção B](docs/INSTALACAO.md#b-vps-ubuntu--debian--1-comando) |
-| **Seu computador** (localhost) | Linux/macOS/WSL: `bash scripts/install-local.sh` · Windows: `scripts\install-local-windows.bat` · Docker: `docker compose up -d` | [Seção D](docs/INSTALACAO.md#d-no-seu-computador-localhost) |
+O repositório é **privado**: baixe o código logado no GitHub (**Code → Download ZIP**, ou `git clone` com seu token) e rode o assistente. Ele identifica o sistema, mostra o que falta, **instala PHP, banco e dependências sozinho**, instala o site e sabe atualizá-lo.
 
-Em todos os casos um assistente cria o banco, o `.env` e o administrador — não é preciso importar SQL nem editar arquivos.
+| Onde | Como |
+|---|---|
+| **Seu computador — Linux, macOS, WSL** | `bash instalar.sh` → menu → *Instalar no meu computador* |
+| **Seu computador — Windows** | dois cliques em `instalar-windows.bat` |
+| **VPS** (Ubuntu 22.04/24.04, Debian 12) | `sudo bash instalar.sh` → menu → *Instalar em um servidor* (ou direto: `sudo bash scripts/auto-install.sh --domain meusite.com --email voce@meusite.com --ssl`) |
+| **Hospedagem compartilhada** (cPanel, Hostinger...) | Baixe `casino-pronto-para-hospedagem.zip` em **[Releases](../../releases)**, extraia no `public_html`, crie um banco MySQL e abra `https://seu-dominio/install/` |
+| **Docker** | `docker compose up -d` |
+
+👉 Passo a passo completo de cada opção: **[docs/INSTALACAO.md](docs/INSTALACAO.md)**
 
 ## 📚 Documentação
 
@@ -52,7 +56,8 @@ Em todos os casos um assistente cria o banco, o `.env` e o administrador — nã
 ├── storage/                logs, cache e uploads
 ├── .htaccess               hospedagem compartilhada (envia tudo para public/)
 ├── docs/                   documentação
-├── scripts/                auto-instalador VPS, instalação local, backup, pacote de hospedagem
+├── instalar.sh / instalar-windows.bat   assistentes de instalação (abrem um menu)
+├── scripts/                assistente (auto-install.sh, install-windows.ps1), backup, pacote de hospedagem
 ├── docker/ docker-compose.yml
 └── .github/workflows/      gera o pacote pronto para hospedagem
 ```

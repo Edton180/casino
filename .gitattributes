@@ -35,3 +35,4 @@ CHANGELOG.md export-ignore
 # Scripts
 *.sh text eol=lf
 *.bat text eol=crlf
+*.ps1 text eol=crlf
