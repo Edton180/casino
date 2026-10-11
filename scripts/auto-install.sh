@@ -427,8 +427,8 @@ preflight() {   # preflight local|server
   if [[ -n "${fg}" && "${fg}" -lt 3 ]]; then row warn "Espaço em disco" "${fg} GB livres (recomendado: 3 GB)"; else row ok "Espaço em disco" "${fg:-?} GB livres"; fi
   local rg; rg="$(ram_gb)"
   [[ -n "${rg}" ]] && { if awk "BEGIN{exit !(${rg} < 1.0)}"; then row warn "Memória" "${rg} GB (pouca: pode precisar de swap)"; else row ok "Memória" "${rg} GB"; fi; }
-  have curl && row ok "curl" "$(curl --version | head -1 | cut -d' ' -f2)" || { row fail "curl" "não instalado"; NEED_TOOLS=1; }
-  have git && row ok "git" "$(git --version | cut -d' ' -f3)" || { row warn "git" "não instalado"; NEED_TOOLS=1; }
+  have curl && row ok "curl" "$(curl --version 2>/dev/null | head -1 | cut -d' ' -f2 || true)" || { row fail "curl" "não instalado"; NEED_TOOLS=1; }
+  have git && row ok "git" "$(git --version 2>/dev/null | cut -d' ' -f3 || true)" || { row warn "git" "não instalado"; NEED_TOOLS=1; }
   have unzip && have rsync || { row warn "unzip / rsync" "faltando"; NEED_TOOLS=1; }
   NEED_PHP=0
   if php_ok; then
@@ -441,7 +441,9 @@ preflight() {   # preflight local|server
   elif db_server_present; then
     if mysqladmin ping >/dev/null 2>&1 || ${SUDO:-} mysqladmin ping >/dev/null 2>&1; then row ok "MySQL/MariaDB" "instalado e respondendo"; else row ok "MySQL/MariaDB" "instalado (será iniciado)"; fi
   else row warn "MySQL/MariaDB" "não instalado"; NEED_DB=1; fi
-  if have composer; then row ok "Composer" "$(composer --version 2>/dev/null | head -1 | cut -d' ' -f3)"; else row info "Composer" "será baixado (não precisa de administrador)"; fi
+  if have composer && php_ok; then row ok "Composer" "$(composer --version 2>/dev/null | head -1 | cut -d' ' -f3 || true)"
+  elif have composer; then row info "Composer" "instalado (vai funcionar depois do PHP)"
+  else row info "Composer" "será baixado (não precisa de administrador)"; fi
   if [[ "${mode}" == "server" ]]; then
     have nginx && row ok "Nginx" "instalado" || row info "Nginx" "será instalado"
     if have ss && ss -ltnH "sport = :80" 2>/dev/null | grep -q .; then row warn "Porta 80" "em uso por $(ss -ltnpH 'sport = :80' 2>/dev/null | grep -o 'users:(("[^"]*' | head -1 | cut -d'"' -f2)"; else row ok "Porta 80" "livre"; fi
