@@ -24,8 +24,10 @@
         </div>
 
         <div v-if="undermaintenance" class="flex flex-col items-center justify-center text-center py-24">
-            <h1 class="text-2xl mb-4">JOGO EM MANUTENÇÃO</h1>
-            <img :src="`/assets/images/work-in-progress.gif`" alt="" width="400">
+            <h1 class="text-2xl mb-4">JOGO INDISPONÍVEL</h1>
+            <p class="mb-6 text-gray-400 max-w-md">{{ unavailableMessage }}</p>
+            <img :src="`/assets/images/work-in-progress.gif`" alt="" width="300">
+            <RouterLink :to="{ name: 'home' }" class="mt-6 px-5 py-2 rounded" style="background-color: var(--ci-primary-color); color: #000; font-weight: 700;">Voltar para os jogos</RouterLink>
         </div>
     </GameLayout>
 </template>
@@ -58,6 +60,7 @@ export default {
             gameId: null,
             tabs: null,
             undermaintenance: false,
+            unavailableMessage: 'Este jogo está indisponível no momento. Tente novamente mais tarde.',
             gameSpecificCondition: false, // Adicionando gameSpecificCondition
 
         }
@@ -174,9 +177,20 @@ export default {
                 .catch(error => {
                     _this.isLoading = false;
                     _this.undermaintenance = true;
-                    Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
 
-                    });
+                    let data = {};
+                    try { data = JSON.parse(error.request.responseText) || {}; } catch (e) { data = {}; }
+
+                    // sessão expirada / não logado: manda para o login em vez de "manutenção"
+                    if (error.response?.status === 401 || /autenticado/i.test(data.error || '')) {
+                        _this.unavailableMessage = 'Faça login para jogar.';
+                        _this.router.push({ name: 'login' }).catch(() => {});
+                        return;
+                    }
+
+                    if (data.error && typeof data.error === 'string') {
+                        _this.unavailableMessage = data.error;
+                    }
                 });
         },
         toggleFavorite: function() {
