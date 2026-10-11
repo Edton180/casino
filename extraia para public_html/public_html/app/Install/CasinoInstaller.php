@@ -142,7 +142,15 @@ class CasinoInstaller
     public function testDatabase(array $db): array
     {
         try {
-            $pdo = $this->connect($db);
+            try {
+                $pdo = $this->connect($db);
+            } catch (Throwable $e) {
+                // banco inexistente: cria quando o usuário tem permissão (localhost/VPS)
+                if (!str_contains($e->getMessage(), '1049') || !$this->createDatabase($db)) {
+                    throw $e;
+                }
+                $pdo = $this->connect($db);
+            }
             $version = (string) $pdo->query('SELECT VERSION()')->fetchColumn();
             $tables = count($pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN));
 
@@ -154,6 +162,23 @@ class CasinoInstaller
             ];
         } catch (Throwable $e) {
             return ['ok' => false, 'message' => 'Não foi possível conectar: ' . $this->friendlyDbError($e->getMessage())];
+        }
+    }
+
+    private function createDatabase(array $db): bool
+    {
+        $name = (string) ($db['database'] ?? '');
+        if (!preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $name)) {
+            return false;
+        }
+
+        try {
+            $pdo = $this->connect(['database' => ''] + $db);
+            $pdo->exec('CREATE DATABASE IF NOT EXISTS `' . $name . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+            $this->log('Banco de dados criado: ' . $name);
+            return true;
+        } catch (Throwable $e) {
+            return false;
         }
     }
 

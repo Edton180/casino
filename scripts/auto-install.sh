@@ -11,6 +11,9 @@
 #
 #  Diagnóstico:
 #     sudo bash auto-install.sh --diagnose
+#
+#  Instalar no próprio computador (localhost, Ubuntu/Debian ou WSL):
+#     sudo bash auto-install.sh --local          → http://localhost
 # =============================================================================
 set -Eeuo pipefail
 
@@ -30,6 +33,7 @@ ADMIN_PASS=""
 ENABLE_SSL=0
 MODE="install"
 ASSUME_YES=0
+LOCAL=0
 
 c_green='\033[1;32m'; c_red='\033[1;31m'; c_yellow='\033[1;33m'; c_cyan='\033[1;36m'; c_off='\033[0m'
 log()  { echo -e "${c_cyan}==>${c_off} $*"; }
@@ -53,6 +57,8 @@ Uso: sudo bash auto-install.sh [opções]
   --repo <url>            Repositório (padrão: ${REPO_URL})
   --branch <branch>       Branch (padrão: ${BRANCH})
   --php <versão>          Versão do PHP (padrão: ${PHP_VERSION})
+  --local                 Instala no próprio computador (http://localhost, sem domínio/SSL)
+                          login padrão: admin@casino.local / admin12345
   --update                Atualiza uma instalação existente
   --diagnose              Mostra o diagnóstico do servidor
   -y                      Não pede confirmação
@@ -71,6 +77,7 @@ while [[ $# -gt 0 ]]; do
     --repo) REPO_URL="$2"; shift 2 ;;
     --branch) BRANCH="$2"; shift 2 ;;
     --php) PHP_VERSION="$2"; shift 2 ;;
+    --local) LOCAL=1; shift ;;
     --update) MODE="update"; shift ;;
     --diagnose) MODE="diagnose"; shift ;;
     -y|--yes|--non-interactive) ASSUME_YES=1; shift ;;
@@ -236,11 +243,13 @@ configure_nginx() {
   local sock="/run/php/php${PHP_VERSION}-fpm.sock"
   local listen6=""
   [[ -f /proc/net/if_inet6 ]] && listen6="listen [::]:80;"
+  local server_names="${DOMAIN} www.${DOMAIN}"
+  [[ ${LOCAL} -eq 1 ]] && server_names="localhost 127.0.0.1 _"
   cat > /etc/nginx/sites-available/casino <<NGINX
 server {
     listen 80;
     ${listen6}
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${server_names};
     root ${APP_DIR}/public;
     index index.php index.html;
     client_max_body_size 64M;
@@ -317,6 +326,10 @@ EOF
 
 do_install() {
   require_root; detect_os; banner; legal_notice
+  if [[ ${LOCAL} -eq 1 ]]; then
+    DOMAIN="${DOMAIN:-localhost}"; EMAIL="${EMAIL:-admin@casino.local}"
+    ADMIN_PASS="${ADMIN_PASS:-admin12345}"; ENABLE_SSL=0
+  fi
   [[ -n "${DOMAIN}" ]] || read -rp "Domínio (ex: meusite.com): " DOMAIN
   [[ -n "${EMAIL}" ]] || read -rp "E-mail do administrador: " EMAIL
   [[ -n "${DOMAIN}" && "${EMAIL}" == *@* ]] || die "Informe --domain e --email válidos."
