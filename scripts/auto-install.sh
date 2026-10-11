@@ -234,10 +234,12 @@ run_app_installer() {
 configure_nginx() {
   log "Configurando Nginx"
   local sock="/run/php/php${PHP_VERSION}-fpm.sock"
+  local listen6=""
+  [[ -f /proc/net/if_inet6 ]] && listen6="listen [::]:80;"
   cat > /etc/nginx/sites-available/casino <<NGINX
 server {
     listen 80;
-    listen [::]:80;
+    ${listen6}
     server_name ${DOMAIN} www.${DOMAIN};
     root ${APP_DIR}/public;
     index index.php index.html;
