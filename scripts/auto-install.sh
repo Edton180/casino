@@ -14,7 +14,7 @@
 # =============================================================================
 set -Eeuo pipefail
 
-VERSION="9.0.0"
+SCRIPT_VERSION="9.0.0"
 REPO_URL="${REPO_URL:-https://github.com/Edton180/casino.git}"
 BRANCH="${BRANCH:-main}"
 APP_DIR="${APP_DIR:-/var/www/casino}"
@@ -40,7 +40,7 @@ trap 'die "Falha na linha ${LINENO}: ${BASH_COMMAND}"' ERR
 
 usage() {
   cat <<EOF
-Casino Platform — instalador para VPS v${VERSION}
+Casino Platform — instalador para VPS v${SCRIPT_VERSION}
 
 Uso: sudo bash auto-install.sh [opções]
 
@@ -81,7 +81,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-random_secret() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${1:-24}"; }
+random_secret() { local s; s="$(openssl rand -hex 32)"; echo "${s:0:${1:-24}}"; }
 
 svc() {
   # systemctl quando disponível; "service" em containers/VMs sem systemd
@@ -101,10 +101,8 @@ require_root() { [[ ${EUID} -eq 0 ]] || die "Execute como root: sudo bash $0 ...
 
 detect_os() {
   [[ -f /etc/os-release ]] || die "Sistema não suportado (use Ubuntu 22.04/24.04 ou Debian 12)."
-  # shellcheck disable=SC1091
-  . /etc/os-release
-  OS_ID="${ID}"; OS_VERSION="${VERSION_ID:-}"
-  case "${OS_ID}" in ubuntu|debian) ;; *) die "Sistema ${PRETTY_NAME:-desconhecido} não suportado. Use Ubuntu ou Debian." ;; esac
+  OS_ID="$(. /etc/os-release && echo "${ID}")"
+  case "${OS_ID}" in ubuntu|debian) ;; *) die "Sistema $(. /etc/os-release && echo "${PRETTY_NAME}") não suportado. Use Ubuntu ou Debian." ;; esac
 }
 
 banner() {
@@ -116,7 +114,7 @@ banner() {
  | |__| (_| \__ \ | | | | (_) | |  __/| | (_| | |_|  _| (_) | |  | | | | | |
   \____\__,_|___/_|_| |_|\___/  |_|   |_|\__,_|\__|_|  \___/|_|  |_| |_| |_|
 EOF
-  echo -e "${c_off}  Instalador para VPS v${VERSION}\n"
+  echo -e "${c_off}  Instalador para VPS v${SCRIPT_VERSION}\n"
 }
 
 legal_notice() {
@@ -359,7 +357,7 @@ do_update() {
 
 do_diagnose() {
   echo "== Diagnóstico =="
-  [[ -f /etc/os-release ]] && . /etc/os-release && echo "Sistema:   ${PRETTY_NAME}"
+  [[ -f /etc/os-release ]] && echo "Sistema:   $(. /etc/os-release && echo "${PRETTY_NAME}")"
   echo "PHP:       $(php -r 'echo PHP_VERSION;' 2>/dev/null || echo 'não instalado')"
   for ext in pdo_mysql mbstring xml curl zip intl gd bcmath; do
     php -m 2>/dev/null | grep -qi "^${ext}$" && echo "  ✔ ${ext}" || echo "  ✖ ${ext}"
