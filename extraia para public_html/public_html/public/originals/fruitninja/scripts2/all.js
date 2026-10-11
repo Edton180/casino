@@ -228,10 +228,14 @@ define("scripts/game.js", function(exports){
 	exports.gameOver = function(){
 	    state( "game-state" ).set( "over" );
 	    gameInterval.stop();
-		var finalScore = scoreNumber;
-		alert('O Jogo Acabou!');
 	    gameOver.show();
-		window.parent.location.href = '/games/play/12197/fruitninja';
+
+		// rodada encerrada sem atingir a meta
+		if (!window.__skillFinished) {
+			window.__skillFinished = true;
+			var voltar = function(){ alert('O Jogo Acabou!'); SkillGame.backToCasino(); };
+			SkillGame.finish(0).then(voltar).catch(voltar);
+		}
 	};
 
 	exports.checkMetaAndToggleClass = function(meta, score) {
@@ -241,10 +245,6 @@ define("scripts/game.js", function(exports){
 		centeredDiv.classList.add('visible');
 	};
 
-	if (scoreNumber >= meta) {
-		window.parent.location.href = '/games/play/12197/fruitninja';
-
-	}
 
 	
 	exports.applyScore = function(score) {
@@ -279,8 +279,19 @@ define("scripts/game.js", function(exports){
 	
 			score.number(formattedScore);
 
-			if (scoreNumber >= meta) {
+			if (scoreNumber >= meta && !window.__skillFinished) {
+				// meta atingida: paga o prêmio pelo servidor (limitado à meta do jogo)
+				window.__skillFinished = true;
 				exports.checkMetaAndToggleClass();
+				exports.pauseAllFruit();
+				state( "game-state" ).set( "over" );
+				SkillGame.finish(meta).then(function(data){
+					alert('Parabéns! Você ganhou R$ ' + Number(data.win).toFixed(2));
+					SkillGame.backToCasino();
+				}).catch(function(error){
+					alert(error.message);
+					SkillGame.backToCasino();
+				});
 			}
 
 		} else {

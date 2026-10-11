@@ -97,7 +97,6 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
         'api_key' => env('STRIPE_KEY'),
         'api_secret' => env('STRIPE_SECRET'),
-        'class' => App\Services\Gateways\StripeService::class,
     ],
 
 ];

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+STAMP=$(date +%F_%H%M%S)
+DEST=/opt/casino-backups
+mkdir -p "$DEST"
+tar -czf "$DEST/casino_${STAMP}.tar.gz" /opt/casino
+find "$DEST" -type f -name 'casino_*.tar.gz' -mtime +7 -delete

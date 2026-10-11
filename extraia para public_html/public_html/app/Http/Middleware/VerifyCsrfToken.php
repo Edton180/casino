@@ -13,10 +13,9 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'api/*',
-        'suitpay/*',
-        'bspay/*', // Adicionar isso
+        'mercadopago/*',
+        'asaas/*',
         'playfiver/*', // <--- Adicione essa linha
-        'pixup/*',
         'webhooks/*',
         'cron/*',
         'playgaming',

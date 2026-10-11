@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Games;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Games\SpinData\QueenOfBounty\QueenOfBountyBonus;
 use App\Http\Controllers\Games\SpinData\QueenOfBounty\QueenOfBountyDemo;
 use App\Http\Controllers\Games\SpinData\QueenOfBounty\QueenOfBountyIcons;
 use App\Http\Controllers\Games\SpinData\QueenOfBounty\QueenOfBountyLose;
@@ -220,6 +221,7 @@ class QueenofbountyController extends Controller
             "cpl"       => $request->cpl,
             "betamount" => $request->betamount,
             "num_line"  => $request->numline,
+            "lines"     => 20, // linhas fixas do jogo (não confiar no cliente)
             "jackpot"   => 0,
             "free_spin" => 0,
             "free_num"  => 0,
@@ -246,15 +248,16 @@ class QueenofbountyController extends Controller
             "MultipleList" => [1, 2, 3, 5]
         ];
 
-        return self::SpinStructure($token, $settingGame, $pull, QueenOfBountyLose::getLose(), QueenOfBountyDemo::getDemo(), QueenOfBountyWin::getWin());
+        return self::SpinStructure($token, $settingGame, $pull, QueenOfBountyLose::getLose(), QueenOfBountyDemo::getDemo(), QueenOfBountyWin::getWin(), QueenOfBountyBonus::getBonus());
     }
 
     /**
      * Freenum
      */
-    public function freenum(Request $request)
+    public function freenum(Request $request, $token)
     {
-        //
+        // este jogo não possui compra de rodadas grátis
+        return self::FreeNumStructure($request, $token);
     }
 
     /**

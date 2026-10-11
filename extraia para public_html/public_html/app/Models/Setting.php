@@ -71,13 +71,6 @@ class Setting extends Model
 
         'initial_bonus',
 
-        'suitpay_is_enable',
-        'stripe_is_enable',
-        'bspay_is_enable',   // Adicionar isso
-        'mercadopago_is_enable',
-        'sharkpay_is_enable',
-        'digitopay_is_enable',
-
         /// withdrawal limit
         'withdrawal_limit',
         'withdrawal_period',
@@ -100,7 +93,6 @@ class Setting extends Model
         'logo_width', 
         'logo_height',
 
-        'asaas_is_enable',
         'currency_symbol',
         'status'
     ];

@@ -164,7 +164,7 @@ class WithdrawalResource extends Resource
                                 \Filament\Notifications\Actions\Action::make('view')
                                     ->label('Confirmar')
                                     ->button()
-                                    ->url(route('suitpay.cancelwithdrawal', ['id' => $withdrawal->id, 'action' => 'user']))
+                                    ->url(route('payments.cancelwithdrawal', ['id' => $withdrawal->id, 'action' => 'user']))
                                     ->close(),
                                 \Filament\Notifications\Actions\Action::make('undo')
                                     ->color('gray')
@@ -191,7 +191,7 @@ class WithdrawalResource extends Resource
                                 \Filament\Notifications\Actions\Action::make('view')
                                     ->label('Confirmar')
                                     ->button()
-                                    ->url(route('digitopay.withdrawal', ['id' => $withdrawal->id, 'action' => 'user']))
+                                    ->url(route('payments.withdrawal', ['id' => $withdrawal->id, 'action' => 'user']))
                                     ->close(),
                                 \Filament\Notifications\Actions\Action::make('undo')
                                     ->color('gray')

@@ -8,11 +8,6 @@ use App\Http\Controllers\Games\SpinData\FortuneOX\FortuneOXDemo;
 use App\Http\Controllers\Games\SpinData\FortuneOX\FortuneOXIcons;
 use App\Http\Controllers\Games\SpinData\FortuneOX\FortuneOXLose;
 use App\Http\Controllers\Games\SpinData\FortuneOX\FortuneOXWin;
-use App\Http\Controllers\Games\SpinData\FortuneTiger\FortuneTigerBonus;
-use App\Http\Controllers\Games\SpinData\FortuneTiger\FortuneTigerDemo;
-use App\Http\Controllers\Games\SpinData\FortuneTiger\FortuneTigerIcons;
-use App\Http\Controllers\Games\SpinData\FortuneTiger\FortuneTigerLose;
-use App\Http\Controllers\Games\SpinData\FortuneTiger\FortuneTigerWin;
 use App\Traits\Providers\PrivateGamesTrait;
 use Illuminate\Http\Request;
 
@@ -105,6 +100,7 @@ class FortuneoxController extends Controller
             "cpl"       => $request->cpl,
             "betamount" => $request->betamount,
             "num_line"  => $request->numline,
+            "lines"     => 5, // linhas fixas do jogo (não confiar no cliente)
             "jackpot"   => 0,
             "free_spin" => 0,
             "free_num"  => 0,
@@ -133,7 +129,7 @@ class FortuneoxController extends Controller
             ]
         ];
 
-        return self::SpinStructure($token, $settingGame, $pull, FortuneTigerLose::getLose(), FortuneTigerDemo::getDemo(), FortuneTigerWin::getWin(), FortuneTigerBonus::getBonus());
+        return self::SpinStructure($token, $settingGame, $pull, FortuneOXLose::getLose(), FortuneOXDemo::getDemo(), FortuneOXWin::getWin(), FortuneOXBonus::getBonus());
     }
 
     /**
@@ -157,6 +153,6 @@ class FortuneoxController extends Controller
      */
     public function icons()
     {
-        return FortuneTigerIcons::getIcons();
+        return FortuneOXIcons::getIcons();
     }
 }

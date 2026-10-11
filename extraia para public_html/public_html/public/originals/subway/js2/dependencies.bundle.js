@@ -48,15 +48,19 @@ var btnSair = () => { return document.querySelector('button#sair'); }
 btnSair().addEventListener('click', () => {
     if (jogando) {
         jogando = false;
-        
-        if (acumulado >= meta) {
+        btnSair().style.display = 'none';
 
-            window.parent.location.href = "/games/play/12194/subway"; //+ "?msg=" + encodeURIComponent(msg);
-
-
-        } else {
-            // Se o jogador perdeu, armazene um sinalizador no armazenamento local
-        }
+        // só paga quando a meta foi atingida; o servidor limita o prêmio à meta
+        var premio = parseFloat(acumulado) >= meta ? parseFloat(acumulado) : 0;
+        SkillGame.finish(premio).then(function (data) {
+            if (data.win > 0) {
+                alert('Parabéns! Você ganhou R$ ' + Number(data.win).toFixed(2));
+            }
+            SkillGame.backToCasino();
+        }).catch(function (error) {
+            alert(error.message);
+            SkillGame.backToCasino();
+        });
     }
 });
 
@@ -32116,11 +32120,9 @@ gameover() {
     this.paused.close();
     
     if (jogando) {
-        // Adiciona uma nova entrada ao histórico de navegação
-        window.history.pushState({}, document.title, baseurl);
-        
-        // Redireciona o usuário para a página inicial
-        window.parent.location.href = "/games/play/12194/subway";
+        // bateu antes de atingir a meta: encerra a rodada sem prêmio
+        jogando = false;
+        SkillGame.finish(0).then(SkillGame.backToCasino).catch(SkillGame.backToCasino);
     }
 }
 

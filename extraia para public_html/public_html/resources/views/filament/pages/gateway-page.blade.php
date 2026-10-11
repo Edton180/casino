@@ -3,7 +3,7 @@
         {{ $this->form }}
 
         <br>
-        <x-filament::button type="submit" form="submit">
+        <x-filament::button type="submit">
             Atualizar dados
         </x-filament::button>
     </form>
