@@ -225,7 +225,13 @@ fetch_code() {
 install_dependencies() {
   log "Instalando dependências PHP (composer)"
   cd "${APP_DIR}"
-  COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-progress --quiet
+  local args=(install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress --quiet)
+  if ! COMPOSER_ALLOW_SUPERUSER=1 composer "${args[@]}"; then
+    # vendor antigo/incompatível (ex.: atualização de versão do Laravel): recria do zero
+    warn "Recriando a pasta vendor"
+    rm -rf "${APP_DIR}/vendor"
+    COMPOSER_ALLOW_SUPERUSER=1 composer "${args[@]}"
+  fi
   if [[ ! -f public/build/manifest.json ]]; then
     warn "Frontend não compilado no repositório; compilando com Node.js"
     command -v npm >/dev/null || { curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null; apt-get install -y -qq nodejs >/dev/null; }
@@ -298,7 +304,8 @@ server {
     location ~* \.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|mp3|ogg|json|atlas)\$ {
         expires 30d;
         access_log off;
-        try_files \$uri =404;
+        # arquivos gerados por rotas do Laravel (ex.: /livewire/livewire.min.js) caem no index.php
+        try_files \$uri /index.php?\$query_string;
     }
 
     location ~ /\.(?!well-known) { deny all; }
@@ -388,12 +395,19 @@ do_update() {
   [[ -f "${APP_DIR}/.env" ]] || die "Instalação não encontrada em ${APP_DIR}"
   log "Atualizando ${APP_DIR}"
   cd "${APP_DIR}" && as_www php artisan down --retry=30 || true
+  # se algo falhar, o site não fica preso em manutenção
+  trap 'cd "${APP_DIR}" && as_www php artisan up >/dev/null 2>&1; die "Falha na linha ${LINENO}: ${BASH_COMMAND} (o site foi reativado; veja o erro acima)"' ERR
   fetch_code
   install_dependencies
   fix_permissions
   cd "${APP_DIR}"
   as_www php artisan migrate --force
   as_www php artisan optimize:clear
+  # instalações antigas: arquivos estáticos que não existem passam a cair no Laravel
+  if [[ -f /etc/nginx/sites-available/casino ]] && grep -q 'try_files \$uri =404;' /etc/nginx/sites-available/casino; then
+    sed -i 's#try_files \$uri =404;#try_files $uri /index.php?$query_string;#' /etc/nginx/sites-available/casino
+    nginx -t -q && svc reload nginx || true
+  fi
   as_www php artisan up
   svc reload "php${PHP_VERSION}-fpm" || true
   ok "Atualização concluída"
