@@ -24,3 +24,5 @@
 *.sql -text
 # Markdown should always be treated as text
 *.md text diff=markdown
+*.bat text eol=crlf
+*.sh text eol=lf
