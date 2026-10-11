@@ -17,6 +17,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
+if not exist "%~dp0scripts\install-windows.ps1" (
+  echo Baixando o instalador e o codigo do Casino Platform...
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/Edton180/casino/main/scripts/install-windows.ps1 | iex"
+  pause
+  exit /b 0
+)
+
 :menu
 cls
 echo.

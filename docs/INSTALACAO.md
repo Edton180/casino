@@ -121,20 +121,24 @@ Continue em [Depois de instalar](#depois-de-instalar).
 
 ---
 
-## Antes de B e D: como obter o assistente de instalação
+## Instalação em 1 comando (recomendado)
 
-O repositório `Edton180/casino` é **privado**. Por isso o endereço `raw.githubusercontent.com/...` (usado em muitos tutoriais) responde **404** para quem não está autenticado — não adianta usar `curl` direto. Escolha **uma** forma de baixar o código:
+O repositório é **público**: não precisa baixar nada antes. Abra o terminal e rode **um** destes comandos. O assistente **identifica o sistema, baixa o código, instala PHP, banco de dados, Composer e dependências, configura tudo e liga o site**.
 
-| Forma | Como |
+| Onde | Comando (copie e cole **só esta linha**) |
 |---|---|
-| **1. Pelo navegador** (mais fácil) | Entre no GitHub com a sua conta → abra o repositório → botão verde **Code → Download ZIP** → extraia. Depois abra o terminal dentro da pasta extraída. |
-| **2. Com git** | `git clone https://github.com/Edton180/casino.git` — o git pede seu usuário e, no lugar da senha, um **token** (veja abaixo). |
-| **3. Com token no instalador** | O assistente baixa sozinho: `bash scripts/auto-install.sh --token SEU_TOKEN ...` (útil em servidor, sem navegador). |
+| **Linux, macOS, WSL — no seu computador** | `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/instalar.sh \| bash -s -- --auto` |
+| **Windows** (PowerShell) | `irm https://raw.githubusercontent.com/Edton180/casino/main/scripts/install-windows.ps1 \| iex` |
+| **VPS com domínio e HTTPS** | `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/instalar.sh \| sudo bash -s -- --domain meusite.com --email voce@meusite.com --ssl -y` |
 
-**Criar um token (leitura):** GitHub → foto do perfil → *Settings* → *Developer settings* → *Personal access tokens* → *Fine-grained tokens* → *Generate new token* → em *Repository access* escolha só o `casino` → em *Permissions → Contents* marque **Read-only** → gere e copie (`github_pat_...`). O token não fica gravado em lugar nenhum pelo instalador.
+- `--auto` instala no seu computador **sem fazer nenhuma pergunta** (site em `http://127.0.0.1:8000`, login `admin@casino.local` / `admin12345`). Sem `--auto`, ele abre o menu interativo.
+- Para **atualizar** depois: rode o mesmo comando de novo, ou `bash instalar.sh --update` dentro da pasta (`~/casino`).
+- A instalação local fica em `~/casino` (Windows: `%USERPROFILE%\casino`).
+- Se preferir baixar antes: `git clone https://github.com/Edton180/casino.git && cd casino && bash instalar.sh --auto` (Windows: dois cliques em `instalar-windows.bat`).
 
-> Se um dia você tornar o repositório **público**, aí sim funciona o one-liner  
-> `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/scripts/auto-install.sh -o auto-install.sh`
+> Cada linha acima é **um comando completo**. Não cole várias linhas de uma vez nem os trechos de outras seções deste guia (eles são alternativas, não passos em sequência).
+
+Se o repositório voltar a ser privado, baixe o código logado no GitHub (**Code → Download ZIP**) ou use `--token SEU_TOKEN` (GitHub → Settings → Developer settings → Fine-grained token com *Contents: Read-only*).
 
 ---
 
@@ -169,7 +173,7 @@ No final aparece um quadro com o endereço do site, do painel e o login; tudo ta
 
 ```bash
 sudo bash scripts/auto-install.sh --domain meusite.com --email voce@meusite.com --ssl -y
-# repositório privado, sem copiar o código antes:
+# se o repositório estiver privado, sem copiar o código antes:
 sudo bash scripts/auto-install.sh --token github_pat_XXXX --domain meusite.com --email voce@meusite.com --ssl -y
 ```
 
@@ -236,7 +240,7 @@ Para testar a plataforma, criar seus temas ou desenvolver. **Não precisa de dom
 
 ### D1. Ubuntu, Debian, Linux Mint, WSL e macOS — `bash instalar.sh`
 
-**O que você precisa:** só o código baixado (veja *"Como obter o assistente"* acima) e internet. **PHP e banco de dados não precisam estar instalados** — o assistente instala.
+**O que você precisa:** só de internet (veja *"Instalação em 1 comando"* acima). **PHP e banco de dados não precisam estar instalados** — o assistente instala.
 
 ```bash
 cd casino            # a pasta que você baixou/extraiu
@@ -284,8 +288,8 @@ Os dados (login e senha do banco) ficam em `~/casino-credenciais-local.txt`.
 
 Passo a passo:
 
-1. Baixe o ZIP do repositório (veja *"Como obter o assistente"*) e **extraia** (não rode de dentro do zip).
-2. Dê dois cliques em **`instalar-windows.bat`**.
+1. Mais simples: no PowerShell rode a linha de *"Instalação em 1 comando"*. Ou baixe o ZIP do repositório, **extraia** (não rode de dentro do zip) e dê dois cliques em **`instalar-windows.bat`**.
+2. (Se usou o ZIP) dê dois cliques em **`instalar-windows.bat`**.
 3. Escolha **1) Instalar no meu computador** e responda as perguntas (ou aperte ENTER para os padrões).
 4. O navegador abre em **http://127.0.0.1:8000**. Login padrão: `admin@casino.local` / `admin12345`.
 

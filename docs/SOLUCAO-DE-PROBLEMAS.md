@@ -46,8 +46,9 @@ A senha é criptografada automaticamente. Depois entre em `/admin` com a nova se
 
 | Sintoma | Solução |
 |---|---|
-| `curl ... 404` ao baixar o `auto-install.sh` | O repositório é **privado**; o endereço `raw.githubusercontent.com` não funciona sem login. Baixe o ZIP logado no GitHub, ou `git clone` (pede usuário e token), ou use `--token`. Veja [INSTALACAO.md](INSTALACAO.md#antes-de-b-e-d-como-obter-o-assistente-de-instalação). |
-| "Não consegui baixar o código" | Mesmo motivo (repositório privado) ou sem internet. O assistente mostra as 3 opções e, em terminal, pede o token. |
+| "Opção desconhecida: --stack" (ou outra opção) | A pasta `casino` é uma cópia **antiga**. Atualize: `git pull` (ou rode o comando de 1 linha de [INSTALACAO.md](INSTALACAO.md#instalação-em-1-comando-recomendado), que já usa a versão mais nova). O `instalar.sh` atualiza a cópia git sozinho. |
+| `curl ... 404` ao baixar o instalador | O repositório está privado ou o endereço está errado. Com o repositório **público** use: `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/instalar.sh \| bash -s -- --auto`. Se estiver privado: baixe o ZIP logado no GitHub ou use `--token`. |
+| "Não consegui baixar o código" | Sem internet/GitHub bloqueado, ou repositório privado (use `--token`). |
 | "PHP não encontrado" / faltam extensões | Rode `bash instalar.sh`: ele mostra o que falta e instala com apt (pede sua senha). No macOS: `brew install php composer mariadb`. |
 | "Não rode o modo local com sudo" | Rode sem `sudo`: `bash instalar.sh`. Ele pede a senha só quando precisa instalar pacotes. |
 | "Não consegui acessar o MySQL como administrador" | O assistente tenta o socket do `root`, depois `sudo mysql` e, por último, pergunta a senha. Se ainda falhar, informe um usuário: `--db-user NOME --db-pass SENHA`. |

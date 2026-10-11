@@ -35,6 +35,32 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
 $Versao = '9.3.0'
+
+# ---- Executado sem o projeto ao lado (ex.: irm .../install-windows.ps1 | iex): baixa o código e continua ----
+$Aqui = $PSScriptRoot
+if (-not $Aqui -or -not (Test-Path (Join-Path $Aqui '..\artisan'))) {
+  $Destino = Join-Path $env:USERPROFILE 'casino'
+  Write-Host ''
+  Write-Host '  Casino Platform - baixando o código para' $Destino -ForegroundColor Cyan
+  if (-not (Test-Path (Join-Path $Destino 'artisan'))) {
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+      & git clone --depth 1 https://github.com/Edton180/casino.git $Destino
+      if ($LASTEXITCODE -ne 0) { throw 'Não consegui baixar o código com o git. Confira a internet.' }
+    } else {
+      $zip = Join-Path $env:TEMP 'casino-main.zip'
+      $tmp = Join-Path $env:TEMP ('casino-extract-' + [guid]::NewGuid().ToString('N'))
+      Write-Host '  Baixando o ZIP do repositório (pode demorar, são ~400 MB)...'
+      Invoke-WebRequest -UseBasicParsing 'https://codeload.github.com/Edton180/casino/zip/refs/heads/main' -OutFile $zip
+      Expand-Archive -Path $zip -DestinationPath $tmp -Force
+      Move-Item (Join-Path $tmp 'casino-main') $Destino
+      Remove-Item $zip, $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+  $filho = Join-Path $Destino 'scripts\install-windows.ps1'
+  & $filho @PSBoundParameters
+  return
+}
+
 $Raiz = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $Dados = Join-Path $env:LOCALAPPDATA 'CasinoPlatform'
 $PhpDir = Join-Path $Dados 'php'

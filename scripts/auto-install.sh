@@ -46,7 +46,7 @@ SOURCE=""
 SRC_DIR="/opt/casino-src"
 PHP_VERSION="${PHP_VERSION:-8.3}"
 DOMAIN=""; ADMIN_EMAIL=""; ADMIN_PASS=""; SITE_NAME=""
-ENABLE_SSL=0; STACK=0; LAN=0; NO_SERVE=0; REINSTALL=0; ASSUME_YES=0; SYS_UPGRADE=0; NO_COLOR_OPT=0
+AUTO=0; ENABLE_SSL=0; STACK=0; LAN=0; NO_SERVE=0; REINSTALL=0; ASSUME_YES=0; SYS_UPGRADE=0; NO_COLOR_OPT=0
 HTTP_PORT=""
 DB_HOST=""; DB_PORT="3306"; DB_NAME=""; DB_USER=""; DB_PASS=""
 CRED_FILE=""
@@ -247,6 +247,7 @@ Sem opções, abre o assistente com menu. Opções:
   --system-upgrade         Também atualiza os pacotes do sistema (apt upgrade) ao instalar/atualizar
   --reinstall              Apaga a instalação existente e instala de novo
   --no-color               Sem cores nem animações
+  --auto                   100% automático: instala no seu computador sem perguntar nada
   -y, --yes                Não pergunta nada (usa os padrões)
   -h, --help               Esta ajuda
 EOF
@@ -254,6 +255,7 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --auto) AUTO=1; ASSUME_YES=1; shift ;;
     --local) TARGET="local"; shift ;;
     --server) TARGET="server"; shift ;;
     --domain) DOMAIN="$2"; TARGET="${TARGET:-server}"; shift 2 ;;
@@ -293,6 +295,7 @@ done
 setup_ui
 [[ -t 0 && -t 1 && ${ASSUME_YES} -eq 0 ]] && INTERACTIVE=1
 [[ -z "${MODE}" ]] && MODE="install"
+[[ ${AUTO} -eq 1 && -z "${TARGET}" ]] && TARGET="local"   # --auto sem destino = seu computador
 
 # =============================================================================
 #  Perguntas
@@ -856,7 +859,7 @@ Senha:         ${ADMIN_PASS}
 Banco:         ${DB_NAME}  (usuário ${DB_USER}, senha ${DB_PASS}, host ${DB_HOST})
 Pasta:         ${APP_DIR}
 EOF
-  local rel="${CHECKOUT:+scripts/}"
+  local rel="${APP_DIR}/scripts/"; rel="${rel/#${HOME}/~}"
   echo
   box "Instalação local concluída em $(fmt_time $((SECONDS - T0)))" \
     "" \
