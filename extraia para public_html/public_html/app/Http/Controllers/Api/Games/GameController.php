@@ -418,6 +418,16 @@ class GameController extends Controller
      * @dev victormsalatiel
      * Update the specified resource in storage.
      */
+    public function webhookWorldSlotMethod(Request $request)
+    {
+        return self::WebhooksWorldSlot($request);
+    }
+
+    public function webhookGames2Method(Request $request)
+    {
+        return self::WebhooksGames2($request);
+    }
+
     public function webhookUserBalanceMethod(Request $request)
     {
         return self::GetUserBalanceWorldSlot($request);

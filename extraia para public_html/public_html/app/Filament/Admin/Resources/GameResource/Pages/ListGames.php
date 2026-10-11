@@ -61,7 +61,6 @@ class ListGames extends ListRecords
      */
     protected static function LoadingProviderGames2Api()
     {
-        dd("dsfsdsdf");
         self::GetAllProvidersGames2Api();
     }
 

@@ -36,6 +36,7 @@ include_once(__DIR__ . '/groups/provider/kagaming.php');
 include_once(__DIR__ . '/groups/provider/salsa.php');
 include_once(__DIR__ . '/groups/provider/venix.php');
 include_once(__DIR__ . '/groups/provider/vibra.php');
+include_once(__DIR__ . '/groups/provider/aggregators.php');
 
 
 

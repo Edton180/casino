@@ -380,7 +380,6 @@ trait EvergameTrait
      */
     public static function WebhooksEvergame($request)
     {
-        dd($request->method);
         switch ($request->method) {
             case "GetBalance":
                 return self::GetBalanceInfoEvergame($request);
