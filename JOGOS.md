@@ -24,6 +24,10 @@ Desenvolvidos para esta plataforma (código próprio, sem licença de terceiros)
 | **Plinko** | 12 linhas, risco baixo/médio/alto. Tabela normalizada para o RTP. | 97% |
 | **Double** | Roleta de 15 casas: vermelho/preto 2×, branco 14×. | 93,3% (fixo) |
 
+| Mines | Crash | Plinko |
+|---|---|---|
+| ![Mines](docs/img/jogo-mines.png) | ![Crash](docs/img/jogo-crash.png) | ![Plinko](docs/img/jogo-plinko.png) |
+
 **Segurança e justiça**
 - O resultado é calculado **somente no servidor**; o navegador envia só a aposta e as escolhas.
 - **Provably fair:** cada rodada mostra o *hash* da semente antes de jogar e revela a semente no fim (HMAC-SHA256), permitindo ao jogador conferir que o resultado não foi alterado.
@@ -75,8 +79,9 @@ Configure em **Painel → Configurações → Chaves dos Jogos** e informe ao pr
 | Provedor (distribuição) | Webhook / callback a informar ao provedor |
 |---|---|
 | PlayFiver (`play_fiver`) | `https://seu-dominio/playfiver/webhook` |
-| Fivers (`fivers`) | `https://seu-dominio/gold_api` |
-| WorldSlot (`worldslot`), Games2Api (`games2_api`) | `https://seu-dominio/gold_api` |
+| Fivers (`fivers`) | `https://seu-dominio/fivers/webhook` (ou `/gold_api`) |
+| WorldSlot (`worldslot`) | `https://seu-dominio/worldslot/webhook` |
+| Games2Api (`games2_api`) | `https://seu-dominio/games2/webhook` |
 | Center Gaming PG (`apipg12`) | `https://seu-dominio/gold_api/user_balance` e `/gold_api/game_callback` |
 | Center Gaming Pragmatic (`apipragmatic40`) | `https://seu-dominio/callback` |
 | System Server (`systemserver`) | `https://seu-dominio/systemserver/webhook` |
@@ -87,7 +92,8 @@ Configure em **Painel → Configurações → Chaves dos Jogos** e informe ao pr
 | Shark Connect / VeniX (`venix`) | `https://seu-dominio/venix_api` |
 | KaGaming (`kagaming`) | `https://seu-dominio/kagaming/webhooks` |
 | Vibra Gaming (`vibra_gaming`) | `https://seu-dominio/vibra/webhooks` |
-| EverGame (`evergame`), Slotegrator | conforme o painel do provedor |
+| EverGame (`evergame`) | `https://seu-dominio/evergame/webhook` |
+| Slotegrator | conforme a documentação do contrato |
 
 Depois:
 1. **Meus Jogos → Todos os Provedores**: confira se o provedor está ativo.

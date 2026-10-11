@@ -83,7 +83,14 @@ Acesse **`https://seu-dominio.com/install/`** e siga as etapas:
 4. **Site e admin** — nome do site, URL (use `https://` se o SSL já estiver ativo), seu e-mail e senha de administrador.
 5. **Instalar** — aguarde as 5 etapas ficarem verdes.
 
-Pronto! O painel fica em **`https://seu-dominio.com/admin`**.
+| Requisitos | Concluído |
+|---|---|
+| ![Requisitos](docs/img/instalador-requisitos.png) | ![Concluído](docs/img/instalador-concluido.png) |
+
+Pronto! O painel fica em **`https://seu-dominio.com/admin`**:
+
+![Painel administrativo](docs/img/painel-admin.png)
+
 Por segurança o instalador é bloqueado depois de concluído (`storage/installed.lock`).
 
 ### 6. Ative o SSL e o cron
