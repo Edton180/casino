@@ -20,36 +20,6 @@ namespace App\Http\Controllers\Api\Landing {
         }
 
         /**
-         * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Foundation\Application
-         */
-        public function Index()
-        {
-            $currencies = [
-                'BRL'
-            ];
-
-            $levels = ['SUPER SPIN', 'LUCKY SPIN'];
-
-            $winners = [];
-            $total_bonus = 276543.21;
-
-            for ($i = 0; $i < 200; $i++) {
-                $winners[] = [
-                    'name' => $this->randomName(),
-                    'nivel' => $levels[rand(0, count($levels) - 1)],
-                    'prize' => $this->prizes[array_rand($this->prizes)]->value,
-                    'currency' => $currencies[0]
-                ];
-            }
-
-            return view('landingspin::index', [
-                'prizes'	=> $this->prizes,
-                'winners'	=> $winners,
-                'total_bonus'	=> $total_bonus
-            ]);
-        }
-
-        /**
          * Spin
          * @return \Illuminate\Http\JsonResponse
          */

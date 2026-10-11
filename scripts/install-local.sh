@@ -69,8 +69,8 @@ cd "${APP_DIR}"
 URL="http://127.0.0.1:${PORT}"
 
 # ---------------------------------------------------------------- requisitos
-command -v php >/dev/null || die "PHP não encontrado. Instale o PHP 8.1+ (Ubuntu: sudo apt install php-cli php-mysql php-mbstring php-xml php-curl php-zip php-intl php-gd php-bcmath; macOS: brew install php; Windows: use o XAMPP/Laragon ou o WSL)."
-php -r 'exit(PHP_VERSION_ID >= 80100 ? 0 : 1);' || die "É necessário PHP 8.1 ou superior (encontrado: $(php -r 'echo PHP_VERSION;'))."
+command -v php >/dev/null || die "PHP não encontrado. Instale o PHP 8.2+ (Ubuntu: sudo apt install php-cli php-mysql php-mbstring php-xml php-curl php-zip php-intl php-gd php-bcmath; macOS: brew install php; Windows: use o XAMPP/Laragon ou o WSL)."
+php -r 'exit(PHP_VERSION_ID >= 80200 ? 0 : 1);' || die "É necessário PHP 8.2 ou superior (encontrado: $(php -r 'echo PHP_VERSION;'))."
 
 missing=()
 for ext in pdo_mysql mbstring xml curl zip intl gd bcmath; do

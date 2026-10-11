@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use Althinect\FilamentSpatieRolesPermissions\FilamentSpatieRolesPermissionsPlugin;
 use App\Filament\Admin\Pages\AdvancedPage;
 use App\Filament\Admin\Pages\DashboardAdmin;
 use App\Filament\Admin\Pages\GamesKeyPage;
@@ -182,9 +181,9 @@ class AdminPanelProvider extends PanelProvider
                     ,
 
                     auth()->user()->hasRole('admin') ?
-                        NavigationGroup::make(__(config('filament-spatie-roles-permissions.navigation_section_group', 'filament-spatie-roles-permissions::filament-spatie.section.roles_and_permissions')))
+                        NavigationGroup::make('Funções e Permissões')
                             ->items([
-                                NavigationItem::make(__('filament-spatie-roles-permissions::filament-spatie.section.role'))
+                                NavigationItem::make('Funções')
                                     ->icon('heroicon-o-user-group')
                                     ->isActiveWhen(fn () => request()->routeIs([
                                         'filament.admin.resources.roles.index',
@@ -193,7 +192,7 @@ class AdminPanelProvider extends PanelProvider
                                         'filament.admin.resources.roles.edit',
                                     ]))
                                     ->url(fn (): string => route('filament.admin.resources.roles.index')),
-                                NavigationItem::make(__('filament-spatie-roles-permissions::filament-spatie.section.permission'))
+                                NavigationItem::make('Permissões')
                                     ->icon('heroicon-o-lock-closed')
                                     ->isActiveWhen(fn () => request()->routeIs([
                                         'filament.admin.resources.permissions.index',
@@ -236,7 +235,6 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->plugin(FilamentSpatieRolesPermissionsPlugin::make())
             ;
     }
 }

@@ -10,7 +10,6 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Exceptions\Halt;
-use Jackiedo\DotenvEditor\Facades\DotenvEditor;
 
 class SettingMailPage extends Page
 {
@@ -113,9 +112,7 @@ class SettingMailPage extends Page
             $setting = SettingMail::first();
             if(!empty($setting)) {
                 if(!empty($this->data['software_smtp_type'])) {
-                    $envs = DotenvEditor::load(base_path('.env'));
-
-                    $envs->setKeys([
+                    \App\Support\EnvFile::set([
                         'MAIL_MAILER' => $this->data['software_smtp_type'],
                         'MAIL_HOST' => $this->data['software_smtp_mail_host'],
                         'MAIL_PORT' => $this->data['software_smtp_mail_port'],
@@ -125,8 +122,6 @@ class SettingMailPage extends Page
                         'MAIL_FROM_ADDRESS' => $this->data['software_smtp_mail_from_address'],
                         'MAIL_FROM_NAME' => $this->data['software_smtp_mail_from_name'],
                     ]);
-
-                    $envs->save();
                 }
 
                 if($setting->update($this->data)) {

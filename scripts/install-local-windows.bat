@@ -7,7 +7,7 @@ rem  2. De dois cliques neste arquivo (no Laragon: rode pelo "Terminal" do Larag
 rem  3. Abra http://127.0.0.1:8000  (painel: http://127.0.0.1:8000/admin)
 rem     Login: admin@casino.local / admin12345
 rem
-rem  Requer PHP 8.1+ com as extensoes intl, zip, gd, pdo_mysql, mbstring,
+rem  Requer PHP 8.2+ com as extensoes intl, zip, gd, pdo_mysql, mbstring,
 rem  curl e bcmath ativas no php.ini (no XAMPP, tire o ";" da frente de
 rem  extension=intl, extension=zip e extension=gd).
 rem ===========================================================================
@@ -59,7 +59,7 @@ goto :eof
 
 :nophp
 echo PHP nao encontrado. Instale o XAMPP (https://www.apachefriends.org) ou o Laragon (https://laragon.org)
-echo com PHP 8.1 ou superior, ou adicione o php.exe ao PATH.
+echo com PHP 8.2 ou superior, ou adicione o php.exe ao PATH.
 pause
 exit /b 1
 

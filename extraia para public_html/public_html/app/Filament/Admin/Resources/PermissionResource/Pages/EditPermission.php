@@ -8,4 +8,9 @@ use Filament\Resources\Pages\EditRecord;
 class EditPermission extends EditRecord
 {
     protected static string $resource = PermissionResource::class;
+
+    protected function afterSave(): void
+    {
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    }
 }

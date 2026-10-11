@@ -17,7 +17,7 @@ use Throwable;
  */
 class CasinoInstaller
 {
-    public const MIN_PHP = '8.1.0';
+    public const MIN_PHP = '8.2.0';
 
     public const EXTENSIONS = [
         'pdo_mysql', 'mbstring', 'openssl', 'tokenizer', 'xml', 'ctype', 'json',
