@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * API dos jogos originais da plataforma: Mines, Dice, Plinko, Crash e Double.
+ * API dos jogos originais da plataforma: Mines, Dice, Plinko, Crash, Double,
+ * Tower, HiLo e Wheel.
  * O navegador só envia a aposta e as escolhas do jogador; o resultado é
  * sempre calculado no servidor.
  */
@@ -62,6 +63,25 @@ class OriginalsController extends Controller
             $data['round'] = $this->crashResolve($open);
         }
 
+        if ($game === 'tower') {
+            $data['multipliers'] = [];
+            foreach (range(1, 4) as $bombs) {
+                $data['multipliers'][$bombs] = array_map(fn ($row) => OriginalGames::towerMultiplier($bombs, $row, $edge), range(1, OriginalGames::TOWER_ROWS));
+            }
+            if ($open) {
+                $data['round'] = $this->towerPublicState($open);
+            }
+        }
+
+        if ($open && $game === 'hilo') {
+            $data['round'] = $this->hiloPublicState($open);
+        }
+
+        if ($game === 'wheel') {
+            $data['layout'] = array_map(fn ($c) => OriginalGames::WHEEL_COLORS[$c], str_split(OriginalGames::WHEEL_LAYOUT));
+            $data['payouts'] = OriginalGames::WHEEL_PAYOUT;
+        }
+
         return response()->json($data);
     }
 
@@ -100,6 +120,301 @@ class OriginalsController extends Controller
         }
 
         return $this->instant($request, 'plinko', fn (ProvablyFair $pf) => OriginalGames::plinko($pf, $risk, $this->edge()) + ['risk' => $risk]);
+    }
+
+    public function wheel(Request $request)
+    {
+        $color = (string) $request->input('color');
+        if (!array_key_exists($color, OriginalGames::WHEEL_PAYOUT)) {
+            return $this->error('Escolha uma cor: preto, vermelho, verde ou amarelo.');
+        }
+
+        return $this->instant($request, 'wheel', fn (ProvablyFair $pf) => OriginalGames::wheel($pf, $color) + ['bet_color' => $color]);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Tower                                                                 */
+    /* ------------------------------------------------------------------ */
+
+    public function towerStart(Request $request)
+    {
+        $user = $this->user($request, 'tower');
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        $bombs = (int) $request->input('bombs', 1);
+        if ($bombs < 1 || $bombs > 4) {
+            return $this->error('Escolha entre 1 e 4 bombas por andar.');
+        }
+
+        $open = OriginalRound::where('user_id', $user->id)->where('game', 'tower')->where('status', 'open')->first();
+        if ($open) {
+            return response()->json(['message' => 'Você tem uma rodada em andamento.', 'round' => $this->towerPublicState($open)], 409);
+        }
+
+        $bet = $this->betAmount($request);
+        if ($bet instanceof JsonResponse) {
+            return $bet;
+        }
+
+        $pf = ProvablyFair::make($request->input('client_seed'));
+        $round = $this->open($user, 'tower', $bet, $pf, [
+            'bombs'  => $bombs,
+            'layout' => OriginalGames::towerLayout($pf, $bombs),
+            'picks'  => [],
+        ]);
+
+        if (!$round) {
+            return $this->error('Saldo insuficiente.');
+        }
+
+        return response()->json(['round' => $this->towerPublicState($round), 'balance' => $this->wallet->balance($user)]);
+    }
+
+    public function towerReveal(Request $request)
+    {
+        $user = $this->user($request, 'tower');
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        $col = (int) $request->input('col', -1);
+        if ($col < 0 || $col >= OriginalGames::TOWER_COLS) {
+            return $this->error('Porta inválida.');
+        }
+
+        $result = DB::transaction(function () use ($user, $request, $col) {
+            $round = $this->lockRound($user, (string) $request->input('round'), 'tower');
+            if (!$round) {
+                return null;
+            }
+
+            $state = $round->state;
+            $row = count($state['picks']);
+            $state['picks'][] = $col;
+
+            if (in_array($col, $state['layout'][$row], true)) {
+                $state['hit'] = $row;
+                return $this->close($user, $round, 0.0, $state);
+            }
+
+            $multiplier = OriginalGames::towerMultiplier($state['bombs'], count($state['picks']), $this->edge());
+
+            // chegou ao topo: recebe automaticamente
+            if (count($state['picks']) >= OriginalGames::TOWER_ROWS) {
+                return $this->close($user, $round, $multiplier, $state);
+            }
+
+            $round->update(['state' => $state, 'multiplier' => $multiplier]);
+
+            return $round;
+        });
+
+        if (!$result) {
+            return $this->error('Rodada não encontrada ou já encerrada.', 404);
+        }
+
+        return response()->json(['round' => $this->towerPublicState($result), 'balance' => $this->wallet->balance($user)]);
+    }
+
+    public function towerCashout(Request $request)
+    {
+        $user = $this->user($request, 'tower');
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        $result = DB::transaction(function () use ($user, $request) {
+            $round = $this->lockRound($user, (string) $request->input('round'), 'tower');
+            if (!$round || empty($round->state['picks'])) {
+                return null;
+            }
+
+            $multiplier = OriginalGames::towerMultiplier($round->state['bombs'], count($round->state['picks']), $this->edge());
+
+            return $this->close($user, $round, $multiplier, $round->state);
+        });
+
+        if (!$result) {
+            return $this->error('Suba pelo menos um andar antes de retirar.');
+        }
+
+        return response()->json(['round' => $this->towerPublicState($result), 'balance' => $this->wallet->balance($user)]);
+    }
+
+    private function towerPublicState(OriginalRound $round): array
+    {
+        $state = $round->state;
+        $finished = $round->status !== 'open';
+        $edge = $this->edge();
+        $climbed = count($state['picks']) - (isset($state['hit']) ? 1 : 0);
+
+        return [
+            'round'           => $round->round,
+            'status'          => $round->status,
+            'bet'             => $round->bet,
+            'bombs'           => $state['bombs'],
+            'picks'           => $state['picks'],
+            'hit'             => $state['hit'] ?? null,
+            // andares já passados são revelados; o resto só no fim
+            'layout'          => $finished ? $state['layout'] : array_slice($state['layout'], 0, $climbed),
+            'multiplier'      => OriginalGames::towerMultiplier($state['bombs'], $climbed, $edge),
+            'next_multiplier' => $climbed < OriginalGames::TOWER_ROWS ? OriginalGames::towerMultiplier($state['bombs'], $climbed + 1, $edge) : null,
+            'payout'          => $round->payout,
+            'fairness'        => $this->fairness($round),
+        ];
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* HiLo                                                                  */
+    /* ------------------------------------------------------------------ */
+
+    public function hiloStart(Request $request)
+    {
+        $user = $this->user($request, 'hilo');
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        $open = OriginalRound::where('user_id', $user->id)->where('game', 'hilo')->where('status', 'open')->first();
+        if ($open) {
+            return response()->json(['message' => 'Você tem uma rodada em andamento.', 'round' => $this->hiloPublicState($open)], 409);
+        }
+
+        $bet = $this->betAmount($request);
+        if ($bet instanceof JsonResponse) {
+            return $bet;
+        }
+
+        $pf = ProvablyFair::make($request->input('client_seed'));
+        $round = $this->open($user, 'hilo', $bet, $pf, [
+            'deck'    => OriginalGames::hiloDeck($pf),
+            'pos'     => 0,
+            'odds'    => 1.0,
+            'correct' => 0,
+            'history' => [],
+        ]);
+
+        if (!$round) {
+            return $this->error('Saldo insuficiente.');
+        }
+
+        return response()->json(['round' => $this->hiloPublicState($round), 'balance' => $this->wallet->balance($user)]);
+    }
+
+    public function hiloGuess(Request $request)
+    {
+        $user = $this->user($request, 'hilo');
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        $guess = (string) $request->input('guess');
+
+        $result = DB::transaction(function () use ($user, $request, $guess) {
+            $round = $this->lockRound($user, (string) $request->input('round'), 'hilo');
+            if (!$round) {
+                return null;
+            }
+
+            $state = $round->state;
+            $current = $state['deck'][$state['pos']];
+            $rank = OriginalGames::hiloRank($current);
+
+            if ($guess !== 'skip' && !in_array($guess, OriginalGames::hiloOptions($rank), true)) {
+                return 'invalid';
+            }
+
+            if ($state['pos'] + 1 >= OriginalGames::HILO_DECK) {
+                return 'end';
+            }
+
+            $state['pos']++;
+            $next = $state['deck'][$state['pos']];
+            $won = $guess === 'skip' || OriginalGames::hiloWins($rank, OriginalGames::hiloRank($next), $guess);
+            $state['history'][] = ['card' => $current, 'guess' => $guess, 'won' => $won];
+
+            if (!$won) {
+                return $this->close($user, $round, 0.0, $state);
+            }
+
+            if ($guess !== 'skip') {
+                $state['odds'] *= 1 / OriginalGames::hiloChance($rank, $guess);
+                $state['correct']++;
+            }
+
+            $multiplier = $state['correct'] > 0 ? OriginalGames::hiloMultiplier($state['odds'], $this->edge()) : 0.0;
+            $round->update(['state' => $state, 'multiplier' => $multiplier]);
+
+            return $round;
+        });
+
+        if ($result === 'invalid') {
+            return $this->error('Palpite inválido para esta carta.');
+        }
+        if ($result === 'end') {
+            return $this->error('Limite de cartas atingido: retire o prêmio.');
+        }
+        if (!$result) {
+            return $this->error('Rodada não encontrada ou já encerrada.', 404);
+        }
+
+        return response()->json(['round' => $this->hiloPublicState($result), 'balance' => $this->wallet->balance($user)]);
+    }
+
+    public function hiloCashout(Request $request)
+    {
+        $user = $this->user($request, 'hilo');
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        $result = DB::transaction(function () use ($user, $request) {
+            $round = $this->lockRound($user, (string) $request->input('round'), 'hilo');
+            if (!$round || $round->state['correct'] < 1) {
+                return null;
+            }
+
+            return $this->close($user, $round, OriginalGames::hiloMultiplier($round->state['odds'], $this->edge()), $round->state);
+        });
+
+        if (!$result) {
+            return $this->error('Acerte pelo menos um palpite antes de retirar.');
+        }
+
+        return response()->json(['round' => $this->hiloPublicState($result), 'balance' => $this->wallet->balance($user)]);
+    }
+
+    private function hiloPublicState(OriginalRound $round): array
+    {
+        $state = $round->state;
+        $edge = $this->edge();
+        $card = $state['deck'][$state['pos']];
+        $rank = OriginalGames::hiloRank($card);
+
+        $options = [];
+        foreach (OriginalGames::hiloOptions($rank) as $guess) {
+            $chance = OriginalGames::hiloChance($rank, $guess);
+            $options[] = [
+                'guess'      => $guess,
+                'chance'     => round($chance * 100, 2),
+                'multiplier' => OriginalGames::hiloMultiplier($state['odds'] / $chance, $edge),
+            ];
+        }
+
+        return [
+            'round'      => $round->round,
+            'status'     => $round->status,
+            'bet'        => $round->bet,
+            'card'       => $card,
+            'history'    => $state['history'],
+            'correct'    => $state['correct'],
+            'multiplier' => $state['correct'] > 0 ? OriginalGames::hiloMultiplier($state['odds'], $edge) : 0.0,
+            'options'    => $round->status === 'open' ? $options : [],
+            'payout'     => $round->payout,
+            'fairness'   => $this->fairness($round),
+        ];
     }
 
     /* ------------------------------------------------------------------ */

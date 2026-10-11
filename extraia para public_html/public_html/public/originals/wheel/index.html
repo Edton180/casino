@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Wheel</title>
+<link rel="stylesheet" href="../_shared/originals.css">
+<style>
+  .wrap { position: relative; width: min(92%, 440px); aspect-ratio: 1; margin-top: 30px; }
+  .wrap canvas { width: 100%; height: 100%; display: block; transition: transform 5s cubic-bezier(.12,.75,.12,1); filter: drop-shadow(0 18px 40px rgba(0,0,0,.5)); }
+  .pin { position: absolute; left: 50%; top: -14px; transform: translateX(-50%); width: 0; height: 0; z-index: 2;
+    border-left: 16px solid transparent; border-right: 16px solid transparent; border-top: 30px solid #fff; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+  .hub { position: absolute; inset: 34%; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #2a4456, #0f1923);
+    box-shadow: 0 0 0 6px rgba(255,255,255,.08), inset 0 4px 12px rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center;
+    flex-direction: column; font-weight: 900; text-align: center; }
+  .hub b { font-size: clamp(22px, 6vw, 34px); } .hub span { color: var(--muted); font-size: 12px; }
+  .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .colors button { border: 2px solid transparent; border-radius: 10px; padding: 10px 4px; font-weight: 900; cursor: pointer; color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.35); }
+  .colors button small { display: block; font-weight: 700; opacity: .8; font-size: 11px; }
+  .colors .black { background: linear-gradient(180deg, #44505f, #1f2730); } .colors .red { background: linear-gradient(180deg, #ff5a67, #c81d2c); }
+  .colors .green { background: linear-gradient(180deg, #2fe07a, #0d8f44); } .colors .yellow { background: linear-gradient(180deg, #ffe08a, #f2a900); color: #2a1a00; }
+  .colors button.active { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.25), 0 4px 0 rgba(0,0,0,.35); }
+</style>
+</head>
+<body>
+<div class="og-app">
+  <aside class="og-side">
+    <div class="og-top"><span class="og-title">🎯 Wheel</span><span class="og-balance"><small>Saldo</small><span data-balance>—</span></span></div>
+    <div>
+      <div class="og-label"><span>Valor da aposta</span></div>
+      <div class="og-field"><input id="bet" type="number" step="0.01" value="1.00"><button data-bet="half">½</button><button data-bet="double">2×</button></div>
+    </div>
+    <div>
+      <div class="og-label"><span>Aposte em uma cor</span><span>54 casas</span></div>
+      <div class="colors" id="colors">
+        <button class="black active" data-color="black">2x<small>26 casas</small></button>
+        <button class="red" data-color="red">3x<small>17 casas</small></button>
+        <button class="green" data-color="green">5x<small>10 casas</small></button>
+        <button class="yellow" data-color="yellow">50x<small>1 casa</small></button>
+      </div>
+    </div>
+    <button id="play" class="og-btn">Girar</button>
+    <div class="og-fair" id="fair"></div>
+    <div class="og-fair">Retorno: preto 96,3% · vermelho 94,4% · verde 92,6% · amarelo 92,6%</div>
+  </aside>
+  <main class="og-stage">
+    <div class="wrap">
+      <div class="pin"></div>
+      <canvas id="wheel" width="880" height="880"></canvas>
+      <div class="hub"><b id="hubMult">—</b><span id="hubText">Escolha uma cor</span></div>
+    </div>
+  </main>
+</div>
+<script src="../_shared/originals.js"></script>
+<script>
+(function () {
+  var COLORS = { black: ['#3a4656', '#1b222c'], red: ['#ff5a67', '#c81d2c'], green: ['#2fe07a', '#0d8f44'], yellow: ['#ffe08a', '#f2a900'] };
+  var PAY = { black: 2, red: 3, green: 5, yellow: 50 };
+  var NAMES = { black: 'Preto', red: 'Vermelho', green: 'Verde', yellow: 'Amarelo' };
+  // mesma ordem do servidor (Y=amarelo, G=verde, R=vermelho, B=preto)
+  var LAYOUT = 'YBGBRBRBGBRBGBRBRBGBRBGBRBRRGBRBRBGBRBGBRBRBGBRBGBRBRB'.split('').map(function (c) { return { Y: 'yellow', G: 'green', R: 'red', B: 'black' }[c]; });
+  var canvas = document.getElementById('wheel'), ctx = canvas.getContext('2d');
+  var color = 'black', busy = false, rotation = 0;
+  var getBet = Originals.betInput(document.getElementById('bet'));
+
+  function drawWheel() {
+    var n = LAYOUT.length, cx = 440, cy = 440, R = 430, r = 300, step = Math.PI * 2 / n;
+    ctx.clearRect(0, 0, 880, 880);
+    // aro externo
+    ctx.beginPath(); ctx.arc(cx, cy, R + 8, 0, Math.PI * 2); ctx.fillStyle = '#0b141b'; ctx.fill();
+    for (var i = 0; i < n; i++) {
+      // casa 0 centrada no topo (sob o ponteiro)
+      var a0 = -Math.PI / 2 - step / 2 + i * step, a1 = a0 + step;
+      var g = ctx.createRadialGradient(cx, cy, r, cx, cy, R);
+      g.addColorStop(0, COLORS[LAYOUT[i]][1]); g.addColorStop(1, COLORS[LAYOUT[i]][0]);
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
+      ctx.arc(cx, cy, R, a0, a1); ctx.arc(cx, cy, r, a1, a0, true); ctx.closePath();
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 3; ctx.stroke();
+    }
+    // brilho interno
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = '#132531'; ctx.fill();
+    for (var k = 0; k < n; k++) {
+      var a = -Math.PI / 2 + k * step;
+      ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R - 6), cy + Math.sin(a) * (R - 6), 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill();
+    }
+  }
+  drawWheel();
+
+  document.querySelectorAll('#colors button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      color = b.dataset.color;
+      document.querySelectorAll('#colors button').forEach(function (x) { x.classList.toggle('active', x === b); });
+    });
+  });
+
+  document.getElementById('play').addEventListener('click', function () {
+    if (busy) return;
+    var btn = this; busy = true; btn.disabled = true;
+    document.getElementById('hubMult').textContent = '...';
+    document.getElementById('hubText').textContent = 'Girando';
+    Originals.sound('click');
+    Originals.api('play', { bet: getBet(), color: color }).then(function (data) {
+      var r = data.result, n = LAYOUT.length, step = 360 / n;
+      // gira várias voltas e para com a casa sorteada sob o ponteiro (pequena variação dentro da casa)
+      var jitter = (Math.random() - .5) * step * .6;
+      var target = 360 * 6 + (360 - r.segment * step) + jitter;
+      rotation = rotation - (rotation % 360) + target;
+      canvas.style.transform = 'rotate(' + rotation + 'deg)';
+      var ticks = setInterval(function () { Originals.sound('tick'); }, 140);
+      setTimeout(function () { clearInterval(ticks); }, 3600);
+      setTimeout(function () {
+        document.getElementById('hubMult').textContent = PAY[r.color] + 'x';
+        document.getElementById('hubText').textContent = NAMES[r.color];
+        document.getElementById('hubMult').style.color = r.color === 'black' ? '#dfe7ef' : COLORS[r.color][0];
+        Originals.result({ won: data.won, payout: data.payout, multiplier: data.won ? r.multiplier : 0 });
+        Originals.fairness(document.getElementById('fair'), data.fairness);
+        busy = false; btn.disabled = false;
+      }, 5100);
+    }).catch(function (e) { Originals.fail(e); busy = false; btn.disabled = false; document.getElementById('hubMult').textContent = '—'; document.getElementById('hubText').textContent = 'Escolha uma cor'; });
+  });
+
+  Originals.init('wheel').catch(function () {});
+})();
+</script>
+</body>
+</html>

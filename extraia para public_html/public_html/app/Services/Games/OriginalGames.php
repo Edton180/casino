@@ -12,6 +12,21 @@ class OriginalGames
     public const CRASH_GROWTH = 0.00006; // multiplicador = e^(0.00006 * ms)
     public const CRASH_MAX = 1000.0;
 
+    /** Tower: 10 andares com 5 portas; 1 a 4 bombas por andar (como no Luck2x). */
+    public const TOWER_ROWS = 10;
+    public const TOWER_COLS = 5;
+
+    /** HiLo: cartas sorteadas com reposição (A=1 ... K=13). */
+    public const HILO_DECK = 200;
+
+    /**
+     * Wheel: 54 casas (mesma distribuição da roda do Luck2x).
+     * Y = amarelo 50x, G = verde 5x, R = vermelho 3x, B = preto 2x.
+     */
+    public const WHEEL_LAYOUT = 'YBGBRBRBGBRBGBRBRBGBRBGBRBRRGBRBRBGBRBGBRBRBGBRBGBRBRB';
+    public const WHEEL_COLORS = ['B' => 'black', 'R' => 'red', 'G' => 'green', 'Y' => 'yellow'];
+    public const WHEEL_PAYOUT = ['black' => 2.0, 'red' => 3.0, 'green' => 5.0, 'yellow' => 50.0];
+
     /** Tabelas de Plinko (12 linhas). São normalizadas para o RTP configurado. */
     public const PLINKO = [
         'low'    => [10, 3, 1.6, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 1.6, 3, 10],
@@ -145,6 +160,113 @@ class OriginalGames
     public static function crashTimeFor(float $multiplier): int
     {
         return (int) ceil(log(max(1.0, $multiplier)) / self::CRASH_GROWTH);
+    }
+
+    /* ---------------------------------------------------------------- Tower */
+
+    /** Posição das bombas em cada andar. */
+    public static function towerLayout(ProvablyFair $pf, int $bombs): array
+    {
+        $rows = [];
+        for ($row = 0; $row < self::TOWER_ROWS; $row++) {
+            $cols = range(0, self::TOWER_COLS - 1);
+            for ($i = self::TOWER_COLS - 1; $i > 0; $i--) {
+                $j = $pf->int($i + 1);
+                [$cols[$i], $cols[$j]] = [$cols[$j], $cols[$i]];
+            }
+            $layout = array_slice($cols, 0, $bombs);
+            sort($layout);
+            $rows[] = $layout;
+        }
+
+        return $rows;
+    }
+
+    /** Multiplicador após subir $rows andares. */
+    public static function towerMultiplier(int $bombs, int $rows, float $edge): float
+    {
+        if ($rows <= 0) {
+            return 0.0;
+        }
+
+        $step = self::TOWER_COLS / (self::TOWER_COLS - $bombs);
+
+        return floor((1 - $edge) * ($step ** $rows) * 10000) / 10000;
+    }
+
+    /* ----------------------------------------------------------------- HiLo */
+
+    /** Sequência de cartas (0–51) da rodada. */
+    public static function hiloDeck(ProvablyFair $pf): array
+    {
+        $deck = [];
+        for ($i = 0; $i < self::HILO_DECK; $i++) {
+            $deck[] = $pf->int(52);
+        }
+
+        return $deck;
+    }
+
+    public static function hiloRank(int $card): int
+    {
+        return $card % 13 + 1;
+    }
+
+    /** Palpites permitidos para a carta atual. */
+    public static function hiloOptions(int $rank): array
+    {
+        return match (true) {
+            $rank === 1  => ['higher', 'same'],
+            $rank === 13 => ['lower', 'same'],
+            default      => ['higher_eq', 'lower_eq'],
+        };
+    }
+
+    /** Chance (0–1) de acerto do palpite. */
+    public static function hiloChance(int $rank, string $guess): float
+    {
+        return match ($guess) {
+            'higher_eq' => (14 - $rank) / 13,
+            'lower_eq'  => $rank / 13,
+            'higher'    => (13 - $rank) / 13,
+            'lower'     => ($rank - 1) / 13,
+            'same'      => 1 / 13,
+            default     => 0.0,
+        };
+    }
+
+    public static function hiloWins(int $current, int $next, string $guess): bool
+    {
+        return match ($guess) {
+            'higher_eq' => $next >= $current,
+            'lower_eq'  => $next <= $current,
+            'higher'    => $next > $current,
+            'lower'     => $next < $current,
+            'same'      => $next === $current,
+            default     => false,
+        };
+    }
+
+    /** A vantagem da casa é aplicada uma única vez sobre o produto das odds. */
+    public static function hiloMultiplier(float $odds, float $edge): float
+    {
+        return floor((1 - $edge) * $odds * 10000) / 10000;
+    }
+
+    /* ---------------------------------------------------------------- Wheel */
+
+    public static function wheel(ProvablyFair $pf, string $color): array
+    {
+        $segment = $pf->int(strlen(self::WHEEL_LAYOUT));
+        $result = self::WHEEL_COLORS[self::WHEEL_LAYOUT[$segment]];
+        $won = $result === $color;
+
+        return [
+            'segment'    => $segment,
+            'color'      => $result,
+            'multiplier' => $won ? self::WHEEL_PAYOUT[$color] : 0.0,
+            'won'        => $won,
+        ];
     }
 
     private static function binomial(int $n, int $k): int

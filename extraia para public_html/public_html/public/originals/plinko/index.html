@@ -34,7 +34,7 @@
 (function () {
   var ROWS = 12, W = 640, H = 560, TOP = 40, GAP_Y = 38, GAP_X = 44;
   var canvas = document.getElementById('board'), ctx = canvas.getContext('2d');
-  var risk = 'medium', tables = null, balls = [], flashes = {};
+  var risk = 'medium', tables = null, balls = [], flashes = {}, pegHits = {};
   var getBet = Originals.betInput(document.getElementById('bet'));
 
   function pegX(row, col) { return W / 2 + (col - row / 2) * GAP_X; }
@@ -49,25 +49,53 @@
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#fff';
+    var now = performance.now();
     for (var r = 2; r < ROWS + 1; r++) {
       for (var c = 0; c <= r; c++) {
         if (r === ROWS) continue;
-        ctx.beginPath(); ctx.arc(pegX(r, c), pegY(r), 4, 0, Math.PI * 2); ctx.fill();
+        var hit = pegHits[r + ':' + c], glow = hit ? Math.max(0, 1 - (now - hit) / 350) : 0;
+        if (glow > 0) {
+          ctx.fillStyle = 'rgba(255,255,255,' + (0.25 * glow) + ')';
+          ctx.beginPath(); ctx.arc(pegX(r, c), pegY(r), 4 + 10 * glow, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = glow > 0 ? '#fff' : '#d6e2ec';
+        ctx.shadowColor = 'rgba(255,255,255,.6)'; ctx.shadowBlur = 6;
+        ctx.beginPath(); ctx.arc(pegX(r, c), pegY(r), 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
       }
     }
     var table = tables ? tables[risk] : [];
     for (var i = 0; i <= ROWS; i++) {
       var x = bucketX(i), m = table[i];
       var lift = flashes[i] ? 6 : 0;
-      ctx.fillStyle = colorFor(m || 0);
+      var col = colorFor(m || 0);
+      ctx.fillStyle = 'rgba(0,0,0,.35)';
+      roundRect(x - GAP_X / 2 + 2, BUCKET_Y + 5 - lift / 2, GAP_X - 4, 30, 6); ctx.fill();
+      var grad = ctx.createLinearGradient(0, BUCKET_Y - lift, 0, BUCKET_Y + 30 - lift);
+      grad.addColorStop(0, col); grad.addColorStop(1, shade(col));
+      if (flashes[i]) { ctx.shadowColor = col; ctx.shadowBlur = 24; }
+      ctx.fillStyle = grad;
       roundRect(x - GAP_X / 2 + 2, BUCKET_Y - lift, GAP_X - 4, 30, 6); ctx.fill();
+      ctx.shadowBlur = 0;
       ctx.fillStyle = '#1a1a1a'; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center';
       ctx.fillText(m !== undefined ? m + 'x' : '', x, BUCKET_Y + 19 - lift);
     }
     balls.forEach(function (b) {
-      ctx.fillStyle = '#ff2d55'; ctx.beginPath(); ctx.arc(b.x, b.y, 8, 0, Math.PI * 2); ctx.fill();
+      b.trail.forEach(function (p, k) {
+        ctx.fillStyle = 'rgba(255,45,85,' + (k / b.trail.length * 0.35) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 8 * k / b.trail.length, 0, Math.PI * 2); ctx.fill();
+      });
+      var g = ctx.createRadialGradient(b.x - 3, b.y - 3, 1, b.x, b.y, 9);
+      g.addColorStop(0, '#ffd0db'); g.addColorStop(.45, '#ff2d55'); g.addColorStop(1, '#a3001f');
+      ctx.shadowColor = '#ff2d55'; ctx.shadowBlur = 14;
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, 8.5, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
     });
+  }
+
+  function shade(hex) {
+    var n = parseInt(hex.slice(1), 16), f = 0.6;
+    return 'rgb(' + Math.round((n >> 16) * f) + ',' + Math.round(((n >> 8) & 255) * f) + ',' + Math.round((n & 255) * f) + ')';
   }
 
   function roundRect(x, y, w, h, r) {
@@ -88,17 +116,27 @@
 
   function drop(data) {
     var pts = waypoints(data.result.path), seg = 0, t = 0;
-    var ball = { x: pts[0].x, y: pts[0].y };
+    var ball = { x: pts[0].x, y: pts[0].y, trail: [] };
     balls.push(ball);
     function step() {
       t += 0.12;
-      if (t >= 1) { t = 0; seg++; }
+      if (t >= 1) {
+        t = 0; seg++;
+        // acende o pino mais próximo de onde a bola quicou
+        var best = null, bd = 1e9;
+        for (var r = 2; r < ROWS; r++) for (var c = 0; c <= r; c++) {
+          var d = Math.pow(pegX(r, c) - ball.x, 2) + Math.pow(pegY(r) - ball.y, 2);
+          if (d < bd) { bd = d; best = r + ':' + c; }
+        }
+        if (best && bd < 900) { pegHits[best] = performance.now(); Originals.sound('tick'); }
+      }
+      ball.trail.push({ x: ball.x, y: ball.y }); if (ball.trail.length > 8) ball.trail.shift();
       if (seg >= pts.length - 1) {
         balls.splice(balls.indexOf(ball), 1);
         flashes[data.result.bucket] = true;
         setTimeout(function () { delete flashes[data.result.bucket]; }, 250);
         Originals.setBalance(data.balance);
-        if (data.result.multiplier >= 1) Originals.toast(data.result.multiplier + 'x · ' + Originals.money(data.payout), 'success');
+        Originals.result({ won: data.result.multiplier >= 1, payout: data.payout, multiplier: data.result.multiplier, quiet: data.result.multiplier < 5 });
         return;
       }
       var a = pts[seg], b = pts[seg + 1];

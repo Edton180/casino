@@ -48,3 +48,56 @@ button, input, select { font: inherit; }
 .og-stat span { display: block; color: var(--muted); font-size: 11px; }
 .og-stat b { font-size: 15px; }
 .hidden { display: none !important; }
+
+/* ------------------------------------------------------------------ */
+/* Tema visual v2: profundidade, brilho e animações                     */
+/* ------------------------------------------------------------------ */
+:root { --glow: 0 0 24px rgba(0, 231, 1, .35); --gold: #ffc83d; --purple: #8b5cf6; }
+body { background: radial-gradient(1200px 600px at 70% -10%, #1d3a4d 0%, var(--bg) 55%) fixed; }
+.og-side { background: linear-gradient(180deg, rgba(33,55,67,.95), rgba(26,44,56,.95)); border: 1px solid rgba(255,255,255,.05);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04); }
+.og-stage { background:
+    radial-gradient(600px 300px at 50% 0%, rgba(20,117,225,.18), transparent 70%),
+    radial-gradient(500px 260px at 50% 100%, rgba(0,231,1,.08), transparent 70%),
+    linear-gradient(180deg, #1c3341, #13232e);
+  border: 1px solid rgba(255,255,255,.05); box-shadow: inset 0 0 80px rgba(0,0,0,.35); flex-direction: column; isolation: isolate; }
+.og-stage::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5; z-index: -1;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 32px 32px; mask-image: radial-gradient(circle at 50% 40%, #000 30%, transparent 75%); -webkit-mask-image: radial-gradient(circle at 50% 40%, #000 30%, transparent 75%); }
+.og-btn { background: linear-gradient(180deg, var(--accent-2), var(--accent)); box-shadow: 0 4px 0 #00a301, var(--glow); text-shadow: 0 1px 0 rgba(255,255,255,.25); }
+.og-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #00a301, var(--glow); }
+.og-btn.secondary { background: linear-gradient(180deg, #2f4553, #213743); box-shadow: 0 4px 0 #142430; text-shadow: none; }
+.og-btn.danger { background: linear-gradient(180deg, #ffd166, var(--warn)); box-shadow: 0 4px 0 #b77400, 0 0 24px rgba(245,165,36,.35); }
+.og-title { color: #fff; font-size: 16px; text-shadow: 0 0 18px rgba(255,255,255,.18); }
+.og-field { transition: border-color .15s, box-shadow .15s; }
+.og-field:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(20,117,225,.25); }
+.og-stat { border: 1px solid rgba(255,255,255,.04); }
+.og-stat b { font-variant-numeric: tabular-nums; }
+
+/* barra superior do palco: histórico + som */
+.og-bar { position: absolute !important; top: 10px; left: 10px; right: 10px; display: flex; gap: 8px; align-items: center; z-index: 4; }
+.og-history { display: flex; gap: 6px; overflow: hidden; flex: 1; justify-content: flex-end; mask-image: linear-gradient(90deg, transparent, #000 40px); -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px); }
+.og-chip { flex: none; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; background: rgba(0,0,0,.35);
+  color: var(--muted); border: 1px solid rgba(255,255,255,.06); animation: chipIn .35s ease-out; font-variant-numeric: tabular-nums; }
+.og-chip.win { color: #04140a; background: linear-gradient(180deg, #4dff4e, var(--accent)); border-color: transparent; }
+.og-chip.big { color: #2a1a00; background: linear-gradient(180deg, #ffe08a, var(--gold)); }
+@keyframes chipIn { from { transform: translateX(16px) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
+.og-sound { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.3);
+  color: var(--text); cursor: pointer; font-size: 16px; line-height: 1; }
+
+/* celebração de vitória */
+.og-win { position: absolute !important; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 6; }
+.og-win .box { text-align: center; padding: 18px 28px; border-radius: 18px; background: rgba(8,20,28,.82); border: 2px solid var(--accent);
+  box-shadow: var(--glow), 0 20px 60px rgba(0,0,0,.5); animation: winIn .45s cubic-bezier(.2,1.4,.4,1); backdrop-filter: blur(4px); }
+.og-win .box.big { border-color: var(--gold); box-shadow: 0 0 40px rgba(255,200,61,.45), 0 20px 60px rgba(0,0,0,.5); }
+.og-win .m { font-size: clamp(28px, 7vw, 46px); font-weight: 900; color: var(--accent); text-shadow: 0 0 18px rgba(0,231,1,.6); line-height: 1.1; }
+.og-win .big .m { color: var(--gold); text-shadow: 0 0 18px rgba(255,200,61,.6); }
+.og-win .v { font-size: 16px; font-weight: 800; margin-top: 4px; }
+@keyframes winIn { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.og-win.out { transition: opacity .4s; opacity: 0; }
+.og-confetti { position: absolute !important; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+.og-shake { animation: shake .45s; }
+@keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-7px); } 40%, 60% { transform: translateX(7px); } }
+.og-flash-lose { animation: flashLose .6s; }
+@keyframes flashLose { 0% { box-shadow: inset 0 0 0 0 rgba(237,65,99,0); } 30% { box-shadow: inset 0 0 120px 10px rgba(237,65,99,.45); } 100% { box-shadow: inset 0 0 80px rgba(0,0,0,.35); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

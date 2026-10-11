@@ -9,8 +9,14 @@
   .wheel { width: 100%; max-width: 760px; overflow: hidden; position: relative; padding: 18px 0; }
   .strip { display: flex; gap: 8px; will-change: transform; }
   .tile { flex: none; width: 84px; height: 84px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 22px; }
-  .tile.red { background: #e63946; } .tile.black { background: #262f3c; } .tile.white { background: #f1faee; color: #e63946; }
-  .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #ffd166; z-index: 2; border-radius: 2px; box-shadow: 0 0 12px #ffd166; }
+  .tile { box-shadow: inset 0 2px 0 rgba(255,255,255,.18), inset 0 -4px 0 rgba(0,0,0,.25), 0 6px 14px rgba(0,0,0,.35); }
+  .tile.red { background: linear-gradient(180deg, #ff5a67, #c81d2c); } .tile.black { background: linear-gradient(180deg, #3a4656, #1b222c); }
+  .tile.white { background: linear-gradient(180deg, #ffffff, #d9e4ea); color: #e63946; }
+  .tile.hit { outline: 3px solid #ffd166; box-shadow: 0 0 26px rgba(255,209,102,.8); transform: scale(1.06); transition: transform .3s; }
+  .wheel { mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
+  .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #ffd166; z-index: 2; border-radius: 2px; box-shadow: 0 0 16px #ffd166; }
+  .pointer::before, .pointer::after { content: ""; position: absolute; left: 50%; margin-left: -9px; border: 9px solid transparent; }
+  .pointer::before { top: -2px; border-top-color: #ffd166; } .pointer::after { bottom: -2px; border-bottom-color: #ffd166; }
   .colors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .colors button { border: 2px solid transparent; border-radius: 8px; padding: 12px 4px; font-weight: 900; cursor: pointer; color: #fff; }
   .colors .red { background: #e63946; } .colors .black { background: #262f3c; } .colors .white { background: #f1faee; color: #e63946; }
@@ -88,6 +94,8 @@
 
     Originals.api('play', { bet: getBet(), color: color }).then(function (data) {
       var r = data.result;
+      Array.prototype.forEach.call(strip.querySelectorAll('.hit'), function (t) { t.classList.remove('hit'); });
+      Originals.sound('click');
       strip.style.transition = 'none';
       strip.style.transform = 'translateX(' + offsetFor(ORDER[0], 1) + 'px)';
       strip.offsetHeight; // reflow
@@ -95,6 +103,12 @@
       strip.style.transform = 'translateX(' + offsetFor(r.slot, 6) + 'px)';
 
       setTimeout(function () {
+        var tiles = strip.children, mid = strip.parentNode.getBoundingClientRect();
+        for (var i = 0; i < tiles.length; i++) {
+          var b = tiles[i].getBoundingClientRect();
+          if (b.left <= mid.left + mid.width / 2 && b.right >= mid.left + mid.width / 2) { tiles[i].classList.add('hit'); break; }
+        }
+        Originals.result({ won: data.won, payout: data.payout, multiplier: data.won ? r.multiplier : 0 });
         var res = document.getElementById('result');
         res.className = 'og-result' + (data.won ? '' : ' lose');
         res.textContent = data.won ? '+' + Originals.money(data.payout) : 'Saiu ' + ({ red: 'vermelho', black: 'preto', white: 'branco' })[r.color];

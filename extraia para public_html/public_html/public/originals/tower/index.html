@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Tower</title>
+<link rel="stylesheet" href="../_shared/originals.css">
+<style>
+  .tower { width: min(100%, 440px); display: flex; flex-direction: column-reverse; gap: 6px; padding: 52px 14px 14px;
+    background: linear-gradient(180deg, rgba(139,92,246,.12), rgba(0,0,0,.15)); border-radius: 16px; border: 1px solid rgba(255,255,255,.06);
+    box-shadow: inset 0 0 40px rgba(0,0,0,.35); }
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; position: relative; transition: opacity .2s; }
+  .row.locked { opacity: .45; }
+  .row.active .door { box-shadow: 0 4px 0 #3b2a7a, 0 0 16px rgba(139,92,246,.55); background: linear-gradient(180deg, #7c5cf0, #5a3fd0); }
+  .door { border: 0; height: clamp(28px, 5.2vh, 40px); border-radius: 9px; cursor: pointer; color: #fff; font-weight: 800; font-size: 12px;
+    background: linear-gradient(180deg, #3d5a6e, #2f4553); box-shadow: 0 4px 0 #1a2c38; transition: transform .1s, background .2s;
+    display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+  .row.active .door:hover:not(:disabled) { transform: translateY(-3px); }
+  .door:disabled { cursor: default; }
+  .door.safe { background: radial-gradient(circle at 50% 40%, #13a36a, #0a3f2d); box-shadow: 0 4px 0 #062a20, 0 0 14px rgba(0,231,1,.35); font-size: 18px; }
+  .door.bomb { background: radial-gradient(circle at 50% 40%, #8a1a35, #3a0c18); box-shadow: 0 4px 0 #2d0a14, 0 0 18px rgba(237,65,99,.5); font-size: 18px; }
+  .door.ghost { opacity: .45; }
+  .door .ic { animation: pop .3s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.2); } to { transform: none; } }
+  .flag { position: absolute; right: -6px; top: 50%; transform: translate(100%, -50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+  @media (max-width: 520px) { .flag { display: none; } }
+</style>
+</head>
+<body>
+<div class="og-app">
+  <aside class="og-side">
+    <div class="og-top"><span class="og-title">🗼 Tower</span><span class="og-balance"><small>Saldo</small><span data-balance>—</span></span></div>
+    <div>
+      <div class="og-label"><span>Valor da aposta</span></div>
+      <div class="og-field"><input id="bet" type="number" step="0.01" value="1.00"><button data-bet="half">½</button><button data-bet="double">2×</button></div>
+    </div>
+    <div>
+      <div class="og-label"><span>Dificuldade</span><span>bombas por andar</span></div>
+      <div class="og-tabs" id="level">
+        <button data-bombs="1" class="active">Fácil</button><button data-bombs="2">Médio</button><button data-bombs="3">Difícil</button><button data-bombs="4">Expert</button>
+      </div>
+    </div>
+    <div class="og-row">
+      <div class="og-stat"><span>Multiplicador</span><b id="mult">0,00x</b></div>
+      <div class="og-stat"><span>Próximo andar</span><b id="next">—</b></div>
+    </div>
+    <button id="play" class="og-btn">Apostar</button>
+    <button id="cashout" class="og-btn danger hidden">Retirar</button>
+    <div class="og-fair" id="fair"></div>
+    <div class="og-fair">RTP: <span data-rtp>—</span> · 10 andares, 5 portas</div>
+  </aside>
+  <main class="og-stage">
+    <div id="result" class="og-result hidden"></div>
+    <div class="tower" id="tower"></div>
+  </main>
+</div>
+<script src="../_shared/originals.js"></script>
+<script>
+(function () {
+  var ROWS = 10, COLS = 5;
+  var towerEl = document.getElementById('tower');
+  var playBtn = document.getElementById('play'), cashBtn = document.getElementById('cashout');
+  var resultEl = document.getElementById('result');
+  var getBet = Originals.betInput(document.getElementById('bet'));
+  var bombs = 1, round = null, busy = false, multipliers = null;
+
+  var rows = [];
+  for (var r = 0; r < ROWS; r++) {
+    var row = document.createElement('div'); row.className = 'row';
+    var doors = [];
+    for (var c = 0; c < COLS; c++) {
+      var d = document.createElement('button'); d.className = 'door'; d.dataset.col = c; d.disabled = true;
+      d.addEventListener('click', onDoor); row.appendChild(d); doors.push(d);
+    }
+    towerEl.appendChild(row); rows.push({ el: row, doors: doors });
+  }
+
+  function fmt(v) { return Number(v || 0).toFixed(2).replace('.', ',') + 'x'; }
+
+  function render(r) {
+    round = r;
+    var open = r && r.status === 'open';
+    var level = r ? r.bombs : bombs;
+    var climbed = r ? r.picks.length - (r.hit !== null && r.hit !== undefined ? 1 : 0) : 0;
+    rows.forEach(function (row, ri) {
+      var active = open && ri === r.picks.length;
+      row.el.className = 'row' + (active ? ' active' : '') + (!active && (!r || ri > (r ? r.picks.length : 0)) ? ' locked' : '');
+      row.doors.forEach(function (d, ci) {
+        d.className = 'door'; d.disabled = !active;
+        d.innerHTML = multipliers ? fmt(multipliers[level][ri]) : '';
+        if (!r) return;
+        var picked = r.picks[ri] === ci;
+        var bombsRow = r.layout && r.layout[ri];
+        if (picked && r.hit === ri) { d.className = 'door bomb'; d.innerHTML = '<span class="ic">💣</span>'; }
+        else if (picked) { d.className = 'door safe'; d.innerHTML = '<span class="ic">⭐</span>'; }
+        else if (bombsRow && r.status !== 'open' && bombsRow.indexOf(ci) !== -1) { d.className = 'door bomb ghost'; d.innerHTML = '💣'; }
+        else if (bombsRow && ri < climbed && bombsRow.indexOf(ci) !== -1) { d.className = 'door bomb ghost'; d.innerHTML = '💣'; }
+      });
+    });
+    document.getElementById('mult').textContent = fmt(r ? r.multiplier : 0);
+    document.getElementById('next').textContent = open && r.next_multiplier ? fmt(r.next_multiplier) : '—';
+    playBtn.classList.toggle('hidden', !!open);
+    cashBtn.classList.toggle('hidden', !open);
+    cashBtn.disabled = !open || climbed < 1;
+    cashBtn.textContent = open && climbed ? 'Retirar ' + Originals.money(r.bet * r.multiplier) : 'Retirar';
+    document.querySelectorAll('#level button').forEach(function (b) { b.disabled = !!open; });
+    Originals.fairness(document.getElementById('fair'), r && r.fairness);
+    resultEl.classList.add('hidden');
+    if (r && r.status === 'lost') { resultEl.className = 'og-result lose'; resultEl.textContent = 'Bomba! Tente de novo.'; }
+  }
+
+  function finish(r) {
+    if (r.status === 'open') { Originals.sound('tick'); return; }
+    if (r.status === 'lost') Originals.shake(towerEl);
+    Originals.result({ won: r.status === 'won', payout: r.payout, multiplier: r.status === 'won' ? r.multiplier : 0 });
+  }
+
+  function onDoor(e) {
+    if (busy || !round || round.status !== 'open') return;
+    busy = true;
+    Originals.api('reveal', { round: round.round, col: Number(e.currentTarget.dataset.col) })
+      .then(function (data) { render(data.round); finish(data.round); })
+      .catch(Originals.fail)
+      .finally(function () { busy = false; });
+  }
+
+  document.querySelectorAll('#level button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      bombs = Number(b.dataset.bombs);
+      document.querySelectorAll('#level button').forEach(function (x) { x.classList.toggle('active', x === b); });
+      if (!round || round.status !== 'open') render(round && round.bombs === bombs ? round : null);
+    });
+  });
+
+  playBtn.addEventListener('click', function () {
+    if (busy) return;
+    busy = true; playBtn.disabled = true; Originals.sound('click');
+    Originals.api('start', { bet: getBet(), bombs: bombs })
+      .then(function (data) { render(data.round); })
+      .catch(function (err) { if (err.status === 409 && err.body.round) render(err.body.round); else Originals.fail(err); })
+      .finally(function () { busy = false; playBtn.disabled = false; });
+  });
+
+  cashBtn.addEventListener('click', function () {
+    if (busy || !round) return;
+    busy = true; cashBtn.disabled = true;
+    Originals.api('cashout', { round: round.round })
+      .then(function (data) { render(data.round); finish(data.round); })
+      .catch(Originals.fail)
+      .finally(function () { busy = false; });
+  });
+
+  render(null);
+  Originals.init('tower').then(function (info) {
+    multipliers = info.multipliers;
+    if (info.round) {
+      bombs = info.round.bombs;
+      document.querySelectorAll('#level button').forEach(function (x) { x.classList.toggle('active', Number(x.dataset.bombs) === bombs); });
+    }
+    render(info.round || null);
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

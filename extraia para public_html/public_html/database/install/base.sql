@@ -322,7 +322,10 @@ INSERT INTO `category_game` VALUES
 (23,12201),
 (23,12202),
 (23,12203),
-(23,12204);
+(23,12204),
+(23,12205),
+(23,12206),
+(23,12207);
 /*!40000 ALTER TABLE `category_game` ENABLE KEYS */;
 DROP TABLE IF EXISTS `currencies`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -9071,7 +9074,10 @@ INSERT INTO `games` VALUES
 (12201,148,NULL,'crash','Crash','crash','originals','O multiplicador sobe até quebrar. Retire antes!','/originals/crash/cover.svg','1','html5',0,1,0,0,0,97,'source',0,1,1,'2026-10-11 06:32:51','2026-10-11 06:32:51',NULL),
 (12202,148,NULL,'dice','Dice','dice','originals','Escolha o alvo e a chance: role acima ou abaixo.','/originals/dice/cover.svg','1','html5',0,1,0,0,0,97,'source',0,1,1,'2026-10-11 06:32:51','2026-10-11 06:32:51',NULL),
 (12203,148,NULL,'plinko','Plinko','plinko','originals','Solte a bola e veja onde ela cai.','/originals/plinko/cover.svg','1','html5',0,1,0,0,0,97,'source',0,1,1,'2026-10-11 06:32:51','2026-10-11 06:32:51',NULL),
-(12204,148,NULL,'double','Double','double','originals','Vermelho, preto ou branco 14x.','/originals/double/cover.svg','1','html5',0,1,0,0,0,97,'source',0,1,1,'2026-10-11 06:32:51','2026-10-11 06:32:51',NULL);
+(12204,148,NULL,'double','Double','double','originals','Vermelho, preto ou branco 14x.','/originals/double/cover.svg','1','html5',0,1,0,0,0,97,'source',0,1,1,'2026-10-11 06:32:51','2026-10-11 06:32:51',NULL),
+(12205,148,NULL,'tower','Tower','tower','originals','Suba os 10 andares escolhendo portas sem bomba. Retire quando quiser.','/originals/tower/cover.svg','1','html5',0,1,0,0,0,97,'source',0,1,1,'2026-10-11 08:03:39','2026-10-11 08:03:39',NULL),
+(12206,148,NULL,'hilo','HiLo','hilo','originals','A próxima carta é maior ou menor? Acumule o multiplicador.','/originals/hilo/cover.svg','1','html5',0,1,0,0,0,97,'source',0,1,1,'2026-10-11 08:03:39','2026-10-11 08:03:39',NULL),
+(12207,148,NULL,'wheel','Wheel','wheel','originals','Gire a roda: preto 2x, vermelho 3x, verde 5x, amarelo 50x.','/originals/wheel/cover.svg','1','html5',0,1,0,0,0,97,'source',0,1,1,'2026-10-11 08:03:39','2026-10-11 08:03:39',NULL);
 /*!40000 ALTER TABLE `games` ENABLE KEYS */;
 DROP TABLE IF EXISTS `games_keys`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -9413,7 +9419,8 @@ INSERT INTO `migrations` VALUES
 (106,'2024_03_21_000005_add_status_and_logs_to_transactions_table',69),
 (107,'2026_10_11_000000_add_modern_payment_gateways',69),
 (108,'2026_10_12_000000_convert_tables_to_innodb',69),
-(110,'2026_10_12_000001_add_originals_games_and_paypal',70);
+(110,'2026_10_12_000001_add_originals_games_and_paypal',70),
+(111,'2026_10_13_000000_add_tower_hilo_wheel_originals',71);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 DROP TABLE IF EXISTS `mission_users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

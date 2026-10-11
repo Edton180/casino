@@ -7,15 +7,19 @@
 <link rel="stylesheet" href="../_shared/originals.css">
 <style>
   .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: min(100%, 460px); aspect-ratio: 1; }
-  .cell { border: 0; border-radius: 10px; background: var(--line); cursor: pointer; position: relative;
-    box-shadow: 0 5px 0 #1a2c38; transition: transform .1s, background .2s; display: flex; align-items: center; justify-content: center; font-size: clamp(18px, 6vw, 34px); }
-  .cell:hover:not(:disabled) { transform: translateY(-3px); background: #557086; }
+  .cell { border: 0; border-radius: 12px; background: linear-gradient(180deg, #3d5a6e, #2f4553); cursor: pointer; position: relative;
+    box-shadow: 0 6px 0 #1a2c38, inset 0 1px 0 rgba(255,255,255,.12); transition: transform .12s, background .2s, box-shadow .2s;
+    display: flex; align-items: center; justify-content: center; padding: 14%; }
+  .cell:hover:not(:disabled) { transform: translateY(-4px); background: linear-gradient(180deg, #557086, #3d5a6e); box-shadow: 0 10px 0 #1a2c38, 0 0 18px rgba(20,117,225,.35); }
   .cell:disabled { cursor: default; }
-  .cell.gem { background: #0b3d2e; box-shadow: 0 5px 0 #062a20; }
-  .cell.mine { background: #4a1220; box-shadow: 0 5px 0 #2d0a14; }
-  .cell.ghost { opacity: .45; }
-  .cell .ic { animation: pop .25s ease-out; }
-  @keyframes pop { from { transform: scale(.2); } to { transform: scale(1); } }
+  .cell.gem { background: radial-gradient(circle at 50% 40%, #0f5a43, #0a2f26); box-shadow: 0 6px 0 #062a20, 0 0 22px rgba(0,231,1,.35); }
+  .cell.mine { background: radial-gradient(circle at 50% 40%, #7a1730, #3a0c18); box-shadow: 0 6px 0 #2d0a14, 0 0 26px rgba(237,65,99,.5); }
+  .cell.ghost { opacity: .4; box-shadow: 0 6px 0 #1a2c38; }
+  .cell svg { width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(0,0,0,.4)); }
+  .cell .ic { animation: pop .3s cubic-bezier(.2,1.6,.4,1); display: block; width: 100%; height: 100%; }
+  .cell.mine .ic { animation: boom .45s ease-out; }
+  @keyframes pop { from { transform: scale(.2) rotate(-20deg); } to { transform: none; } }
+  @keyframes boom { 0% { transform: scale(.2); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
 </style>
 </head>
 <body>
@@ -80,6 +84,13 @@
     grid.appendChild(b); cells.push(b);
   }
 
+  var GEM = '<svg viewBox="0 0 64 64"><defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8dffc9"/><stop offset="1" stop-color="#00c776"/></linearGradient></defs>' +
+    '<polygon points="32,6 56,22 32,58 8,22" fill="url(#g1)"/><polygon points="32,6 56,22 32,26" fill="#c8ffe6"/><polygon points="8,22 32,26 32,58" fill="#00a862"/>' +
+    '<polygon points="32,26 56,22 32,58" fill="#04d384"/><polygon points="20,14 32,6 44,14 32,26" fill="#e9fff4" opacity=".55"/></svg>';
+  var BOMB = '<svg viewBox="0 0 64 64"><circle cx="30" cy="36" r="20" fill="#1b1b24"/><circle cx="24" cy="30" r="6" fill="#4b4b5c"/>' +
+    '<rect x="38" y="12" width="8" height="12" rx="2" transform="rotate(35 42 18)" fill="#59596b"/><path d="M46 12 q6 -8 12 -2" stroke="#d9a35b" stroke-width="3" fill="none"/>' +
+    '<circle cx="58" cy="9" r="4" fill="#ffc83d"/><circle cx="58" cy="9" r="2" fill="#fff"/></svg>';
+
   function fmtMult(v) { return Number(v || 0).toFixed(2).replace('.', ',') + 'x'; }
 
   function render(r) {
@@ -89,10 +100,10 @@
       c.className = 'cell'; c.innerHTML = '';
       c.disabled = !open || (r && r.revealed.indexOf(idx) !== -1);
       if (!r) return;
-      if (r.revealed.indexOf(idx) !== -1) { c.classList.add('gem'); c.innerHTML = '<span class="ic">💎</span>'; }
+      if (r.revealed.indexOf(idx) !== -1) { c.classList.add('gem'); c.innerHTML = '<span class="ic">' + GEM + '</span>'; }
       if (r.layout) {
-        if (r.layout.indexOf(idx) !== -1) { c.classList.add('mine'); c.innerHTML = '<span class="ic">💣</span>'; if (r.hit !== idx) c.classList.add('ghost'); }
-        else if (r.revealed.indexOf(idx) === -1) { c.classList.add('gem', 'ghost'); c.innerHTML = '💎'; }
+        if (r.layout.indexOf(idx) !== -1) { c.classList.add('mine'); c.innerHTML = '<span class="ic">' + BOMB + '</span>'; if (r.hit !== idx) c.classList.add('ghost'); }
+        else if (r.revealed.indexOf(idx) === -1) { c.classList.add('gem', 'ghost'); c.innerHTML = GEM; }
       }
     });
     document.getElementById('mult').textContent = fmtMult(r ? r.multiplier : 0);
@@ -105,8 +116,14 @@
     Originals.fairness(document.getElementById('fair'), r && r.fairness);
 
     resultEl.classList.add('hidden');
-    if (r && r.status === 'won') { resultEl.className = 'og-result'; resultEl.textContent = '+' + Originals.money(r.payout) + ' (' + fmtMult(r.multiplier) + ')'; }
     if (r && r.status === 'lost') { resultEl.className = 'og-result lose'; resultEl.textContent = 'Você encontrou uma mina!'; }
+  }
+
+  // efeitos só quando a rodada termina por uma jogada (não ao reabrir o jogo)
+  function finish(r) {
+    if (!r || r.status === 'open') { Originals.sound('tick'); return; }
+    if (r.status === 'lost') Originals.shake(grid);
+    Originals.result({ won: r.status === 'won', payout: r.payout, multiplier: r.status === 'won' ? r.multiplier : 0 });
   }
 
   function onCell(e) {
@@ -114,7 +131,7 @@
     busy = true;
     var idx = Number(e.currentTarget.dataset.index);
     Originals.api('reveal', { round: round.round, cell: idx })
-      .then(function (data) { render(data.round); })
+      .then(function (data) { render(data.round); finish(data.round); })
       .catch(Originals.fail)
       .finally(function () { busy = false; });
   }
@@ -122,6 +139,7 @@
   playBtn.addEventListener('click', function () {
     if (busy) return;
     busy = true; playBtn.disabled = true;
+    Originals.sound('click');
     Originals.api('start', { bet: getBet(), mines: Number(minesSel.value) })
       .then(function (data) { render(data.round); })
       .catch(function (err) { if (err.status === 409 && err.body.round) render(err.body.round); else Originals.fail(err); })
@@ -132,7 +150,7 @@
     if (busy || !round) return;
     busy = true; cashBtn.disabled = true;
     Originals.api('cashout', { round: round.round })
-      .then(function (data) { render(data.round); })
+      .then(function (data) { render(data.round); finish(data.round); })
       .catch(Originals.fail)
       .finally(function () { busy = false; });
   });

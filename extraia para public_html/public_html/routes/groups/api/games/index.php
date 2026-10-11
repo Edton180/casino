@@ -46,11 +46,20 @@ Route::prefix('originals')
     ->group(function ()
     {
         Route::post('{game}/info', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'info'])
-            ->whereIn('game', ['mines', 'dice', 'plinko', 'crash', 'double']);
+            ->whereIn('game', ['mines', 'dice', 'plinko', 'crash', 'double', 'tower', 'hilo', 'wheel']);
 
         Route::post('dice/play', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'dice']);
         Route::post('double/play', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'double']);
         Route::post('plinko/play', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'plinko']);
+        Route::post('wheel/play', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'wheel']);
+
+        Route::post('tower/start', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'towerStart']);
+        Route::post('tower/reveal', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'towerReveal']);
+        Route::post('tower/cashout', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'towerCashout']);
+
+        Route::post('hilo/start', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'hiloStart']);
+        Route::post('hilo/guess', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'hiloGuess']);
+        Route::post('hilo/cashout', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'hiloCashout']);
 
         Route::post('mines/start', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'minesStart']);
         Route::post('mines/reveal', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'minesReveal']);
