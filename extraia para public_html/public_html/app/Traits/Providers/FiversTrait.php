@@ -164,7 +164,7 @@ trait FiversTrait
             if($response->successful()) {
                 $data = $response->json();
 
-                dd($data);
+                return $data;
             }else{
                 return false;
             }
