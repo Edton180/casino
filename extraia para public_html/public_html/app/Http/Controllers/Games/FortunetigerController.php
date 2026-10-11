@@ -100,6 +100,7 @@ class FortunetigerController extends Controller
             "cpl"       => $request->cpl,
             "betamount" => $request->betamount,
             "num_line"  => $request->numline,
+            "lines"     => 5, // linhas fixas do jogo (não confiar no cliente)
             "jackpot"   => 0,
             "free_spin" => 0,
             "free_num"  => 0,

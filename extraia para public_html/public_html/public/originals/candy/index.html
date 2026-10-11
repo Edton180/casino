@@ -89,54 +89,28 @@ background-image: url('Candy.png');
 
 </head>
 <body class="body">
+<script src="../skill-api.js"></script>
 <script>
 function confirmarAposta() {
-    // Obtém o valor da aposta do campo de entrada
-    let valorAposta = document.getElementById("valorAposta").value;
+    const valorAposta = parseFloat(String(document.getElementById("valorAposta").value).replace(',', '.'));
 
-    // Verifica se a aposta está entre 1 e 25
-    if (valorAposta >= 1 && valorAposta <= 25) {
-        // Obtém o usuário do armazenamento local
-        const user = JSON.parse(localStorage.getItem('user'));
-
-        // Verifica se o usuário está presente e possui um id
-        if (user && user.id) {
-            // Obtém o id do usuário
-            const userId = user.id;
-
-            // Obtém o valor de is_demo_agent
-            const isDemoAgent = user.is_demo_agent || 0; // Padrão para 0 se não estiver presente
-
-            // Envia um POST para o PHP com o id do usuário, o valor da aposta e is_demo_agent
-            let xhr = new XMLHttpRequest();
-            xhr.open("POST", "processar_aposta.php", true);
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        if (isDemoAgent === 1) {
-                            // Se isDemoAgent for 1, redirecione para outra página
-                            window.location.href = `jogo2.html?aposta=${encodeURIComponent(valorAposta)}&is_demo_agent=${encodeURIComponent(isDemoAgent)}`;
-                        } else {
-                            // Caso contrário, redirecione para a página de jogo
-                            window.location.href = `jogo.html?aposta=${encodeURIComponent(valorAposta)}&is_demo_agent=${encodeURIComponent(isDemoAgent)}`;
-                        }
-                    } else {
-                        alert("Erro ao processar a aposta. Por favor, tente novamente mais tarde.");
-                    }
-                }
-            };
-            xhr.send("user_id=" + encodeURIComponent(userId) + "&aposta=" + encodeURIComponent(valorAposta));
-        } else {
-            // Se o usuário não estiver presente ou não tiver um id, exibe uma mensagem de erro
-            alert("Erro ao obter o ID do usuário. Por favor, faça login novamente.");
-        }
-    } else {
-        // Se a aposta estiver fora do intervalo permitido, exibe uma mensagem de erro
+    if (!(valorAposta >= 1 && valorAposta <= 25)) {
         alert("A aposta deve ser entre 1 a 25 reais !");
+        return;
     }
-}
 
+    const botao = document.querySelector('#apostaForm button');
+    if (botao) botao.disabled = true;
+
+    // A aposta é debitada no servidor, identificada pelo token do jogo (não pelo navegador)
+    SkillGame.start(valorAposta).then(function (data) {
+        const pagina = data.is_demo ? 'jogo2.html' : 'jogo.html';
+        window.location.href = SkillGame.gameUrl(pagina, data);
+    }).catch(function (error) {
+        alert(error.message || "Erro ao processar a aposta. Por favor, tente novamente mais tarde.");
+        if (botao) botao.disabled = false;
+    });
+}
 </script>
 <div class="flex flex-col items-center justify-center h-screen">
     <h1 class="mb-4">Selecione o Valor</h1>

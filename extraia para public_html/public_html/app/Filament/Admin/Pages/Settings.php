@@ -181,18 +181,6 @@ class Settings extends Page implements HasForms
                         Toggle::make('disable_spin')
                             ->label('Disable Spin')
                         ,
-                        Toggle::make('suitpay_is_enable')
-                            ->label('SuitPay Ativo')
-                        ,
-                        Toggle::make('stripe_is_enable')
-                            ->label('Stripe Ativo')
-                        ,
-
-                        Toggle::make('bspay_is_enable')   // // Adicionar isso
-                        ->label('BsPay Ativo')  // Adicionar isso
-                        ,
-
-                        
                     ])->columns(4),
             ])
             ->statePath('data');

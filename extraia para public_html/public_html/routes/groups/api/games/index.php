@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Games\GameController;
+use App\Http\Controllers\Api\Games\SkillGameController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('games')
@@ -28,4 +29,13 @@ Route::prefix('casinos')
     ->group(function ()
     {
         Route::get('games', [GameController::class, 'allGames']);
+    });
+
+// Jogos de habilidade locais (candy, subway, dino, fruitninja)
+Route::prefix('skillgames')
+    ->middleware('throttle:60,1')
+    ->group(function ()
+    {
+        Route::post('start', [SkillGameController::class, 'start']);
+        Route::post('finish', [SkillGameController::class, 'finish']);
     });

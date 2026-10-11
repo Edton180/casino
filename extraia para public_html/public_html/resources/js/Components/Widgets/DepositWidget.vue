@@ -1,95 +1,24 @@
 <template>
     <div class="full-screen">
-        <div v-if="(paymentType == null || paymentType === '') && wallet && setting">
-            <div class="">
-                <ul>
-                    <li v-if="setting.asaas_is_enable" @click="setPaymentMethod('pix', 'asaas')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
-                        <div class="flex items-center gap-4">
-                            <img :src="`/assets/images/pix.png`" alt="" width="100">
-                            <p>ASAAS PIX</p>
-                        </div>
-                        <div class="flex justify-center items-center text-gray-500 gap-4">
-                            <i class="fa-solid fa-chevron-right ml-2"></i>
-                        </div>
-                    </li>
-                    <li v-if="setting.asaas_is_enable && setting.asaas_credit_card_enable" @click="setPaymentMethod('credit_card', 'asaas')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
-                        <div class="flex items-center gap-4">
-                            <img :src="`/assets/images/credit-card.png`" alt="" width="100">
-                            <p>ASAAS CARTÃO</p>
-                        </div>
-                        <div class="flex justify-center items-center text-gray-500 gap-4">
-                            <i class="fa-solid fa-chevron-right ml-2"></i>
-                        </div>
-                    </li>
-                    <li v-if="setting.mercadopago_is_enable" @click="setPaymentMethod('pix', 'mercadopago')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
-                        <div class="flex items-center gap-4">
-                            <img :src="`/assets/images/pix.png`" alt="" width="100">
-                            <p>MERCADO PAGO PIX</p>
-                        </div>
-                        <div class="flex justify-center items-center text-gray-500 gap-4">
-                            <i class="fa-solid fa-chevron-right ml-2"></i>
-                        </div>
-                    </li>
-                    <li v-if="setting.mercadopago_is_enable && setting.mercadopago_credit_card_enable" @click="setPaymentMethod('credit_card', 'mercadopago')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
-                        <div class="flex items-center gap-4">
-                            <img :src="`/assets/images/credit-card.png`" alt="" width="100">
-                            <p>MERCADO PAGO CARTÃO</p>
-                        </div>
-                        <div class="flex justify-center items-center text-gray-500 gap-4">
-                            <i class="fa-solid fa-chevron-right ml-2"></i>
-                        </div>
-                    </li>
-                    <li v-if="setting.paypal_is_enable" @click="setPaymentMethod('pix', 'paypal')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
-                        <div class="flex items-center gap-4">
-                            <img :src="`/assets/images/pix.png`" alt="" width="100">
-                            <p>PAYPAL PIX</p>
-                        </div>
-                        <div class="flex justify-center items-center text-gray-500 gap-4">
-                            <i class="fa-solid fa-chevron-right ml-2"></i>
-                        </div>
-                    </li>
-                    <li v-if="setting.paypal_is_enable && setting.paypal_credit_card_enable" @click="setPaymentMethod('credit_card', 'paypal')" class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
-                        <div class="flex items-center gap-4">
-                            <img :src="`/assets/images/credit-card.png`" alt="" width="100">
-                            <p>PAYPAL CARTÃO</p>
-                        </div>
-                        <div class="flex justify-center items-center text-gray-500 gap-4">
-                            <i class="fa-solid fa-chevron-right ml-2"></i>
-                        </div>
-                    </li>
-                </ul>
-            </div>
+        <div v-if="!paymentType && wallet && setting" class="w-full">
+            <p v-if="methodsLoaded && paymentMethods.length === 0" class="text-center text-gray-400 py-6">
+                Nenhum método de pagamento disponível no momento.
+            </p>
+            <ul>
+                <li v-for="item in paymentMethods" :key="item.gateway + item.method"
+                    @click="setPaymentMethod(item.method, item.gateway)"
+                    class="bg-white dark:bg-gray-900 cursor-pointer flex justify-between hover:bg-green-700/20 px-4 py-3 mb-3">
+                    <div class="flex items-center gap-4">
+                        <img :src="item.method === 'pix' ? '/assets/images/pix.png' : '/assets/images/credit-card.png'" alt="" width="100">
+                        <p class="uppercase">{{ item.label }}</p>
+                    </div>
+                    <div class="flex justify-center items-center text-gray-500 gap-4">
+                        <i class="fa-solid fa-chevron-right ml-2"></i>
+                    </div>
+                </li>
+            </ul>
         </div>
-        <div v-if="paymentType === 'stripe' && publishableKey && setting && setting.stripe_is_enable" class="p-4">
-            <stripe-checkout
-                ref="checkoutRef"
-                :pk="publishableKey"
-                :sessionId="sessionId"
-            />
-            <div class="flex w-full mt-3 mb-3">
-                <div class="w-36 mr-2">
-                    <label for="currency" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ $t('Currency') }}</label>
-                    <select id="currency" v-model="currency" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-                        <option value="USD">$ {{ $t('Dollar') }}</option>
-                        <option value="BRL">R$ {{ $t('Real') }}</option>
-                    </select>
-                </div>
-                <div class="w-full">
-                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ $t('Amount') }}</label>
-                    <input type="number"
-                           v-model="amount"
-                           class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                           :min="setting.min_deposit"
-                           :max="setting.max_deposit"
-                           :placeholder="$t('0,00')"
-                           required
-                    >
-                </div>
-            </div>
-
-            <button :disabled="!sessionId" @click.prevent="checkoutStripe" class="ui-button-blue rounded w-full">{{ $t('Pay With Stripe') }}</button>
-        </div>
-        <div v-if="setting && paymentType === 'pix' && (setting.suitpay_is_enable || setting.mercadopago_is_enable || setting.digitopay_is_enable || setting.bspay_is_enable)">
+        <div v-if="setting && paymentType">
             <div v-if="showPixQRCode && wallet" class="flex flex-col mt-5">
 
 
@@ -133,7 +62,8 @@
 </div>
 
 <div v-if="showQRCode" class="text-container">
-  <QRCodeVue3 :value="qrcodecopypast"/>
+  <img v-if="qrcodeImage" :src="qrcodeImage" alt="QR Code PIX" width="220" height="220">
+  <QRCodeVue3 v-else :value="qrcodecopypast"/>
 </div>
 
                   </div>
@@ -261,8 +191,12 @@
 
                         <div class="mt-5 w-full flex items-center justify-center">
                             <button type="submit" class="ui-button-blue w-full">
-                                <span class="uppercase font-semibold text-sm">Gerar PIX</span>
+                                <span class="uppercase font-semibold text-sm">{{ paymentType === 'credit_card' ? 'Pagar com cartão' : 'Gerar PIX' }}</span>
                             </button>
+                        </div>
+
+                        <div v-if="paymentMethods.length > 1" class="mt-3 text-container">
+                            <a @click="resetPaymentMethod" class="toggle-text">Escolher outra forma de pagamento</a>
                         </div>
                         
 
@@ -285,69 +219,39 @@
     import HttpApi from "@/Services/HttpApi.js";
     import QRCodeVue3 from "qrcode-vue3";
     import {useAuthStore} from "@/Stores/Auth.js";
-    import { StripeCheckout } from '@vue-stripe/vue-stripe';
     import {useSettingStore} from "@/Stores/SettingStore.js";
 
     export default {
         props: ['showMobile', 'title', 'isFull'],
-        components: { QRCodeVue3, StripeCheckout },
+        components: { QRCodeVue3 },
         data() {
-
             return {
-                    
                 amounts: [30, 50, 100, 250, 500, 1000],
                 showForm: true,
-
                 isLoading: false,
-                minutes: 15,
-                seconds: 0,
-                timer: null,
-                setting: null,
                 wallet: null,
-                      wallet2: {
-        symbol: 'R$'
-      },
                 deposit: {
                     amount: '0',
                     cpf: '',
                     gateway: '',
+                    payment_method: '',
                     accept_bonus: true
                 },
                 selectedAmount: 0,
                 showPixQRCode: false,
+                showCPFInput: true,
                 qrcodecopypast: '',
+                qrcodeImage: null,
                 idTransaction: '',
                 intervalId: null,
+                countdownId: null,
                 paymentType: null,
-
-                /// stripe
-                elementsOptions: {
-                    appearance: {}, // appearance options
-                },
-                confirmParams: {
-                    return_url: null, // success url
-                },
-                successURL: null,
-                cancelURL: null,
-                amount: null,
-                currency: null,
-                publishableKey: null,
-                sessionId: null,
                 paymentGateway: '',
+                paymentMethods: [],
+                methodsLoaded: false,
                 showQRCode: false,
-                paymentMethod: null,
-                creditCard: {
-                    number: '',
-                    name: '',
-                    expiry: '',
-                    cvc: ''
-                }
+                isDarkMode: false,
             }
-        },
-        setup(props) {
-
-
-            return {};
         },
         computed: {
             isAuthenticated() {
@@ -360,290 +264,246 @@
             },
         },
         mounted() {
-            
-                this.checkSetting();
+            this.checkSetting();
 
-                const userData = JSON.parse(localStorage.getItem('user'));
+            let userData = null;
+            try {
+                userData = JSON.parse(localStorage.getItem('user'));
+            } catch (e) {
+                userData = null;
+            }
 
-    // Verificar se o usuário tem CPF cadastrado
-if (userData && userData.cpf) {
-    // Atribuir o CPF recuperado ao modelo de dados do componente
-    this.deposit.cpf = userData.cpf;
-    // Definir uma propriedade para controlar a visibilidade do campo CPF
-    this.showCPFInput = false;
-} else {
-    // Se o usuário não tiver CPF cadastrado, exibir o campo CPF
-    this.showCPFInput = true;
-}
-            this.modalDeposit = new Modal(document.getElementById('modalElDeposit'), {
-                placement: 'center',
-                backdrop: 'dynamic',
-                backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',
-                closable: true,
-                onHide: () => {
-                    this.paymentType = null;
-                },
-                onShow: () => {
+            // Se o usuário já tem CPF cadastrado, não pede de novo
+            if (userData && userData.cpf) {
+                this.deposit.cpf = userData.cpf;
+                this.showCPFInput = false;
+            } else {
+                this.showCPFInput = true;
+            }
 
-                },
-                onToggle: () => {
-
-                },
-
-            });
-               this.setPaymentMethod('pix', 'digitopay');
-
+            const modalEl = document.getElementById('modalElDeposit');
+            if (modalEl && typeof Modal !== 'undefined') {
+                this.modalDeposit = new Modal(modalEl, {
+                    placement: 'center',
+                    backdrop: 'dynamic',
+                    backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',
+                    closable: true,
+                    onHide: () => {
+                        this.resetPaymentMethod();
+                    },
+                });
+            }
         },
         beforeUnmount() {
-            clearInterval(this.timer);
+            this.stopTimers();
             this.paymentType = null;
         },
         methods: {
-            
-                checkSetting() {
-      if (this.setting && !this.setting.desativar_giros) {
-        this.showForm = true;
-      }
-    },
+            checkSetting() {
+                if (this.setting && !this.setting.desativar_giros) {
+                    this.showForm = true;
+                }
+            },
             redirectToHome() {
-    window.location.reload();
+                window.location.reload();
             },
-              toggleQRCode() {
-    this.showQRCode = !this.showQRCode;
-  },
-            getSession: function() {
-                const _this = this;
-                HttpApi.post('stripe/session', { amount: _this.amount, currency: _this.currency}).then(response => {
-                    if(response.data.id) {
-                        _this.sessionId = response.data.id;
+            toggleQRCode() {
+                this.showQRCode = !this.showQRCode;
+            },
+            stopTimers() {
+                clearInterval(this.intervalId);
+                clearInterval(this.countdownId);
+                this.intervalId = null;
+                this.countdownId = null;
+            },
+            getPaymentMethods() {
+                HttpApi.get('wallet/deposit/methods').then(response => {
+                    this.paymentMethods = response.data.methods || [];
+                    this.methodsLoaded = true;
+
+                    // Com apenas um método disponível, já abre o formulário dele
+                    if (this.paymentMethods.length === 1) {
+                        this.setPaymentMethod(this.paymentMethods[0].method, this.paymentMethods[0].gateway);
                     }
-                }).catch(error => { });
+                }).catch(() => {
+                    this.paymentMethods = [];
+                    this.methodsLoaded = true;
+                });
             },
-            checkoutStripe: function() {
+            setPaymentMethod(method, gateway) {
+                this.paymentType = method;
+                this.paymentGateway = gateway;
+            },
+            resetPaymentMethod() {
+                this.stopTimers();
+                this.paymentType = null;
+                this.paymentGateway = '';
+                this.showPixQRCode = false;
+                this.qrcodecopypast = '';
+                this.qrcodeImage = null;
+            },
+            openModalDeposit() {
+                window.location.reload();
+            },
+            startCountdownTimer() {
+                this.$nextTick(() => {
+                    const countdownTimer = document.getElementById('countdown-timer');
+                    const progressBar = document.getElementById('progress-bar');
+                    if (!countdownTimer || !progressBar) {
+                        return;
+                    }
+
+                    const limit = 30 * 60; // o PIX expira em 30 minutos
+                    let totalTime = limit;
+
+                    const updateTimer = () => {
+                        const minutes = Math.floor(totalTime / 60);
+                        const seconds = totalTime % 60;
+
+                        countdownTimer.textContent = (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                        progressBar.style.width = ((totalTime / limit) * 100) + '%';
+
+                        if (totalTime > 0) {
+                            totalTime--;
+                        } else {
+                            this.stopTimers();
+                        }
+                    };
+
+                    clearInterval(this.countdownId);
+                    this.countdownId = setInterval(updateTimer, 1000);
+                    updateTimer();
+                });
+            },
+            showErrors(error) {
                 const _toast = useToast();
-                if(this.amount <= 0 || this.amount === '') {
-                    _toast.error('Você precisa digitar um valor');
+                let data = null;
+                try {
+                    data = JSON.parse(error.request.responseText);
+                } catch (e) {
+                    data = { error: 'Não foi possível processar o pagamento. Tente novamente.' };
+                }
+
+                Object.values(data || {}).forEach(value => {
+                    _toast.error(Array.isArray(value) ? value[0] : `${value}`);
+                });
+            },
+            submitQRCode() {
+                const _this = this;
+                const _toast = useToast();
+                const amount = parseFloat(String(_this.deposit.amount).replace(',', '.'));
+
+                if (!amount || amount <= 0) {
+                    _toast.error(_this.$t('You need to enter a value'));
                     return;
                 }
 
-                this.$refs.checkoutRef.redirectToCheckout();
-            },
-            getPublicKeyStripe: function() {
-                const _this = this;
-                HttpApi.post('stripe/publickey', {}).then(response => {
-                    _this.$nextTick(() => {
-                        _this.publishableKey = response.data.stripe_public_key;
-                        _this.elementsOptions.clientSecret  = response.data.stripe_secret_key;
-                        _this.confirmParams.return_url      = response.data.successURL;
-                    });
-
-                }).catch(error => { });
-            },
-            setPaymentMethod: function(method, gateway) {
-                if(method === 'stripe') {
-                    this.getPublicKeyStripe();
+                if (_this.paymentGateway !== 'stripe' && !_this.deposit.cpf) {
+                    _toast.error(_this.$t('Do you need to enter your CPF or CNPJ'));
+                    return;
                 }
-                this.paymentType = method;
-                this.paymentGateway = gateway;
-                this.paymentMethod = method;
-            },
-            openModalDeposit: function() {
-    window.location.reload();
-            },
-            
-  startCountdownTimer() {
-    this.$nextTick(() => {
-      console.log('Countdown timer started');
-      var countdownTimer = document.getElementById('countdown-timer');
-      var progressBar = document.getElementById('progress-bar');
-      if (!countdownTimer || !progressBar) {
-        console.error('Countdown timer or progress bar elements not found');
-        return;
-      }
 
-      var totalTime = 5 * 60; // Total time in seconds (5 minutes)
+                if (amount < parseFloat(_this.setting.min_deposit)) {
+                    _toast.error('O valor mínimo de depósito é de ' + _this.setting.min_deposit);
+                    return;
+                }
 
-      function updateTimer() {
-        var minutes = Math.floor(totalTime / 60);
-        var seconds = totalTime % 60;
+                if (amount > parseFloat(_this.setting.max_deposit)) {
+                    _toast.error('O valor máximo de depósito é de ' + _this.setting.max_deposit);
+                    return;
+                }
 
-        countdownTimer.textContent =
-          (minutes < 10 ? '0' : '') + minutes + ':' +
-          (seconds < 10 ? '0' : '') + seconds;
+                _this.deposit.gateway = _this.paymentGateway;
+                _this.deposit.payment_method = _this.paymentType;
+                _this.isLoading = true;
 
-        var progressPercentage = (totalTime / (5 * 60)) * 100;
-        progressBar.style.width = progressPercentage + '%';
+                HttpApi.post('wallet/deposit/payment', _this.deposit).then(response => {
+                    const data = response.data || {};
 
-        console.log(`Timer: ${minutes}:${seconds} - Progress: ${progressPercentage}%`);
+                    if (data.redirect_url) {
+                        // Cartão (e PIX do Stripe): checkout seguro hospedado pelo gateway
+                        window.location.href = data.redirect_url;
+                        return;
+                    }
 
-        if (totalTime > 0) {
-          totalTime--;
-        } else {
-          clearInterval(timerInterval);
-          console.log('Countdown timer ended');
-        }
-      }
+                    if (!data.qrcode) {
+                        throw new Error('invalid response');
+                    }
 
-      var timerInterval = setInterval(updateTimer, 1000);
-      updateTimer();
-    });
-  },
-  
-submitQRCode: function(event) {
-    const _this = this;
-    const _toast = useToast();
-    
-    // Verificações iniciais
-    if(_this.deposit.amount === '' || _this.deposit.amount === undefined) {
-        _toast.error(_this.$t('You need to enter a value'));
-        return;
-    }
+                    _this.isLoading = false;
+                    _this.showPixQRCode = true;
+                    _this.idTransaction = data.idTransaction;
+                    _this.qrcodecopypast = data.qrcode;
+                    _this.qrcodeImage = data.qrcode_image || null;
+                    _this.startCountdownTimer();
 
-    if(_this.deposit.cpf === '' || _this.deposit.cpf === undefined) {
-        _toast.error(_this.$t('Do you need to enter your CPF or CNPJ'));
-        return;
-    }
-
-    if(parseFloat(_this.deposit.amount) < parseFloat(_this.setting.min_deposit)) {
-        _toast.error('O valor mínimo de depósito é de '+ _this.setting.min_deposit);
-        return;
-    }
-
-    if(parseFloat(_this.deposit.amount) > parseFloat(_this.setting.max_deposit)) {
-        _toast.error('O valor máximo de depósito é de '+ _this.setting.min_deposit);
-        return;
-    }
-
-    _this.deposit.paymentType = _this.paymentType;
-    _this.deposit.gateway = _this.paymentGateway;
-    _this.deposit.payment_method = _this.paymentMethod;
-
-    if (_this.paymentMethod === 'credit_card') {
-        _this.deposit.credit_card = _this.creditCard;
-    }
-
-    const attemptPayment = (gateway) => {
-        _this.isLoading = true;
-        _this.deposit.gateway = gateway;
-
-        HttpApi.post('wallet/deposit/payment', _this.deposit).then(response => {
-            if (response.data && response.data.qrcode) {
-                _this.showPixQRCode = true;
-                _this.isLoading = false;
-
-                _this.idTransaction = response.data.idTransaction;
-                _this.qrcodecopypast = response.data.qrcode;
-                _this.startCountdownTimer();
-
-                _this.intervalId = setInterval(function () {
-                    _this.checkTransactions(_this.idTransaction);
-                }, 5000);
-            } else if (response.data && response.data.redirect_url) {
-                window.location.href = response.data.redirect_url;
-            } else {
-                throw new Error('Invalid response');
-            }
-        }).catch(error => {
-            Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
-                _toast.error(`${value}`);
-            });
-            _this.showPixQRCode = false;
-            _this.isLoading = false;
-        });
-    };
-
-    attemptPayment(_this.paymentGateway);
-},
-
-            
-            checkTransactions: function(idTransaction) {
-                const _this = this;
-                const _toast = useToast();
-
-                HttpApi.post(_this.paymentGateway+'/consult-status-transaction', { idTransaction: idTransaction }).then(response => {
-                    _toast.success('Pedido concluído com sucesso');
                     clearInterval(_this.intervalId);
-                    _this.openModalDeposit();
+                    _this.intervalId = setInterval(() => _this.checkTransactions(_this.idTransaction), 5000);
                 }).catch(error => {
-                    Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
-                        // _toast.error(`${value}`);
-                    });
+                    if (error && error.request) {
+                        _this.showErrors(error);
+                    } else {
+                        _toast.error('Não foi possível gerar o pagamento. Tente novamente.');
+                    }
+                    _this.showPixQRCode = false;
+                    _this.isLoading = false;
                 });
             },
-            
-            copyQRCode: function(event) {
+            checkTransactions(idTransaction) {
+                const _this = this;
                 const _toast = useToast();
-                var inputElement = document.getElementById("pixcopiaecola");
-                inputElement.select();
-                inputElement.setSelectionRange(0, 99999);  // Para dispositivos móveis
 
-                // Copia o conteúdo para a área de transferência
+                HttpApi.post('wallet/deposit/status', { idTransaction: idTransaction }).then(response => {
+                    const status = response.data.status;
+
+                    if (status === 'PAID') {
+                        _this.stopTimers();
+                        _toast.success('Depósito confirmado com sucesso!');
+                        _this.openModalDeposit();
+                    } else if (status === 'FAILED') {
+                        _this.stopTimers();
+                        _toast.error('O pagamento não foi aprovado.');
+                        _this.resetPaymentMethod();
+                    }
+                }).catch(() => {
+                    // falha momentânea de rede: tenta de novo no próximo ciclo
+                });
+            },
+            copyQRCode() {
+                const _toast = useToast();
+                const text = this.qrcodecopypast;
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => _toast.success('Pix Copiado com sucesso'));
+                    return;
+                }
+
+                const inputElement = document.getElementById("pixcopiaecola");
+                inputElement.select();
+                inputElement.setSelectionRange(0, 99999);
                 document.execCommand("copy");
                 _toast.success('Pix Copiado com sucesso');
             },
-            setAmount: function(amount) {
+            setAmount(amount) {
                 this.deposit.amount = amount;
                 this.selectedAmount = amount;
             },
-            
-            getWallet: function() {
+            getWallet() {
                 const _this = this;
-                const _toast = useToast();
-                _this.isLoadingWallet = true;
 
                 HttpApi.get('profile/wallet')
                     .then(response => {
                         _this.wallet = response.data.wallet;
-                        _this.currency = response.data.wallet.currency;
-                        _this.isLoadingWallet = false;
                     })
                     .catch(error => {
-                        const _this = this;
-                        Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
-                            _toast.error(`${value}`);
-                        });
-                        _this.isLoadingWallet = false;
+                        _this.showErrors(error);
                     });
-            },
-            
-            getSetting: function() {
-                const _this = this;
-                const settingStore = useSettingStore();
-                const settingData = settingStore.setting;
-
-                if(settingData) {
-                    _this.setting = settingData;
-                    _this.amount  = settingData.max_deposit;
-
-                    if(_this.paymentType === 'stripe' && settingData.stripe_is_enable) {
-                        _this.getSession();
-                    }
-                }
             },
         },
         created() {
-            if(this.isAuthenticated) {
+            if (this.isAuthenticated) {
                 this.getWallet();
-                this.getSetting();
-
-                if(this.paymentType === 'stripe') {
-                    this.getSession();
-                    this.currency = 'USD';
-                }
-            }
-        },
-        watch: {
-            amount(oldValue, newValue) {
-                if(this.paymentType === 'stripe') {
-                    this.getSession();
-                    this.currency = 'USD';
-                }
-
-            },
-            currency(oldValue, newValue) {
-                if(this.paymentType === 'stripe') {
-                    this.getSession();
-                }
+                this.getPaymentMethods();
             }
         },
     };

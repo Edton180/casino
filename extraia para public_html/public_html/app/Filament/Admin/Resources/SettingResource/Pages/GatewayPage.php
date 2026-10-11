@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\SettingResource\Pages;
 
 use App\Filament\Admin\Resources\SettingResource;
+use App\Models\Gateway;
 use App\Models\Setting;
 use AymanAlhattami\FilamentPageWithSidebar\Traits\HasPageSidebar;
 use Filament\Forms\Components\Section;
@@ -33,6 +34,8 @@ class GatewayPage extends Page implements HasForms
         return 'Gateways';
     }
 
+    private const TOGGLES = ['mp_is_enable', 'pagseguro_is_enable', 'pagarme_is_enable', 'asaas_is_enable', 'stripe_is_enable'];
+
     public Setting $record;
     public ?array $data = [];
 
@@ -52,9 +55,11 @@ class GatewayPage extends Page implements HasForms
      */
     public function mount(): void
     {
-        $setting = Setting::first();
-        $this->record = $setting;
-        $this->form->fill($setting->toArray());
+        $this->record = Setting::first();
+
+        // Os gateways ficam na tabela "gateways" (mesma tela de credenciais)
+        $gateway = Gateway::first();
+        $this->form->fill($gateway ? $gateway->only(self::TOGGLES) : []);
     }
 
     /**
@@ -73,10 +78,11 @@ class GatewayPage extends Page implements HasForms
                 return;
             }
 
-            $setting = Setting::find($this->record->id);
+            $data = array_intersect_key($this->data, array_flip(self::TOGGLES));
+            $gateway = Gateway::first() ?? new Gateway();
 
-            if($setting->update($this->data)) {
-                Cache::put('setting', $setting);
+            if($gateway->fill($data)->save()) {
+                Cache::forget('setting');
 
                 Notification::make()
                     ->title('Dados alterados')
@@ -102,22 +108,18 @@ class GatewayPage extends Page implements HasForms
         return $form
             ->schema([
                 Section::make('Gateways')
-                    ->description('Ativa ou desative seus gateway de Pagamento')
+                    ->description('Ative ou desative os gateways de pagamento. As credenciais ficam em Pagamentos > Gateway de Pagamentos.')
                     ->schema([
-                        Toggle::make('digitopay_is_enable')
-                            ->label('DigitoPay'),
-                        Toggle::make('sharkpay_is_enable')
-                            ->label('SharkPay Ativo'),
-                        Toggle::make('suitpay_is_enable')
-                            ->label('SuitPay Ativo'),
-                        Toggle::make('stripe_is_enable')
-                            ->label('Stripe Ativo'),
-                        Toggle::make('mercadopago_is_enable')
-                            ->label('Mercado Pago Ativo'),
+                        Toggle::make('mp_is_enable')
+                            ->label('Mercado Pago'),
+                        Toggle::make('pagseguro_is_enable')
+                            ->label('PagSeguro / PagBank'),
+                        Toggle::make('pagarme_is_enable')
+                            ->label('Pagar.me'),
                         Toggle::make('asaas_is_enable')
-                            ->label('Asaas Ativo'),
-                        Toggle::make('bspay_is_enable')
-                            ->label('BsPay/PixUp Ativo'),
+                            ->label('Asaas'),
+                        Toggle::make('stripe_is_enable')
+                            ->label('Stripe'),
                     ])->columns(2)
             ])
             ->statePath('data') ;

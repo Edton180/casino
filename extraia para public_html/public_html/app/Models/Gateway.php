@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Gateway extends Model
 {
@@ -18,216 +17,119 @@ class Gateway extends Model
     protected $table = 'gateways';
 
     /**
+     * Campos com credenciais. São mascarados no modo demo e nunca devem
+     * ser enviados para o frontend.
+     */
+    public const SECRET_FIELDS = [
+        'mp_access_token',
+        'mp_webhook_key',
+        'pagseguro_token',
+        'pagarme_secret_key',
+        'pagarme_webhook_password',
+        'asaas_api_key',
+        'asaas_webhook_key',
+        'stripe_secret_key',
+        'stripe_webhook_key',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array
      */
     protected $fillable = [
+        // Mercado Pago
+        'mp_is_enable',
+        'mp_credit_card_enable',
+        'mp_access_token',
+        'mp_public_key',
+        'mp_webhook_key',
 
-        // Suitpay
-        'suitpay_uri',
-        'suitpay_cliente_id',
-        'suitpay_cliente_secret',
+        // PagSeguro / PagBank
+        'pagseguro_is_enable',
+        'pagseguro_credit_card_enable',
+        'pagseguro_sandbox',
+        'pagseguro_token',
+
+        // Pagar.me
+        'pagarme_is_enable',
+        'pagarme_credit_card_enable',
+        'pagarme_secret_key',
+        'pagarme_webhook_user',
+        'pagarme_webhook_password',
+
+        // Asaas
+        'asaas_is_enable',
+        'asaas_credit_card_enable',
+        'asaas_sandbox',
+        'asaas_api_key',
+        'asaas_webhook_key',
+        'asaas_pix_payout_enable',
 
         // Stripe
+        'stripe_is_enable',
+        'stripe_pix_enable',
         'stripe_production',
         'stripe_public_key',
         'stripe_secret_key',
         'stripe_webhook_key',
-
-       //BsPay
-        'bspay_uri',  // Adicionar isso
-        'bspay_cliente_id', // Adicionar isso
-        'bspay_cliente_secret', // Adicionar isso
-
-        // Sharkpay
-        'public_key',
-        'private_key',
-
-        // digitopay
-        'digitopay_uri',
-        'digitopay_cliente_id',
-        'digitopay_cliente_secret',
-
-        'mp_access_token',
-        'mp_public_key',
-        'mp_webhook_key',
-        'asaas_api_key',
-        'asaas_sandbox',
-        'asaas_webhook_key',
-        'asaas_is_enable',
-        'asaas_credit_card_enable',
-        'status',
-
-        // Mercado Pago
-        'mp_sandbox',
-        'mp_is_enable',
-        'mp_credit_card_enable',
-
-        // PayPal
-        'paypal_client_id',
-        'paypal_client_secret',
-        'paypal_webhook_key',
-        'paypal_sandbox',
-        'paypal_is_enable',
-        'paypal_credit_card_enable',
     ];
 
-    protected $hidden = array('updated_at');
+    protected $casts = [
+        'mp_is_enable'                 => 'boolean',
+        'mp_credit_card_enable'        => 'boolean',
+        'pagseguro_is_enable'          => 'boolean',
+        'pagseguro_credit_card_enable' => 'boolean',
+        'pagseguro_sandbox'            => 'boolean',
+        'pagarme_is_enable'            => 'boolean',
+        'pagarme_credit_card_enable'   => 'boolean',
+        'asaas_is_enable'              => 'boolean',
+        'asaas_credit_card_enable'     => 'boolean',
+        'asaas_sandbox'                => 'boolean',
+        'asaas_pix_payout_enable'      => 'boolean',
+        'stripe_is_enable'             => 'boolean',
+        'stripe_pix_enable'            => 'boolean',
+        'stripe_production'            => 'boolean',
+    ];
+
+    protected $hidden = ['updated_at'];
 
     /**
-     * Get the user's first name.
+     * Valor real de uma credencial (ignora a máscara do modo demo).
      */
-    protected function digitopayClienteId(): Attribute
+    public function credential(string $field): ?string
     {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
+        $value = $this->getAttributes()[$field] ?? null;
 
-    /**
-     * Get the user's first name.
-     */
-    protected function digitopayClienteSecret(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    /**
-     * Get the user's first name.
-     */
-    protected function publicKey(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
+        return $value === null ? null : trim((string) $value);
     }
 
     /**
-     * Get the user's first name.
+     * No modo demo as credenciais aparecem mascaradas no painel.
      */
-    protected function privateKey(): Attribute
+    public function getAttribute($key)
     {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
+        $value = parent::getAttribute($key);
+
+        if (in_array($key, self::SECRET_FIELDS, true) && env('APP_DEMO') && !empty($value)) {
+            return '*********************';
+        }
+
+        return $value;
     }
 
-    /**
-     * Get the user's first name.
-     */
-    protected function suitpayClienteId(): Attribute
+    public function attributesToArray()
     {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
+        $attributes = parent::attributesToArray();
 
-    /**
-     * Get the user's first name.
-     */
-    protected function suitpayClienteSecret(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
+        if (env('APP_DEMO')) {
+            foreach (self::SECRET_FIELDS as $field) {
+                if (!empty($attributes[$field])) {
+                    $attributes[$field] = '*********************';
+                }
+            }
+        }
 
-     /**
-     * // Adicionar isso
-     */
-    protected function bspayClienteId(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    /**
-     * // Adicionar isso
-     */
-    protected function bspayClienteSecret(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    /**
-     * Get the user's first name.
-     */
-    protected function stripePublicKey(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    /**
-     * Get the user's first name.
-     */
-    protected function stripeSecretKey(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    protected function asaasApiKey(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    protected function asaasWebhookKey(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    protected function mpAccessToken(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    protected function mpPublicKey(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    protected function mpWebhookKey(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    protected function paypalClientId(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    protected function paypalClientSecret(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
-    }
-
-    protected function paypalWebhookKey(): Attribute
-    {
-        return Attribute::make(
-            get: fn (?string $value) => env('APP_DEMO') ? '*********************' : $value,
-        );
+        return $attributes;
     }
 }

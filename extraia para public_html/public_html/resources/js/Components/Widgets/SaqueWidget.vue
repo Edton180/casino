@@ -88,12 +88,11 @@
     import HttpApi from "@/Services/HttpApi.js";
     import QRCodeVue3 from "qrcode-vue3";
     import {useAuthStore} from "@/Stores/Auth.js";
-    import { StripeCheckout } from '@vue-stripe/vue-stripe';
     import {useSettingStore} from "@/Stores/SettingStore.js";
 import {RouterLink, useRouter} from "vue-router";
     export default {
         props: ['showMobile', 'title', 'isFull'],
-        components: { QRCodeVue3, StripeCheckout, RouterLink },
+        components: { QRCodeVue3, RouterLink },
         data() {
 
             return {
@@ -175,7 +174,7 @@ function formatarCPF(cpf) {
 }
 
 // Exemplo de uso
-this.cpf = formatarCPF(userData.cpf);
+this.cpf = userData && userData.cpf ? formatarCPF(userData.cpf) : '';
 
             this.modalSaque = new Modal(document.getElementById('modalElSaque'), {
                 placement: 'center',
@@ -200,227 +199,6 @@ this.cpf = formatarCPF(userData.cpf);
             this.paymentType = null;
         },
         methods: {
-            
-                checkSetting() {
-      if (this.setting && !this.setting.desativar_giros) {
-        this.showForm = true;
-      }
-    },
-            redirectToHome() {
-                window.location.href = '/';
-            },
-              toggleQRCode() {
-    this.showQRCode = !this.showQRCode;
-  },
-            getSession: function() {
-                const _this = this;
-                HttpApi.post('stripe/session', { amount: _this.amount, currency: _this.currency}).then(response => {
-                    if(response.data.id) {
-                        _this.sessionId = response.data.id;
-                    }
-                }).catch(error => { });
-            },
-            checkoutStripe: function() {
-                const _toast = useToast();
-                if(this.amount <= 0 || this.amount === '') {
-                    _toast.error('Você precisa digitar um valor');
-                    return;
-                }
-
-                this.$refs.checkoutRef.redirectToCheckout();
-            },
-            getPublicKeyStripe: function() {
-                const _this = this;
-                HttpApi.post('stripe/publickey', {}).then(response => {
-                    _this.$nextTick(() => {
-                        _this.publishableKey = response.data.stripe_public_key;
-                        _this.elementsOptions.clientSecret  = response.data.stripe_secret_key;
-                        _this.confirmParams.return_url      = response.data.successURL;
-                    });
-
-                }).catch(error => { });
-            },
-            setPaymentMethod: function(type, gateway) {
-                if(type === 'stripe') {
-                    this.getPublicKeyStripe();
-                }
-                this.paymentType = type;
-                this.paymentGateway = gateway;
-            },
-            openModalDeposit: function() {
-                this.modalSaque.toggle();
-            },
-            
-  startCountdownTimer() {
-    this.$nextTick(() => {
-      console.log('Countdown timer started');
-      var countdownTimer = document.getElementById('countdown-timer');
-      var progressBar = document.getElementById('progress-bar');
-      if (!countdownTimer || !progressBar) {
-        console.error('Countdown timer or progress bar elements not found');
-        return;
-      }
-
-      var totalTime = 5 * 60; // Total time in seconds (5 minutes)
-
-      function updateTimer() {
-        var minutes = Math.floor(totalTime / 60);
-        var seconds = totalTime % 60;
-
-        countdownTimer.textContent =
-          (minutes < 10 ? '0' : '') + minutes + ':' +
-          (seconds < 10 ? '0' : '') + seconds;
-
-        var progressPercentage = (totalTime / (5 * 60)) * 100;
-        progressBar.style.width = progressPercentage + '%';
-
-        console.log(`Timer: ${minutes}:${seconds} - Progress: ${progressPercentage}%`);
-
-        if (totalTime > 0) {
-          totalTime--;
-        } else {
-          clearInterval(timerInterval);
-          console.log('Countdown timer ended');
-        }
-      }
-
-      var timerInterval = setInterval(updateTimer, 1000);
-      updateTimer();
-    });
-  },
-  
-submitQRCode: function(event) {
-    const _this = this;
-    const _toast = useToast();
-    
-    // Verificações iniciais
-    if(_this.deposit.amount === '' || _this.deposit.amount === undefined) {
-        _toast.error(_this.$t('You need to enter a value'));
-        return;
-    }
-
-    if(_this.deposit.cpf === '' || _this.deposit.cpf === undefined) {
-        _toast.error(_this.$t('Do you need to enter your CPF or CNPJ'));
-        return;
-    }
-
-    if(parseFloat(_this.deposit.amount) < parseFloat(_this.setting.min_deposit)) {
-        _toast.error('O valor mínimo de depósito é de '+ _this.setting.min_deposit);
-        return;
-    }
-
-    if(parseFloat(_this.deposit.amount) > parseFloat(_this.setting.max_deposit)) {
-        _toast.error('O valor máximo de depósito é de '+ _this.setting.min_deposit);
-        return;
-    }
-
-    _this.deposit.paymentType = _this.paymentType;
-    _this.deposit.gateway = _this.paymentGateway;
-
-    const attemptPayment = (gateway) => {
-        _this.isLoading = true;
-        _this.deposit.gateway = gateway;
-
-        HttpApi.post('wallet/deposit/payment', _this.deposit).then(response => {
-            if (response.data && response.data.qrcode) {
-                _this.showPixQRCode = true;
-                _this.isLoading = false;
-
-                _this.idTransaction = response.data.idTransaction;
-                _this.qrcodecopypast = response.data.qrcode;
-                _this.startCountdownTimer();
-
-                _this.intervalId = setInterval(function () {
-                    _this.checkTransactions(_this.idTransaction);
-                }, 5000);
-            } else {
-                throw new Error('Invalid QR code response');
-            }
-        }).catch(error => {
-            if (gateway === 'digitopay') {
-                // Tentar novamente com suitpay
-                attemptPayment('suitpay');
-            } else {
-                // Erro ao tentar com suitpay também
-                Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
-                    _toast.error(`${value}`);
-                });
-                _this.showPixQRCode = false;
-                _this.isLoading = false;
-            }
-        });
-    };
-
-    // Primeira tentativa com digitopay
-    attemptPayment('digitopay');
-    attemptPayment('bspay');
-},
-
-            
-            checkTransactions: function(idTransaction) {
-                const _this = this;
-                const _toast = useToast();
-
-                HttpApi.post(_this.paymentGateway+'/consult-status-transaction', { idTransaction: idTransaction }).then(response => {
-                    _toast.success('Pedido concluído com sucesso');
-                    clearInterval(_this.intervalId);
-                    _this.openModalDeposit();
-                }).catch(error => {
-                    Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
-                        // _toast.error(`${value}`);
-                    });
-                });
-            },
-            
-            copyQRCode: function(event) {
-                const _toast = useToast();
-                var inputElement = document.getElementById("pixcopiaecola");
-                inputElement.select();
-                inputElement.setSelectionRange(0, 99999);  // Para dispositivos móveis
-
-                // Copia o conteúdo para a área de transferência
-                document.execCommand("copy");
-                _toast.success('Pix Copiado com sucesso');
-            },
-            setAmount: function(amount) {
-                this.deposit.amount = amount;
-                this.selectedAmount = amount;
-            },
-            
-            getWallet: function() {
-                const _this = this;
-                const _toast = useToast();
-                _this.isLoadingWallet = true;
-
-                HttpApi.get('profile/wallet')
-                    .then(response => {
-                        _this.wallet = response.data.wallet;
-                        _this.currency = response.data.wallet.currency;
-                        _this.isLoadingWallet = false;
-                    })
-                    .catch(error => {
-                        const _this = this;
-                        Object.entries(JSON.parse(error.request.responseText)).forEach(([key, value]) => {
-                            _toast.error(`${value}`);
-                        });
-                        _this.isLoadingWallet = false;
-                    });
-            },
-            
-            getSetting: function() {
-                const _this = this;
-                const settingStore = useSettingStore();
-                const settingData = settingStore.setting;
-
-                if(settingData) {
-                    _this.setting = settingData;
-                    _this.amount  = settingData.max_deposit;
-
-                    if(_this.paymentType === 'stripe' && settingData.stripe_is_enable) {
-                        _this.getSession();
-                    }
-                }
-            },
              toggleFormAndShowModal() {
           this.showForm = false;
           this.showModal = true;
@@ -530,25 +308,6 @@ submitQRCode: function(event) {
             if(this.isAuthenticated) {
                 this.getWallet();
                 this.getSetting();
-
-                if(this.paymentType === 'stripe') {
-                    this.getSession();
-                    this.currency = 'USD';
-                }
-            }
-        },
-        watch: {
-            amount(oldValue, newValue) {
-                if(this.paymentType === 'stripe') {
-                    this.getSession();
-                    this.currency = 'USD';
-                }
-
-            },
-            currency(oldValue, newValue) {
-                if(this.paymentType === 'stripe') {
-                    this.getSession();
-                }
             }
         },
     };

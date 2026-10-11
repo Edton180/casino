@@ -11,7 +11,6 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Exceptions\Halt;
-use Jackiedo\DotenvEditor\Facades\DotenvEditor;
 
 class GatewayPage extends Page
 {
@@ -55,151 +54,56 @@ class GatewayPage extends Page
     {
         return $form
             ->schema([
-                
-Section::make('BSPAY E PIXUP')
-->description(new HtmlString('
-                <div style="display: flex; align-items: center;">
-                    Precisa de uma conta na Digito Pay? Responda o formulário de contato e solicite sua conta.:
-                    <a class="dark:text-white" 
-                    style="
-                            font-size: 14px;
-                            font-weight: 600;
-                            width: 127px;
-                            display: flex;
-                            background-color: #000000;
-                            padding: 10px;
-                            border-radius: 11px;
-                            justify-content: center;
-                            margin-left: 10px;
-                    " 
-                    href="https://dashboard.pixupbr.com/" 
-                    target="_blank">
-                        Dashboard
-                    </a>
-                    <a class="dark:text-white" 
-                    style="
-                            font-size: 14px;
-                            font-weight: 600;
-                            width: 127px;
-                            display: flex;
-                            background-color: #000000;
-                            padding: 10px;
-                            border-radius: 11px;
-                            justify-content: center;
-                            margin-left: 10px;
-                    " 
-                    href="https://wa.me/557189320292" 
-                    target="_blank">
-                        Gerente
-                    </a>
-                </div>
-    <b>Seu Webhook:  ' . url("/bspay/callback", [], true) . "</b>"))
-    ->schema([
-        TextInput::make('bspay_uri')
-            ->label('CLIENTE URL')
-            ->placeholder('Digite a url da api')
-            ->maxLength(191)
-            ->columnSpanFull(),
-        TextInput::make('bspay_cliente_id')
-            ->label('CLIENTE ID')
-            ->placeholder('Digite o client ID')
-            ->maxLength(191)
-            ->columnSpanFull(),
-        TextInput::make('bspay_cliente_secret')
-            ->label('CLIENTE SECRETO')
-            ->placeholder('Digite o client secret')
-            ->maxLength(191)
-            ->columnSpanFull(),
-    ]),
-                
-                Section::make('DigitoPay')
-                    ->description('Ajustes de credenciais para a DigitoPay')
-                    ->schema([
-                        TextInput::make('digitopay_uri')
-                            ->label('Client URI')
-                            ->placeholder('Digite a url da api')
-                            ->default('https://si5n56mrnjzvt5gr2f536ildr40sqzke.lambda-url.sa-east-1.on.aws/')
-                            ->maxLength(191),
-                        TextInput::make('digitopay_cliente_id')
-                            ->label('Client ID')
-                            ->placeholder('Digite o client ID')
-                            ->maxLength(191),
-                        TextInput::make('digitopay_cliente_secret')
-                            ->label('Client Secret')
-                            ->placeholder('Digite o client secret')
-                            ->maxLength(191),
-                    ])->columns(3),
-        
-
-                Section::make('Suitpay')
-                    ->description('Ajustes de credenciais para a Suitpay')
-                    ->schema([
-                        TextInput::make('suitpay_uri')
-                            ->label('Client URI')
-                            ->placeholder('Digite a url da api')
-                            ->maxLength(191)
-                            ->columnSpanFull(),
-                        TextInput::make('suitpay_cliente_id')
-                            ->label('Client ID')
-                            ->placeholder('Digite o client ID')
-                            ->maxLength(191)
-                            ->columnSpanFull(),
-                        TextInput::make('suitpay_cliente_secret')
-                            ->label('Client Secret')
-                            ->placeholder('Digite o client secret')
-                            ->maxLength(191)
-                            ->columnSpanFull(),
-                    ]),
-
                 Section::make('Mercado Pago')
-                    ->description(new HtmlString('Webhook de pagamento: <b>' . url('/mercadopago/callback', [], true) . '</b>'))
+                    ->description(new HtmlString('PIX e cartão (Checkout Pro). Credenciais em <a class="underline" href="https://www.mercadopago.com.br/developers/panel/app" target="_blank">Suas integrações</a>.<br>Webhook: <b>' . url('/webhooks/mercadopago', [], true) . '</b> (evento "Pagamentos")'))
                     ->schema([
-                        Toggle::make('mp_is_enable')
-                            ->label('Ativar Mercado Pago')
-                            ->inline(false),
-                        Toggle::make('mp_credit_card_enable')
-                            ->label('Ativar cartão de crédito (Mercado Pago)')
-                            ->inline(false),
-                        Toggle::make('mp_sandbox')
-                            ->label('Modo sandbox')
-                            ->default(true)
-                            ->inline(false),
-                        TextInput::make('mp_access_token')
-                            ->label('Access Token')
-                            ->placeholder('APP_USR-... ou TEST-...')
-                            ->maxLength(255),
-                        TextInput::make('mp_public_key')
-                            ->label('Public Key')
-                            ->placeholder('APP_USR-...')
-                            ->maxLength(255),
-                        TextInput::make('mp_webhook_key')
-                            ->label('Webhook Key (opcional)')
-                            ->placeholder('Segredo para validar callback')
-                            ->maxLength(255),
+                        Toggle::make('mp_is_enable')->label('Ativar Mercado Pago')->inline(false),
+                        Toggle::make('mp_credit_card_enable')->label('Ativar cartão de crédito')->inline(false),
+                        TextInput::make('mp_access_token')->label('Access Token')->placeholder('APP_USR-... (produção) ou TEST-... (teste)')->password()->revealable()->maxLength(255),
+                        TextInput::make('mp_public_key')->label('Public Key')->placeholder('APP_USR-...')->maxLength(255),
+                        TextInput::make('mp_webhook_key')->label('Assinatura secreta do webhook (opcional)')->password()->revealable()->maxLength(255),
+                    ])->columns(2),
+
+                Section::make('PagSeguro / PagBank')
+                    ->description(new HtmlString('PIX (API de Pedidos) e cartão (Checkout PagBank). Gere o token em <a class="underline" href="https://minhaconta.pagbank.com.br/" target="_blank">Minha Conta PagBank</a>.<br>Webhook: <b>' . url('/webhooks/pagseguro', [], true) . '</b> (enviado automaticamente em cada cobrança)'))
+                    ->schema([
+                        Toggle::make('pagseguro_is_enable')->label('Ativar PagSeguro')->inline(false),
+                        Toggle::make('pagseguro_credit_card_enable')->label('Ativar cartão de crédito')->inline(false),
+                        Toggle::make('pagseguro_sandbox')->label('Modo sandbox')->default(true)->inline(false),
+                        TextInput::make('pagseguro_token')->label('Token')->password()->revealable()->columnSpanFull(),
+                    ])->columns(3),
+
+                Section::make('Pagar.me')
+                    ->description(new HtmlString('PIX e cartão (Checkout Pagar.me) — API v5. Chaves em <a class="underline" href="https://dash.pagar.me/" target="_blank">Dashboard Pagar.me</a> > Configurações > Chaves.<br>Webhook: <b>' . url('/webhooks/pagarme', [], true) . '</b> (eventos order.paid e charge.paid)'))
+                    ->schema([
+                        Toggle::make('pagarme_is_enable')->label('Ativar Pagar.me')->inline(false),
+                        Toggle::make('pagarme_credit_card_enable')->label('Ativar cartão de crédito')->inline(false),
+                        TextInput::make('pagarme_secret_key')->label('Secret Key')->placeholder('sk_...')->password()->revealable()->maxLength(255)->columnSpanFull(),
+                        TextInput::make('pagarme_webhook_user')->label('Usuário do webhook (opcional)')->maxLength(255),
+                        TextInput::make('pagarme_webhook_password')->label('Senha do webhook (opcional)')->password()->revealable()->maxLength(255),
                     ])->columns(2),
 
                 Section::make('Asaas')
-                    ->description(new HtmlString('Webhook de pagamento: <b>' . url('/asaas/callback', [], true) . '</b>'))
+                    ->description(new HtmlString('PIX, cartão (fatura Asaas) e saques automáticos via PIX. Chave em <a class="underline" href="https://www.asaas.com/" target="_blank">Asaas</a> > Integrações.<br>Webhook: <b>' . url('/webhooks/asaas', [], true) . '</b> (eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED)'))
                     ->schema([
-                        Toggle::make('asaas_is_enable')
-                            ->label('Ativar Asaas')
-                            ->inline(false),
-                        Toggle::make('asaas_credit_card_enable')
-                            ->label('Ativar cartão de crédito (Asaas)')
-                            ->inline(false),
-                        Toggle::make('asaas_sandbox')
-                            ->label('Modo sandbox')
-                            ->default(true)
-                            ->inline(false),
-                        TextInput::make('asaas_api_key')
-                            ->label('API Key')
-                            ->placeholder('$aact_...')
-                            ->maxLength(255),
-                        TextInput::make('asaas_webhook_key')
-                            ->label('Webhook Key (opcional)')
-                            ->placeholder('Segredo para validar callback')
-                            ->maxLength(255),
-                    ])->columns(2),
+                        Toggle::make('asaas_is_enable')->label('Ativar Asaas')->inline(false),
+                        Toggle::make('asaas_credit_card_enable')->label('Ativar cartão de crédito')->inline(false),
+                        Toggle::make('asaas_sandbox')->label('Modo sandbox')->default(true)->inline(false),
+                        Toggle::make('asaas_pix_payout_enable')->label('Pagar saques via PIX Asaas')->helperText('Ao aprovar um saque no painel, o PIX é enviado automaticamente pelo Asaas.')->inline(false),
+                        TextInput::make('asaas_api_key')->label('API Key')->placeholder('$aact_...')->password()->revealable()->columnSpanFull(),
+                        TextInput::make('asaas_webhook_key')->label('Token de autenticação do webhook (opcional)')->password()->revealable()->maxLength(255)->columnSpanFull(),
+                    ])->columns(4),
+
+                Section::make('Stripe')
+                    ->description(new HtmlString('Cartão (e PIX em contas brasileiras) via Stripe Checkout. Chaves em <a class="underline" href="https://dashboard.stripe.com/apikeys" target="_blank">Dashboard Stripe</a>.<br>Webhook: <b>' . url('/webhooks/stripe', [], true) . '</b> (eventos checkout.session.completed e checkout.session.async_payment_succeeded). O "Signing secret" (whsec_...) é obrigatório.'))
+                    ->schema([
+                        Toggle::make('stripe_is_enable')->label('Ativar Stripe')->inline(false),
+                        Toggle::make('stripe_pix_enable')->label('Ativar PIX no Stripe')->helperText('Requer conta Stripe Brasil com PIX habilitado.')->inline(false),
+                        Toggle::make('stripe_production')->label('Produção')->inline(false),
+                        TextInput::make('stripe_public_key')->label('Publishable Key')->placeholder('pk_...')->maxLength(255),
+                        TextInput::make('stripe_secret_key')->label('Secret Key')->placeholder('sk_...')->password()->revealable()->maxLength(255),
+                        TextInput::make('stripe_webhook_key')->label('Webhook Signing Secret')->placeholder('whsec_...')->password()->revealable()->maxLength(255),
+                    ])->columns(3),
             ])
             ->statePath('data');
     }
@@ -220,21 +124,11 @@ Section::make('BSPAY E PIXUP')
                 return;
             }
 
+            $data = array_intersect_key($this->data, array_flip((new Gateway())->getFillable()));
+
             $setting = Gateway::first();
             if(!empty($setting)) {
-                if($setting->update($this->data)) {
-                    if(!empty($this->data['stripe_public_key'])) {
-                        $envs = DotenvEditor::load(base_path('.env'));
-
-                        $envs->setKeys([
-                            'STRIPE_KEY' => $this->data['stripe_public_key'],
-                            'STRIPE_SECRET' => $this->data['stripe_secret_key'],
-                            'STRIPE_WEBHOOK_SECRET' => $this->data['stripe_webhook_key'],
-                        ]);
-
-                        $envs->save();
-                    }
-
+                if($setting->update($data)) {
                     Notification::make()
                         ->title('Chaves Alteradas')
                         ->body('Suas chaves foram alteradas com sucesso!')
@@ -242,7 +136,7 @@ Section::make('BSPAY E PIXUP')
                         ->send();
                 }
             }else{
-                if(Gateway::create($this->data)) {
+                if(Gateway::create($data)) {
                     Notification::make()
                         ->title('Chaves Criadas')
                         ->body('Suas chaves foram criadas com sucesso!')

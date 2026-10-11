@@ -23,11 +23,7 @@ function startTimer(el, seconds) {
         seconds--; // Decrementa primeiro
         if (seconds <= 0) {
             clearInterval(timerInterval); // Limpa o intervalo imediatamente
-            const urlParams = new URLSearchParams(window.location.search);
-            const baseurl = decodeURIComponent(
-                urlParams.get("baseurl")
-            ).toString();
-            window.parent.location.href = baseurl;
+            execRed(); // tempo esgotado sem atingir a meta
             return; // Sai da função para não executar updateTimer
         }
         if (seconds <= 20) {
@@ -45,7 +41,7 @@ const configGame = {
     currentValue: 0,
     timer: typeGame == "real" ? 90 : 90,
     meta: () => {
-        return typeGame == "real" ? configGame.value * 3 : configGame.value * 3;
+        return configGame.value * 3;
     },
 };
 function setText(el, value) {
@@ -67,7 +63,7 @@ const els = {
 };
 function extTriggerPoints(coin = 0.2) {
     var currentPoints = els.currentPoints();
-    var percent = typeGame == "real" ? 100 : 10;
+    var percent = 10; // mesmo ritmo de pontos que o jogo já usava
     var point = (coin / percent) * configGame.value;
     var calc = (Number(point) + Number(configGame.currentValue)).toFixed(2);
     configGame.currentValue = calc;
@@ -79,68 +75,24 @@ function extTriggerPoints(coin = 0.2) {
 function execGreen() {
     if (configGame.stateGame && configGame.currentValue >= configGame.meta()) {
         configGame.stateGame = false;
-        if (typeGame == "real") {
-            $.post(
-                "../auth?action=game&type=win",
-                {
-                    session: session,
-                    bet: configGame.value,
-                    val: configGame.currentValue,
-                },
-                function (data) {
-                    let msg =
-                        "Parabens, você ganhou R$ " +
-                        configGame.currentValue +
-                        "!";
-                    location.href = "../panel?type=win&msg=" + msg;
-                }
-            );
-        } else if (typeGame == "demo") {
-            window.location.replace(
-                "../e-wallet-deposit?type=demo&value=" + configGame.currentValue
-            );
-        } else if (typeGame == "presell") {
-            window.location.replace(
-                "../register?type=demo&value=" + configGame.currentValue
-            );
-        }
+
+        // prêmio pago pelo servidor (limitado à meta do jogo)
+        SkillGame.finish(configGame.currentValue).then(function (data) {
+            alert("Parabéns, você ganhou R$ " + Number(data.win).toFixed(2) + "!");
+            SkillGame.backToCasino();
+        }).catch(function (error) {
+            alert(error.message);
+            SkillGame.backToCasino();
+        });
     }
 }
 function execRed() {
-    console.log("execRed: Iniciando função execRed."); // Log ao iniciar a função
-    const urlParams = new URLSearchParams(window.location.search);
-    const baseurl = decodeURIComponent(urlParams.get("baseurl")).toString();
-    console.log(`execRed: Base URL recuperada: ${baseurl}`); // Log para mostrar a URL base
-
-    if (configGame.stateGame) {
-        console.log(
-            "execRed: O jogo está ativo, procedendo com a finalização."
-        ); // Log quando o jogo ainda está ativo
-        configGame.stateGame = false; // Altera o estado do jogo para inativo
-
-        // Logs específicos para cada tipo de jogo
-        if (typeGame == "real") {
-            console.log(
-                "execRed: Tipo de jogo real. Redirecionando para a URL base."
-            );
-            window.parent.location.href = baseurl;
-        } else if (typeGame == "demo") {
-            console.log(
-                "execRed: Tipo de jogo demo. Redirecionando para a URL base."
-            );
-            window.parent.location.href = baseurl;
-        } else if (typeGame == "presell") {
-            console.log(
-                "execRed: Tipo de jogo presell. Redirecionando para a URL base."
-            );
-            window.parent.location.href = baseurl;
-        }
-    } else {
-        window.location.replace(baseurl);
-        console.log(
-            "execRed: O jogo já está inativo. Nenhuma ação adicional necessária."
-        ); // Log quando o jogo já está inativo
+    if (!configGame.stateGame) {
+        return;
     }
+
+    configGame.stateGame = false;
+    SkillGame.finish(0).then(SkillGame.backToCasino).catch(SkillGame.backToCasino);
 }
 
 function loadGame() {
@@ -157,6 +109,15 @@ window.addEventListener("load", (event) => {
     var container = document.querySelector("#containerFormBet");
     var inpBet = document.querySelector("#valueBet");
     var btnStart = document.querySelector("#startGame");
+    // A aposta já foi confirmada e debitada na tela anterior (index.html)
+    const apostaConfirmada = Number(new URLSearchParams(window.location.search).get("aposta"));
+    if (apostaConfirmada > 0 && SkillGame.round) {
+        hideDiv(container);
+        configGame.value = apostaConfirmada;
+        loadGame();
+        return;
+    }
+
     btnStart.addEventListener("click", () => {
         if (+inpBet.value > balance && typeGame == "real") {
             alert("Valor da aposta acima do saldo em conta!");

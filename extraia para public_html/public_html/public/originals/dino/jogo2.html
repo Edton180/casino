@@ -80,6 +80,7 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     
+        <script src="../skill-api.js"></script>
     </head>
 
     <body>
@@ -188,32 +189,33 @@ var dificuldadeInput = document.getElementById('dificuldade');
 var dificuldadeValor = dificuldadeInput.value;
 
 
+var apostaEncerrada = false;
+
+// Saque do valor acumulado: o servidor valida a rodada e limita o prêmio à meta
 function encerrarAposta(event) {
-            event.preventDefault();
-            var acumuladoaposta = document.getElementById('valoracumulado').value;
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', 'win.php', true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    if (event) event.preventDefault();
+    if (apostaEncerrada) return;
+    apostaEncerrada = true;
 
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    btnSair().style.display = 'none';
-                    window.parent.location.href = '/games/play/12196/dino';
-                }
-            };
-            // Aqui incluímos as variáveis adicionais na requisição
-            var postData =  '&bet=' + encodeURIComponent(entrada) +
-                            '&val=' + encodeURIComponent(acumuladoaposta) +
-                            '&token=' + encodeURIComponent(token);
+    var acumuladoaposta = document.getElementById('valoracumulado').value || 0;
+    btnSair().style.display = 'none';
 
-            xhr.send(postData);
-        }
-document.addEventListener('DOMContentLoaded', function() {
-var btnSair = document.getElementById('button#sair'); // Certifique-se de que o ID do seu botão seja 'sair'
-btnSair.addEventListener("click", encerrarAposta);
-});
+    SkillGame.finish(acumuladoaposta).then(function () {
+        SkillGame.backToCasino();
+    }).catch(function (error) {
+        alert(error.message);
+        SkillGame.backToCasino();
+    });
+}
 
 var btnSair = () => { return document.querySelector('button#sair'); }
+
+document.addEventListener('DOMContentLoaded', function() {
+    var botao = btnSair();
+    if (botao) {
+        botao.addEventListener("click", encerrarAposta);
+    }
+});
 
     (function() {
         'use strict';
@@ -571,7 +573,6 @@ var btnSair = () => { return document.querySelector('button#sair'); }
         var self = this;
         var saldoAdicionado = false;
 
-        btnSair().addEventListener("click", encerrarAposta);
         
         if (moedaScore1 >= metaScore ){
             btnSair().style.display = 'block';
@@ -590,27 +591,22 @@ var btnSair = () => { return document.querySelector('button#sair'); }
             this.gameOver();
             
             function encerrarJogo() {
-                var acumuladoaposta = document.getElementById('valoracumulado').value;
+                if (apostaEncerrada) return;
+                apostaEncerrada = true;
+                btnSair().style.display = 'none';
 
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', 'loss.php', true);
-                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        btnSair().style.display = 'none';
-                        $('#myModal').modal('show');
-                        $('#myModal').data('bs.modal')._config.keyboard = false;
-                        $('#myModal').data('bs.modal')._config.backdrop = 'static';
-                        document.getElementById('messagetitle').innerHTML = '<span class="perca">Você perdeu!</span>';
-                        document.getElementById('modalmessage').innerHTML = '<h3 class="text-center">Não foi dessa vez</h3> <br> Infelizmente você <span class="perca">perdeu</span><br> Mas não fique triste, você pode tentar novamente, dobre sua próxima <span class="ganho">aposta</span> e recupere o valor perdido nessa';
-                        document.getElementById('avante').addEventListener('click', function() {
-                            window.parent.location.href = '/games/play/12196/dino';
-                        });
-                    }
+                var mostrarDerrota = function () {
+                    $('#myModal').modal('show');
+                    $('#myModal').data('bs.modal')._config.keyboard = false;
+                    $('#myModal').data('bs.modal')._config.backdrop = 'static';
+                    document.getElementById('messagetitle').innerHTML = '<span class="perca">Você perdeu!</span>';
+                    document.getElementById('modalmessage').innerHTML = '<h3 class="text-center">Não foi dessa vez</h3> <br> Infelizmente você <span class="perca">perdeu</span><br> Mas não fique triste, você pode tentar novamente!';
+                    document.getElementById('avante').addEventListener('click', function() {
+                        SkillGame.backToCasino();
+                    });
                 };
 
-                xhr.send('valoracumulado=' + encodeURIComponent(acumuladoaposta));
+                SkillGame.finish(0).then(mostrarDerrota).catch(mostrarDerrota);
             }
 
             encerrarJogo();
