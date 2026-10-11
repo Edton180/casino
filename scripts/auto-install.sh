@@ -272,7 +272,7 @@ NGINX
   ln -sf /etc/nginx/sites-available/casino /etc/nginx/sites-enabled/casino
   rm -f /etc/nginx/sites-enabled/default
   nginx -t -q
-  svc reload nginx || svc restart nginx
+  svc restart nginx
   ok "Nginx configurado (${DOMAIN} → ${APP_DIR}/public)"
 }
 
