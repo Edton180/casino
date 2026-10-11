@@ -121,53 +121,84 @@ Continue em [Depois de instalar](#depois-de-instalar).
 
 ---
 
-## B. VPS (Ubuntu / Debian) — 1 comando
+## Antes de B e D: como obter o assistente de instalação
 
-Aponte o DNS do domínio (registro **A**) para o IP do servidor e rode **como root**:
+O repositório `Edton180/casino` é **privado**. Por isso o endereço `raw.githubusercontent.com/...` (usado em muitos tutoriais) responde **404** para quem não está autenticado — não adianta usar `curl` direto. Escolha **uma** forma de baixar o código:
+
+| Forma | Como |
+|---|---|
+| **1. Pelo navegador** (mais fácil) | Entre no GitHub com a sua conta → abra o repositório → botão verde **Code → Download ZIP** → extraia. Depois abra o terminal dentro da pasta extraída. |
+| **2. Com git** | `git clone https://github.com/Edton180/casino.git` — o git pede seu usuário e, no lugar da senha, um **token** (veja abaixo). |
+| **3. Com token no instalador** | O assistente baixa sozinho: `bash scripts/auto-install.sh --token SEU_TOKEN ...` (útil em servidor, sem navegador). |
+
+**Criar um token (leitura):** GitHub → foto do perfil → *Settings* → *Developer settings* → *Personal access tokens* → *Fine-grained tokens* → *Generate new token* → em *Repository access* escolha só o `casino` → em *Permissions → Contents* marque **Read-only** → gere e copie (`github_pat_...`). O token não fica gravado em lugar nenhum pelo instalador.
+
+> Se um dia você tornar o repositório **público**, aí sim funciona o one-liner  
+> `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/scripts/auto-install.sh -o auto-install.sh`
+
+---
+
+## B. VPS (Ubuntu / Debian)
+
+**O que você precisa:** um servidor com Ubuntu 22.04/24.04 ou Debian 12 (1 GB de RAM ou mais), acesso `root`/`sudo`, e um **domínio** com o registro **A** apontando para o IP do servidor (o assistente confere).
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/scripts/auto-install.sh -o auto-install.sh
-sudo bash auto-install.sh --domain meusite.com --email voce@meusite.com --ssl
+# no servidor, depois de baixar o código (veja acima):
+cd casino
+sudo bash instalar.sh
 ```
 
-O script:
+O assistente abre um menu (use as setas e Enter). Escolha **"Instalar em um servidor (VPS)"** e responda: domínio, e-mail, nome do site, HTTPS e senha do administrador (ENTER gera uma forte).
 
-1. instala **Nginx, PHP 8.3 (FPM), MariaDB, Composer** e o Certbot (use `--php 8.4` para o PHP 8.4);
-2. baixa o código em `/var/www/casino`;
-3. cria o banco `casino` com **senha aleatória**;
-4. executa o instalador da aplicação (`php artisan system:install`);
-5. configura o **Nginx**, o **SSL** (Let's Encrypt) e o **cron**;
-6. salva tudo em `/root/casino-credenciais.txt` (login do painel e senha do banco).
+**O que ele faz sozinho:**
 
-Opções úteis:
+| Etapa | O que acontece |
+|---|---|
+| 1. Diagnóstico | Identifica o sistema, memória, disco, internet, porta 80, e confere se o **DNS do domínio** aponta para este servidor. Se o Apache estiver ocupando a porta 80, oferece desativá-lo. |
+| 2. Pacotes | Atualiza o apt e instala **Nginx, PHP 8.3 (FPM), MariaDB, Certbot, Composer, git, cron** (adiciona o repositório do PHP se a versão não existir na sua distribuição). |
+| 3–4. Código e dependências | Copia o site para `/var/www/casino` e instala as dependências do PHP. |
+| 5. Banco | Cria o banco `casino` e um usuário com **senha aleatória**. |
+| 6. Site | Cria as tabelas, os jogos iniciais e o administrador. |
+| 7. Web, SSL e cron | Configura o Nginx, emite o **certificado HTTPS** (Let's Encrypt), liga o agendador e **testa se o site respondeu**. |
+
+Além disso, no servidor ele aplica o endurecimento de produção: `APP_ENV=production` e `APP_DEBUG=false`, limites do PHP-FPM (uploads de 64 MB, 512 MB de memória, OPcache), **swap** automático em máquinas com pouca RAM, **firewall `ufw`** (só se já estiver ativo: libera SSH, 80 e 443), rotação dos logs (`logrotate`) e um teste final que bate no Nginx local mesmo antes do DNS propagar. Se o certificado não puder ser emitido (DNS ainda não aponta), o site fica em HTTP e o assistente mostra o comando `certbot` para rodar depois.
+
+No final aparece um quadro com o endereço do site, do painel e o login; tudo também fica em `/root/casino-credenciais.txt`.
+
+**Sem menu (automação):**
+
+```bash
+sudo bash scripts/auto-install.sh --domain meusite.com --email voce@meusite.com --ssl -y
+# repositório privado, sem copiar o código antes:
+sudo bash scripts/auto-install.sh --token github_pat_XXXX --domain meusite.com --email voce@meusite.com --ssl -y
+```
 
 | Opção | Descrição |
 |---|---|
-| `--name "Meu Cassino"` | Nome do site |
-| `--port 8080` | Porta HTTP, se a 80 já estiver em uso (sem SSL) |
-| `--local` | Instala no próprio computador (`http://localhost`), sem domínio nem SSL — veja a seção D |
+| `--domain`, `--email`, `--name` | Domínio, e-mail do administrador (login) e nome do site |
+| `--ssl` | HTTPS gratuito (precisa do DNS já apontado) |
 | `--admin-pass SENHA` | Senha do admin (padrão: gerada) |
-| `--dir /var/www/outro` | Pasta da aplicação |
+| `--port 8080` | Porta HTTP, se a 80 estiver ocupada (sem SSL) |
 | `--php 8.4` | Versão do PHP (8.2, 8.3 ou 8.4) |
-| `-y` | Sem perguntas (automação) |
-| `--update` | Atualiza uma instalação existente |
-| `--diagnose` | Mostra o diagnóstico do servidor |
+| `--system-upgrade` | Também atualiza os pacotes do sistema (`apt upgrade`) |
+| `--token`, `--repo`, `--branch`, `--source` | Origem do código (token do GitHub, outro repositório/branch, ou uma pasta/zip) |
+| `--reinstall` | Apaga a instalação existente e instala de novo |
+| `-y` | Não pergunta nada |
+| `--no-color` | Sem cores nem animação (para logs) |
 
 ### Atualizar
 
 ```bash
-sudo bash auto-install.sh --update
+cd casino && git pull          # (ou baixe o ZIP novo e extraia por cima)
+sudo bash scripts/auto-install.sh --update
 ```
 
-Baixa a versão nova, mantém `.env` e uploads, roda as migrations e limpa os caches.
-
-> Instalou antes de out/2026? Baixe o script de novo antes de atualizar (o código passou da pasta `extraia para public_html/public_html` para a raiz do repositório):
-> `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/scripts/auto-install.sh -o auto-install.sh`
+Ele coloca o site em manutenção, atualiza arquivos e dependências, roda as migrações, limpa o cache e reativa o site (se algo falhar, o site volta do modo manutenção sozinho). Funciona também em instalações feitas por versões antigas do instalador.
 
 ### Backup
 
 ```bash
-sudo bash /opt/casino-src/scripts/casino-backup   # banco + .env + uploads em /var/backups/casino (7 dias)
+sudo bash scripts/casino-backup   # banco + .env + uploads em /var/backups/casino (guarda 7 dias)
 ```
 
 ---
@@ -201,50 +232,75 @@ O frontend já vem compilado em `public/build`. Para alterar o Vue/Tailwind:
 
 ## D. No seu computador (localhost)
 
-Para testar a plataforma, criar seus temas ou desenvolver. Escolha **uma** das opções:
+Para testar a plataforma, criar seus temas ou desenvolver. **Não precisa de domínio, Nginx nem SSL.**
 
-### D1. Linux, macOS ou Windows com WSL — 1 comando
+### D1. Ubuntu, Debian, Linux Mint, WSL e macOS — `bash instalar.sh`
 
-Requer PHP 8.2+ (com as extensões da tabela de requisitos) e MySQL/MariaDB rodando.
+**O que você precisa:** só o código baixado (veja *"Como obter o assistente"* acima) e internet. **PHP e banco de dados não precisam estar instalados** — o assistente instala.
 
 ```bash
-git clone https://github.com/Edton180/casino.git
-cd casino
-bash scripts/install-local.sh --db-user root --db-pass SUA_SENHA_DO_MYSQL
+cd casino            # a pasta que você baixou/extraiu
+bash instalar.sh
 ```
 
-O script baixa o Composer se precisar, **cria o banco `casino_local`**, instala e já abre o servidor:
+1. No menu escolha **"Instalar no meu computador"** (setas ↑↓ e Enter).
+2. Responda: nome do site, e-mail e senha do administrador (ENTER aceita o padrão `admin@casino.local` / `admin12345`) e a porta (ele sugere a primeira livre a partir da 8000).
+3. O assistente mostra o **diagnóstico** do seu computador e, se faltar algo, a lista do que vai instalar — por exemplo:
 
-| | |
+   ```
+   ╭─ O assistente vai instalar ─────────────────────────╮
+   │   ▸ PHP 8.3 + extensões                             │
+   │   ▸ MariaDB (banco de dados)                        │
+   ╰─────────────────────────────────────────────────────╯
+   ? Posso instalar agora? (vai pedir sua senha de administrador) [S/n]
+   ```
+
+4. Ele pede a sua senha de administrador (`sudo`) **só nessa hora**, instala, cria o banco e o usuário do banco **sozinho** (resolvendo o problema do `root` do MariaDB no Ubuntu), instala o site e **liga** o servidor.
+5. No final, abra o endereço mostrado (normalmente **http://127.0.0.1:8000**; painel em **/admin**).
+
+> **Não use `sudo bash instalar.sh`** no modo local — os arquivos ficariam do root. Rode como seu usuário; o assistente pede a senha só para instalar pacotes.  
+> No **WSL**, abra o endereço no navegador do Windows. No **macOS**, instale antes `brew install php composer mariadb && brew services start mariadb` (o assistente avisa e confere).
+
+**Comandos do dia a dia** (na pasta do projeto):
+
+| O que fazer | Comando |
 |---|---|
-| Site | http://127.0.0.1:8000 |
-| Painel | http://127.0.0.1:8000/admin |
-| Login | `admin@casino.local` / `admin12345` |
+| Ligar o site | `bash instalar.sh --start` (ou menu → *Ligar / desligar*) |
+| Desligar | `bash instalar.sh --stop` |
+| Ver se está ligado | `bash instalar.sh --status` |
+| Atualizar | `bash instalar.sh --update` |
+| Diagnóstico | `bash instalar.sh --diagnose` |
+| Liberar acesso de outros aparelhos da rede (celular) | `bash instalar.sh --local --lan` |
 
-Para ligar o site de novo depois: `bash scripts/install-local.sh --serve`.
-Opções: `--port`, `--db-host`, `--db-name`, `--admin-email`, `--admin-pass`, `--name`, `--no-serve` (veja `--help`).
+Sem menu, tudo de uma vez: `bash instalar.sh --local -y --name "Meu Cassino" --email eu@exemplo.com --admin-pass MinhaSenha123`.  
+Os dados (login e senha do banco) ficam em `~/casino-credenciais-local.txt`.
 
-> No Ubuntu o usuário `root` do MariaDB não aceita senha pela rede; crie um usuário próprio — veja [Solução de problemas](SOLUCAO-DE-PROBLEMAS.md#instalação-local-localhost).
+### D2. Windows — dois cliques em `instalar-windows.bat`
 
-### D2. Windows com XAMPP ou Laragon — duplo clique
+**O que você precisa:** Windows 10 ou 11 e internet. O assistente identifica o Windows e **baixa o PHP 8.3 e o Composer sozinho** (na sua pasta de usuário, sem precisar de administrador) e ativa as extensões. Para o **banco de dados**:
 
-1. Instale o [XAMPP](https://www.apachefriends.org) (PHP 8.2+) ou o [Laragon](https://laragon.org).
-2. No XAMPP, abra `C:\xampp\php\php.ini` e tire o `;` da frente de `extension=intl`, `extension=zip` e `extension=gd`.
-3. Inicie o **MySQL** no painel do XAMPP/Laragon.
-4. Baixe o repositório (*Code → Download ZIP*) e extraia.
-5. Dê dois cliques em **`scripts\install-local-windows.bat`** (no Laragon, rode pelo *Terminal* do Laragon).
-6. O navegador abre em http://127.0.0.1:8000 — login `admin@casino.local` / `admin12345`.
+- se você já tem **XAMPP** ou **Laragon**, só inicie o **MySQL** no painel deles; ou
+- deixe o assistente instalar o **MariaDB** pelo `winget` (pede permissão de administrador uma vez).
 
-Para abrir de novo depois, dê dois cliques no mesmo arquivo (ele pula a instalação).
+Passo a passo:
 
-### D3. Ubuntu/Debian com Nginx (igual a um servidor)
+1. Baixe o ZIP do repositório (veja *"Como obter o assistente"*) e **extraia** (não rode de dentro do zip).
+2. Dê dois cliques em **`instalar-windows.bat`**.
+3. Escolha **1) Instalar no meu computador** e responda as perguntas (ou aperte ENTER para os padrões).
+4. O navegador abre em **http://127.0.0.1:8000**. Login padrão: `admin@casino.local` / `admin12345`.
+
+Para ligar/desligar/atualizar depois, dê dois cliques no mesmo arquivo e escolha a opção no menu. Pelo PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1 -Acao Diagnostico`.
+
+> Se o Windows mostrar *"O Windows protegeu o computador"*, clique em *Mais informações → Executar assim mesmo* (o arquivo vem do seu próprio repositório).
+
+### D3. Servidor Nginx completo no seu computador (Ubuntu/Debian)
+
+Igual a uma VPS, mas em `http://localhost`, sem domínio nem SSL (útil para testar a configuração real de servidor):
 
 ```bash
-sudo bash scripts/auto-install.sh --local          # http://localhost
-sudo bash scripts/auto-install.sh --local --port 8080   # se a porta 80 estiver ocupada
+sudo bash scripts/auto-install.sh --local --stack              # http://localhost
+sudo bash scripts/auto-install.sh --local --stack --port 8080  # se a porta 80 estiver ocupada
 ```
-
-Instala Nginx, PHP-FPM, MariaDB e o cron, como na VPS, mas sem domínio e sem SSL.
 
 ### D4. Docker (qualquer sistema)
 
@@ -252,12 +308,17 @@ Com o [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalad
 
 ```bash
 docker compose up -d
+docker compose logs -f app      # acompanhe a instalação (1ª vez leva alguns minutos)
 ```
 
-A primeira subida leva alguns minutos. Depois: http://localhost:8000 (painel em `/admin`, login `admin@casino.local` / `admin12345` — altere no `docker-compose.yml` **antes** da primeira subida).
+Depois: http://localhost:8000 (painel em `/admin`, login `admin@casino.local` / `admin12345` — altere no `docker-compose.yml` **antes** da primeira subida).
 Parar: `docker compose down` · apagar tudo, inclusive o banco: `docker compose down -v`.
 
 > ⚠️ Em instalações locais o login padrão é público. Nunca exponha essa instalação na internet sem trocar a senha.
+
+### Algo deu errado?
+
+O assistente mostra as últimas linhas do erro, uma **dica específica** (memória, internet, repositório privado, apt ocupado...) e o caminho do registro completo. Rode `bash instalar.sh --diagnose` para ver o que está faltando e consulte [SOLUCAO-DE-PROBLEMAS.md](SOLUCAO-DE-PROBLEMAS.md#instalação-local-localhost).
 
 ---
 
