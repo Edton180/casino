@@ -203,7 +203,7 @@ install_dependencies() {
 fix_permissions() {
   chown -R www-data:www-data "${APP_DIR}"
   find "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache" -type d -exec chmod 775 {} +
-  [[ -f "${APP_DIR}/.env" ]] && chmod 640 "${APP_DIR}/.env"
+  if [[ -f "${APP_DIR}/.env" ]]; then chmod 640 "${APP_DIR}/.env"; fi
 }
 
 create_database() {
