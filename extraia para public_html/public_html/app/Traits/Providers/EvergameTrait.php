@@ -452,11 +452,9 @@ trait EvergameTrait
                                 'distribution' => 'evergame',
                             ];
                             Provider::create($dataProvider);
-                            echo "provedor criado com sucesso \n";
                         }
                     }
                 }
-                usleep(6000000); // Pausa de 1 segundo (1.000.000 microssegundos)
             }
         }
     }
@@ -517,7 +515,6 @@ trait EvergameTrait
                                     ];
 
                                     Game::create($data);
-                                    echo "jogo salvo com sucesso \n";
                                 }
                             }
                         }
@@ -525,7 +522,7 @@ trait EvergameTrait
                 }
 
                 // Pausa entre as solicitações para evitar sobrecarregar o servidor
-                usleep(5000000); // Pausa de 1 segundo (1.000.000 microssegundos)
+                usleep(500000); // pequena pausa entre provedores
             }
         }
     }

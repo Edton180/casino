@@ -40,12 +40,6 @@ include_once(__DIR__ . '/groups/provider/aggregators.php');
 
 
 
-Route::middleware(['authorize.withdrawal'])->get('/admin/roles', function () {
-    // Lógica da rota "/admin/roles" aqui
-});
-Route::middleware(['authorize.withdrawal'])->get('/admin/permissions', function () {
-    // Lógica da rota "/admin/roles" aqui
-});
 
 
 // GATEWAYS (Mercado Pago, PagSeguro, Pagar.me, Asaas e Stripe)

@@ -24,7 +24,7 @@ class EditGame extends EditRecord
             $data['status'] = 1;
         }
 
-        $record->update($data);
+        $record->update(GameResource::applyCoverUpload($data));
 
         return $record;
     }

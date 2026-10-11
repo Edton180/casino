@@ -160,8 +160,7 @@ class PaymentSetting extends Page implements HasForms
                             ->schema([
                            TextInput::make('cupom')
                                 ->label('Cupom')
-                                ->placeholder('Digite o Cupom')
-                                ->required()
+                                ->placeholder('Digite o Cupom (opcional)')
                                 ->maxLength(191),
                             TextInput::make('cupomvalor')
                                 ->label('Valor do Cupom')

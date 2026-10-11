@@ -59,9 +59,12 @@ class ChangePasswordUser extends Page implements HasForms
                 return;
             }
 
-            $user = User::find($this->record->id);
+            $state    = $this->form->getState(); // valida senha e confirmação
+            $password = $state['data']['password'] ?? $state['password'];
+            $user     = User::find($this->record->id);
 
-            $user->update(['password' => $this->data['password']]);
+            $user->update(['password' => $password]);
+            $this->form->fill();
             Notification::make()
                 ->title('Senha Alterada')
                 ->body('A senha foi alterada com sucesso!')
@@ -86,12 +89,14 @@ class ChangePasswordUser extends Page implements HasForms
                         ->placeholder('Digite a senha')
                         ->password()
                         ->required()
+                        ->minLength(8)
+                        ->same('confirm_password')
                         ->maxLength(191),
                     TextInput::make('confirm_password')
                         ->label('Confirme Senha')
                         ->placeholder('Confirme sua senha')
                         ->password()
-                        ->confirmed()
+                        ->required()
                         ->maxLength(191),
                 ])
                 ->columns(2)

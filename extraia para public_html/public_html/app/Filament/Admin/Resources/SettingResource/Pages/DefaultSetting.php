@@ -67,6 +67,10 @@ class DefaultSetting extends Page implements HasForms
      */
     public function save()
     {
+        // cópia: alterar $this->data deixaria os campos de upload como texto e a
+        // tela quebraria ao redesenhar o formulário depois de salvar
+        $data = $this->data;
+
         try {
             if(env('APP_DEMO')) {
                 Notification::make()
@@ -79,113 +83,113 @@ class DefaultSetting extends Page implements HasForms
 
             $setting = Setting::find($this->record->id);
 
-            $favicon   = $this->data['software_favicon'];
-            $logoWhite = $this->data['software_logo_white'];
-            $logoBlack = $this->data['software_logo_black'];
-            $bannergiros = $this->data['software_girosbanner'];
-            $carregamento = $this->data['software_carregamento'];
-            $bannerjogos = $this->data['software_bannerjogos'];
+            $favicon   = $data['software_favicon'];
+            $logoWhite = $data['software_logo_white'];
+            $logoBlack = $data['software_logo_black'];
+            $bannergiros = $data['software_girosbanner'];
+            $carregamento = $data['software_carregamento'];
+            $bannerjogos = $data['software_bannerjogos'];
 
-            $softwareBackground = $this->data['software_background'];
-                $softwareLogin = $this->data['software_login'];
-                $softwareRegistro = $this->data['software_registro'];
-                $softwareAplicativo = $this->data['software_aplicativo'];
+            $softwareBackground = $data['software_background'];
+                $softwareLogin = $data['software_login'];
+                $softwareRegistro = $data['software_registro'];
+                $softwareAplicativo = $data['software_aplicativo'];
 
                 if (is_array($softwareLogin) || is_object($softwareLogin)) {
                     if(!empty($softwareLogin)) {
-                        $this->data['software_login'] = $this->uploadFile($softwareLogin);
+                        $data['software_login'] = $this->uploadFile($softwareLogin);
                     }
                 }
                 if (is_array($softwareRegistro) || is_object($softwareRegistro)) {
                     if(!empty($softwareRegistro)) {
-                        $this->data['software_registro'] = $this->uploadFile($softwareRegistro);
+                        $data['software_registro'] = $this->uploadFile($softwareRegistro);
                     }
                 }
                 
             if (is_array($softwareBackground) || is_object($softwareBackground)) {
                 if(!empty($softwareBackground)) {
-                    $this->data['software_background'] = $this->uploadFile($softwareBackground);
+                    $data['software_background'] = $this->uploadFile($softwareBackground);
 
-                    if(is_array($this->data['software_background'])) {
-                        unset($this->data['software_background']);
+                    if(is_array($data['software_background'])) {
+                        unset($data['software_background']);
                     }
                 }
             }
 
             if (is_array($favicon) || is_object($favicon)) {
                 if(!empty($favicon)) {
-                    $this->data['software_favicon'] = $this->uploadFile($favicon);
+                    $data['software_favicon'] = $this->uploadFile($favicon);
 
-                    if(is_array($this->data['software_favicon'])) {
-                        unset($this->data['software_favicon']);
+                    if(is_array($data['software_favicon'])) {
+                        unset($data['software_favicon']);
                     }
                 }
             }
 
             if (is_array($logoWhite) || is_object($logoWhite)) {
                 if(!empty($logoWhite)) {
-                    $this->data['software_logo_white'] = $this->uploadFile($logoWhite);
+                    $data['software_logo_white'] = $this->uploadFile($logoWhite);
 
-                    if(is_array($this->data['software_logo_white'])) {
-                        unset($this->data['software_logo_white']);
+                    if(is_array($data['software_logo_white'])) {
+                        unset($data['software_logo_white']);
                     }
                 }
             }
 
             if (is_array($logoBlack) || is_object($logoBlack)) {
                 if(!empty($logoBlack)) {
-                    $this->data['software_logo_black'] = $this->uploadFile($logoBlack);
+                    $data['software_logo_black'] = $this->uploadFile($logoBlack);
 
-                    if(is_array($this->data['software_logo_black'])) {
-                        unset($this->data['software_logo_black']);
+                    if(is_array($data['software_logo_black'])) {
+                        unset($data['software_logo_black']);
                     }
                 }
             }
             if (is_array($bannergiros) || is_object($bannergiros)) {
                 if(!empty($bannergiros)) {
-                    $this->data['software_girosbanner'] = $this->uploadFile($bannergiros);
+                    $data['software_girosbanner'] = $this->uploadFile($bannergiros);
 
-                    if(is_array($this->data['software_girosbanner'])) {
-                        unset($this->data['software_girosbanner']);
+                    if(is_array($data['software_girosbanner'])) {
+                        unset($data['software_girosbanner']);
                     }
                 }
             }
             if (is_array($bannerjogos) || is_object($bannerjogos)) {
                 if(!empty($bannerjogos)) {
-                    $this->data['software_bannerjogos'] = $this->uploadFile($bannerjogos);
+                    $data['software_bannerjogos'] = $this->uploadFile($bannerjogos);
 
-                    if(is_array($this->data['software_bannerjogos'])) {
-                        unset($this->data['software_bannerjogos']);
+                    if(is_array($data['software_bannerjogos'])) {
+                        unset($data['software_bannerjogos']);
                     }
                 }
             }
             if (is_array($carregamento) || is_object($carregamento)) {
                 if(!empty($carregamento)) {
-                    $this->data['software_carregamento'] = $this->uploadFile($carregamento);
+                    $data['software_carregamento'] = $this->uploadFile($carregamento);
 
-                    if(is_array($this->data['software_carregamento'])) {
-                        unset($this->data['software_carregamento']);
+                    if(is_array($data['software_carregamento'])) {
+                        unset($data['software_carregamento']);
                     }
                 }
             }
                         if (is_array($softwareAplicativo) || is_object($softwareAplicativo)) {
                 if(!empty($softwareAplicativo)) {
-                    $this->data['software_aplicativo'] = $this->uploadFile($softwareAplicativo);
+                    $data['software_aplicativo'] = $this->uploadFile($softwareAplicativo);
 
-                    if(is_array($this->data['software_aplicativo'])) {
-                        unset($this->data['software_aplicativo']);
+                    if(is_array($data['software_aplicativo'])) {
+                        unset($data['software_aplicativo']);
                     }
                 }
             }
             $envs = DotenvEditor::load(base_path('.env'));
 
             $envs->setKeys([
-                'APP_NAME' => $this->data['software_name'],
+                'APP_NAME' => $data['software_name'],
             ]);
 
             $envs->save();
 
-            if($setting->update($this->data)) {
+            if($setting->update($data)) {
                 Cache::put('setting', $setting);
 
                 Notification::make()

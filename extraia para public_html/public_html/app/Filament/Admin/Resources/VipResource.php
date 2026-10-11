@@ -44,10 +44,13 @@ class VipResource extends Resource
                             ->label('Símbolo')
                             ->placeholder('Carregue um Símbolo')
                             ->image()
+                            ->required()
                             ->columnSpanFull(),
                         Forms\Components\TextInput::make('bet_level')
                             ->label('Level')
                             ->required()
+                            ->numeric()
+                            ->minValue(1)
                             //->readOnly(fn (string $context): bool => $context === 'create')
                             ->placeholder('Mantenha a lista numérica na ordem')
 //                            ->default(function() {

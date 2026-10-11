@@ -98,13 +98,20 @@ class GameResource extends Resource
                                 ->required()
                                 ->maxLength(191),
                         ])->columns(3),
-                        Forms\Components\FileUpload::make('cover')
-                            ->label('Capa')
+                        Forms\Components\TextInput::make('cover')
+                            ->label('Capa (endereço da imagem)')
+                            ->placeholder('https://... ou /originals/mines/cover.svg')
+                            ->helperText('Preenchido automaticamente ao importar jogos. Para trocar, envie uma imagem abaixo.')
+                            ->maxLength(255)
+                            ->columnSpanFull(),
+                        Forms\Components\FileUpload::make('cover_upload')
+                            ->label('Enviar nova capa')
                             ->placeholder('Carregue a capa do jogo')
                             ->image()
+                            ->directory('games')
                             ->columnSpanFull()
-                            ->helperText('Tamanho recomendado para a capa é de 322x322')
-                            ->required(),
+                            ->helperText('Tamanho recomendado: 322x322. Substitui o endereço acima.')
+                            ->required(fn (Forms\Get $get) => blank($get('cover'))),
                     ]),
                     Forms\Components\Group::make()
                     ->schema([
@@ -168,9 +175,8 @@ class GameResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\ImageColumn::make('cover')
-                ->label('Capa')
-                //->disk('media')
-                ,
+                    ->label('Capa')
+                    ->getStateUsing(fn ($record) => self::coverUrl($record->cover)),
                 Tables\Columns\TextColumn::make('provider.name')
                     ->label('Provedor')
                     ->numeric()
@@ -340,5 +346,35 @@ class GameResource extends Resource
             'create' => \App\Filament\Admin\Resources\GameResource\Pages\CreateGame::route('/create'),
             'edit' => \App\Filament\Admin\Resources\GameResource\Pages\EditGame::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * A capa pode ser uma URL, um caminho público (/originals/...) ou um
+     * arquivo enviado pelo painel (storage/app/public).
+     */
+    public static function coverUrl(?string $cover): ?string
+    {
+        if (blank($cover)) {
+            return null;
+        }
+
+        if (preg_match('#^(https?:)?//#', $cover)) {
+            return $cover;
+        }
+
+        return str_starts_with($cover, '/') ? url($cover) : url('storage/' . $cover);
+    }
+
+    /**
+     * Usa a imagem enviada (se houver) no lugar do endereço digitado.
+     */
+    public static function applyCoverUpload(array $data): array
+    {
+        if (!empty($data['cover_upload'])) {
+            $data['cover'] = is_array($data['cover_upload']) ? reset($data['cover_upload']) : $data['cover_upload'];
+        }
+        unset($data['cover_upload']);
+
+        return $data;
     }
 }

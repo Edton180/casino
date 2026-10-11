@@ -192,7 +192,7 @@ class AdminPanelProvider extends PanelProvider
                                         'filament.admin.resources.roles.view',
                                         'filament.admin.resources.roles.edit',
                                     ]))
-                                    ->url(fn (): string => '/admpadrao/roles'),
+                                    ->url(fn (): string => route('filament.admin.resources.roles.index')),
                                 NavigationItem::make(__('filament-spatie-roles-permissions::filament-spatie.section.permission'))
                                     ->icon('heroicon-o-lock-closed')
                                     ->isActiveWhen(fn () => request()->routeIs([
@@ -201,7 +201,7 @@ class AdminPanelProvider extends PanelProvider
                                         'filament.admin.resources.permissions.view',
                                         'filament.admin.resources.permissions.edit',
                                     ]))
-                                    ->url(fn (): string => '/admpadrao/permissions'),
+                                    ->url(fn (): string => route('filament.admin.resources.permissions.index')),
                             ])
                         : NavigationGroup::make()
                     ,
