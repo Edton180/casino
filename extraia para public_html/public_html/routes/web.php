@@ -31,6 +31,11 @@ include_once(__DIR__ . '/groups/provider/games.php');
 include_once(__DIR__ . '/groups/provider/systemserver.php');
 include_once(__DIR__ . '/groups/provider/apiPragmatic40.php');
 include_once(__DIR__ . '/groups/provider/apiPg12.php');
+// webhooks que existiam mas não eram carregados (o saldo desses provedores nunca era atualizado)
+include_once(__DIR__ . '/groups/provider/kagaming.php');
+include_once(__DIR__ . '/groups/provider/salsa.php');
+include_once(__DIR__ . '/groups/provider/venix.php');
+include_once(__DIR__ . '/groups/provider/vibra.php');
 
 
 

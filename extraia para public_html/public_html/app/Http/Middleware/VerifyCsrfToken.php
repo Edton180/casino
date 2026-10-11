@@ -23,6 +23,8 @@ class VerifyCsrfToken extends Middleware
         'playigaming_api',
         'playigaming_api/*',
         'systemserver/*',
+        'venix_api',
+        'paypal/*',
         'callback',
         'callback/*',
         'gold_api',
