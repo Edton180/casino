@@ -9420,7 +9420,8 @@ INSERT INTO `migrations` VALUES
 (107,'2026_10_11_000000_add_modern_payment_gateways',69),
 (108,'2026_10_12_000000_convert_tables_to_innodb',69),
 (110,'2026_10_12_000001_add_originals_games_and_paypal',70),
-(111,'2026_10_13_000000_add_tower_hilo_wheel_originals',71);
+(111,'2026_10_13_000000_add_tower_hilo_wheel_originals',71),
+(112,'2026_10_13_000001_fill_missing_withdrawal_currency',72);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 DROP TABLE IF EXISTS `mission_users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

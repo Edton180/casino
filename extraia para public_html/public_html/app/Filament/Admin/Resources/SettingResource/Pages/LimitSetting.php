@@ -107,6 +107,7 @@ class LimitSetting extends Page implements HasForms
                     ->schema([
                         TextInput::make('withdrawal_limit')
                             ->label('Limite de Saque')
+                            ->helperText('Quantidade máxima de saques por jogador no período (0 = sem limite). Saques cancelados não contam.')
                             ->numeric(),
                         Select::make('withdrawal_period')
                             ->label('Período')

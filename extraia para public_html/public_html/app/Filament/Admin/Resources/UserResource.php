@@ -166,6 +166,13 @@ class UserResource extends Resource
                     ])->columns(4),
                 Forms\Components\Section::make()
                     ->schema([
+                        Forms\Components\Select::make('roles')
+                            ->label('Funções')
+                            ->helperText('"admin" dá acesso a este painel. Deixe vazio para jogadores.')
+                            ->relationship('roles', 'name')
+                            ->multiple()
+                            ->preload()
+                            ->columnSpanFull(),
                         Forms\Components\Toggle::make('banned')
                             ->label('Banido')
                             ->columnSpanFull()

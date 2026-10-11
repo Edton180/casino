@@ -1,5 +1,35 @@
 # CHANGELOG.md
 
+## v9.1.0
+
+### Instalação
+- **Instalação local (localhost)**: `scripts/install-local.sh` (Linux/macOS/WSL), `scripts/install-local-windows.bat` (XAMPP/Laragon), `auto-install.sh --local` (Nginx completo) e `docker-compose.yml`.
+- `auto-install.sh`: opção `--port`, aviso quando a porta já está ocupada e falha real se o Nginx não subir (antes dizia "concluída").
+- O instalador cria o banco de dados quando ele não existe e o usuário tem permissão.
+
+### Jogos
+- Novos originais **Tower, HiLo e Wheel** (mecânicas do Luck2x reescritas como provably fair).
+- Visual novo em todos os originais: histórico de rodadas, sons, animação de vitória, efeitos de derrota e gráficos refeitos (gemas e bombas no Mines, foguete e área no Crash, pinos que acendem no Plinko etc.).
+
+### Painel administrativo
+- Funções e Permissões abriam com erro (rotas antigas sobrepunham as do painel); menu apontava para `/admpadrao`.
+- Salvar as Configurações gerais dava erro 500 e não voltava ao painel.
+- Pagamentos: o campo Cupom obrigatório impedia salvar os limites.
+- Trocar senha de usuário passou a validar (mínimo 8 caracteres e confirmação).
+- Usuários: novo campo **Funções** para dar acesso de administrador.
+- VIP: símbolo e nível obrigatórios (antes erro de banco).
+- Jogos: editar um jogo não exige mais reenviar a capa (nem apaga a atual); miniaturas da lista corrigidas.
+- Opções Avançadas: os botões eram de fachada; agora atualizam o banco, limpam o cache, criam o link de uploads e importam provedores/jogos (WorldSlot/EverGame). "Limpar o cache" do menu passou a funcionar e só para administradores.
+- Rótulos invertidos corrigidos ("Ativar Roleta da Sorte", "Desativar Giros Grátis").
+- Removidas mensagens ofensivas e redirecionamentos "pegadinha".
+
+### Site
+- Hospedagem compartilhada: chamadas da API com barra final eram redirecionadas para `/public/api/...` (quebrava POSTs); `/app` dava 403.
+- Página VIP exige login; Recentes não retorna mais erro 400 quando vazio.
+- Roleta da Sorte quebrava em produção (dependia do Faker, que não é instalado).
+- Missões: só listagem e inscrição ficam expostas na API.
+
+
 ## v9.0.0
 
 ### Instalação

@@ -210,7 +210,7 @@ class AdminPanelProvider extends PanelProvider
                         ->items([
                             NavigationItem::make('advanced_page')
                                 ->icon('heroicon-o-banknotes')
-                                ->label(fn (): string => 'Opções Avançada')
+                                ->label(fn (): string => 'Opções Avançadas')
                                 ->url(fn (): string => AdvancedPage::getUrl())
                                 ->isActiveWhen(fn () => request()->routeIs('filament.admin.resources.sub-affiliates.index'))
                                 ->visible(fn(): bool => auth()->user()->hasRole('admin')),

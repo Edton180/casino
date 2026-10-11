@@ -1,6 +1,6 @@
 # 🎰 Casino Platform
 
-![versão](https://img.shields.io/badge/versão-9.0.0-blue)
+![versão](https://img.shields.io/badge/versão-9.1.0-blue)
 ![php](https://img.shields.io/badge/PHP-8.1%E2%80%938.3-777bb4)
 ![laravel](https://img.shields.io/badge/Laravel-10-ff2d20)
 
@@ -13,6 +13,7 @@ jogos originais, jogos locais, integração com provedores e seis gateways de pa
 |---|---|
 | **Hospedagem compartilhada** (cPanel, Hostinger, HostGator...) | Baixe `casino-pronto-para-hospedagem.zip` em **[Releases](../../releases)**, extraia no `public_html`, crie um banco MySQL e abra `https://seu-dominio/install/` |
 | **VPS** (Ubuntu/Debian) | `sudo bash auto-install.sh --domain meusite.com --email voce@meusite.com --ssl` |
+| **Seu computador** (localhost) | Linux/macOS/WSL: `bash scripts/install-local.sh` · Windows: `scripts\install-local-windows.bat` · Docker: `docker compose up -d` |
 
 👉 Passo a passo completo, com capturas de tela de cada etapa: **[INSTALACAO.md](INSTALACAO.md)**
 
@@ -20,7 +21,8 @@ jogos originais, jogos locais, integração com provedores e seis gateways de pa
 
 | Documento | Conteúdo |
 |---|---|
-| [INSTALACAO.md](INSTALACAO.md) | Instalação (compartilhada, VPS, manual), pós-instalação e checklist de produção |
+| [INSTALACAO.md](INSTALACAO.md) | Instalação (compartilhada, VPS, manual, localhost), pós-instalação e checklist de produção |
+| [MANUAL-DE-USO.md](MANUAL-DE-USO.md) | Como usar o painel: configurações, pagamentos, saques, jogos, usuários, afiliados, VIP, missões, aparência |
 | [PAGAMENTOS.md](PAGAMENTOS.md) | Mercado Pago, PagSeguro, Pagar.me, Asaas, Stripe e PayPal; webhooks e saques |
 | [JOGOS.md](JOGOS.md) | Jogos originais, jogos locais e provedores (chaves e webhooks) |
 | [SOLUCAO-DE-PROBLEMAS.md](SOLUCAO-DE-PROBLEMAS.md) | Erros comuns e como resolver |
@@ -29,7 +31,7 @@ jogos originais, jogos locais, integração com provedores e seis gateways de pa
 
 ## ✨ Recursos
 
-- **Jogos originais** (código próprio, provably fair): Mines, Crash, Dice, Plinko e Double.
+- **8 jogos originais** (código próprio, provably fair): Mines, Crash, Dice, Plinko, Double, Tower, HiLo e Wheel.
 - **Jogos locais** e de habilidade (Jack Frost, Treasures of Aztec, Dino, Subway, Fruit Ninja...).
 - **Provedores**: PlayFiver, Fivers, WorldSlot, Games2Api, Slotegrator, Salsa, EverGame, KaGaming e outros.
 - **Pagamentos**: PIX e cartão via Mercado Pago, PagSeguro, Pagar.me, Asaas, Stripe e PayPal; saque automático por PIX (Asaas).

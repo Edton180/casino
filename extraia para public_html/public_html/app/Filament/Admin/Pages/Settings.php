@@ -179,7 +179,7 @@ class Settings extends Page implements HasForms
                             'right' => 'Right',
                         ]),
                         Toggle::make('disable_spin')
-                            ->label('Disable Spin')
+                            ->label('Ativar Roleta da Sorte (Spin) para visitantes')
                         ,
                     ])->columns(4),
             ])

@@ -70,16 +70,16 @@ app.config.globalProperties.state = {
         return moment(value).fromNow();
     },
     currencyFormat(value, currency) {
-        if (value === undefined || currency === undefined) {
-            currency = 'USD';
+        const number = Number(value);
+        const amount = Number.isFinite(number) ? number : 0;
+        const code = typeof currency === 'string' && /^[A-Za-z]{3}$/.test(currency) ? currency.toUpperCase() : 'BRL';
+        const lang = document.documentElement.getAttribute("lang") || 'pt-BR';
+
+        try {
+            return amount.toLocaleString(lang, { style: 'currency', currency: code });
+        } catch (e) {
+            return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
-
-        const options = {
-            style: 'currency',
-            currency: currency
-        };
-
-        return value.toLocaleString(document.documentElement.getAttribute("lang"), options);
     },
     currencyUSD(value) {
         if (typeof value === 'number') {

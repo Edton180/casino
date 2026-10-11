@@ -17,7 +17,7 @@
 # =============================================================================
 set -Eeuo pipefail
 
-SCRIPT_VERSION="9.0.0"
+SCRIPT_VERSION="9.1.0"
 REPO_URL="${REPO_URL:-https://github.com/Edton180/casino.git}"
 BRANCH="${BRANCH:-main}"
 APP_DIR="${APP_DIR:-/var/www/casino}"

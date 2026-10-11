@@ -64,6 +64,30 @@ class WalletController extends Controller
         /// Verificar se é afiliado
         If(auth('api')->check()) {
 
+            if(!in_array($request->type, ['pix', 'bank'], true)) {
+                return response()->json(['error' => 'Tipo de saque inválido'], 400);
+            }
+
+            // Limite de saques por período (Configurações → Limites; 0 ou vazio = sem limite)
+            $limit = (int) ($setting->withdrawal_limit ?? 0);
+            if ($limit > 0) {
+                $since = match ($setting->withdrawal_period) {
+                    'weekly'  => now()->startOfWeek(),
+                    'monthly' => now()->startOfMonth(),
+                    'yearly'  => now()->startOfYear(),
+                    default   => now()->startOfDay(),
+                };
+                $count = Withdrawal::where('user_id', auth('api')->id())
+                    ->where('status', '!=', 2) // cancelados não contam
+                    ->where('created_at', '>=', $since)
+                    ->count();
+
+                if ($count >= $limit) {
+                    $periods = ['daily' => 'por dia', 'weekly' => 'por semana', 'monthly' => 'por mês', 'yearly' => 'por ano'];
+                    return response()->json(['error' => 'Limite de ' . $limit . ' saque(s) ' . ($periods[$setting->withdrawal_period] ?? 'por dia') . ' atingido.'], 400);
+                }
+            }
+
             if($request->type === 'pix') {
                 $rules = [
                     'amount'        => ['required', 'numeric', 'min:'.$setting->min_withdrawal, 'max:'.$setting->max_withdrawal],
@@ -109,50 +133,46 @@ class WalletController extends Controller
             }
 
             if($request->accept_terms == true) {
-                if(floatval($request->amount) > floatval(auth('api')->user()->wallet->balance_withdrawal)) {
+                $amount = (float) \Helper::amountPrepare($request->amount);
+
+                // checagem de saldo e débito na mesma transação (evita sacar duas vezes o mesmo saldo)
+                $withdrawal = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $amount) {
+                    $wallet = Wallet::where('user_id', auth('api')->id())->lockForUpdate()->first();
+                    if (!$wallet || $amount > (float) $wallet->balance_withdrawal) {
+                        return null;
+                    }
+
+                    $data = [
+                        'user_id'   => auth('api')->id(),
+                        'amount'    => $amount,
+                        'type'      => $request->type,
+                        'currency'  => $wallet->currency ?: 'BRL',
+                        'symbol'    => $wallet->symbol ?: 'R$',
+                        'status'    => 0,
+                    ];
+
+                    if ($request->type === 'pix') {
+                        $data['pix_key']  = $request->pix_key;
+                        $data['pix_type'] = $request->pix_type;
+                    } else {
+                        $data['bank_info'] = $request->bank_info;
+                    }
+
+                    $withdrawal = Withdrawal::create($data);
+                    $wallet->decrement('balance_withdrawal', $amount);
+                    $wallet->update(['balance_bonus' => 0]);
+
+                    return $withdrawal;
+                });
+
+                if(!$withdrawal) {
                     return response()->json(['error' => 'Você não tem saldo suficiente'], 400);
                 }
 
-                $data = [];
-                if($request->type === 'pix') {
-                    $data = [
-                        'user_id'   => auth('api')->user()->id,
-                        'amount'    => \Helper::amountPrepare($request->amount),
-                        'type'      => $request->type,
-                        'pix_key'   => $request->pix_key,
-                        'pix_type'  => $request->pix_type,
-                        'currency'  => $request->currency,
-                        'symbol'    => $request->symbol,
-                        'status'    => 0,
-                    ];
-                }
-
-                if($request->type === 'bank') {
-                    $data = [
-                        'user_id'   => auth('api')->user()->id,
-                        'amount'    => \Helper::amountPrepare($request->amount),
-                        'type'      => $request->type,
-                        'bank_info' => $request->bank_info,
-                        'currency'  => $request->currency,
-                        'symbol'    => $request->symbol,
-                        'status'    => 0,
-                    ];
-                }
-
-                $withdrawal = Withdrawal::create($data);
-
-                if($withdrawal) {
-                    $wallet = Wallet::where('user_id', auth('api')->id())->first();
-                    $wallet->decrement('balance_withdrawal', floatval($request->amount));
-                    $wallet->update(['balance_bonus' => 0]);
-
-
-                    return response()->json([
-                        'status' => true,
-                        'message' => 'Saque realizado com sucesso',
-                    ], 200);
-
-                }
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Saque realizado com sucesso',
+                ], 200);
             }
 
             return response()->json(['error' => 'Você precisa aceitar os termos'], 400);

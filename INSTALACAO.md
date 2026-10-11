@@ -1,13 +1,17 @@
 # 📦 Guia de instalação
 
-Este guia cobre os dois cenários suportados:
+Este guia cobre os cenários suportados:
 
 | Cenário | Para quem | Tempo |
 |---|---|---|
 | [A. Hospedagem compartilhada](#a-hospedagem-compartilhada-cpanel-hostinger-hostgator) (cPanel, Hostinger, HostGator, Locaweb...) | Quem não tem acesso root/SSH | ~10 min |
 | [B. VPS / servidor dedicado](#b-vps-ubuntu--debian--1-comando) (Ubuntu 22.04/24.04, Debian 12) | Melhor desempenho e controle | ~5 min (1 comando) |
+| [C. Instalação manual](#c-instalação-manual-ssh--desenvolvimento) | Quem já tem PHP/Composer no servidor | ~5 min |
+| [D. No seu computador (localhost)](#d-no-seu-computador-localhost) (Windows, macOS, Linux) | Testar, personalizar e desenvolver | ~5 min |
 
-Nos dois casos a instalação é feita por um **assistente** que cria o banco de dados, o arquivo `.env` e o seu usuário administrador. Não é preciso importar SQL nem editar arquivos à mão.
+Em todos os casos a instalação é feita por um **assistente** que cria o banco de dados, o arquivo `.env` e o seu usuário administrador. Não é preciso importar SQL nem editar arquivos à mão.
+
+Depois de instalar, veja o **[Manual de uso](MANUAL-DE-USO.md)** (painel, configurações, pagamentos, jogos).
 
 > ⚖️ **Antes de começar:** operar apostas e jogos de azar exige licença na maior parte dos países (no Brasil, autorização da Secretaria de Prêmios e Apostas — Lei 14.790/2023). Você é responsável pelas licenças, KYC/PLD, jogo responsável, LGPD e pelo direito de uso dos jogos e provedores que ativar.
 
@@ -131,6 +135,8 @@ Opções úteis:
 | Opção | Descrição |
 |---|---|
 | `--name "Meu Cassino"` | Nome do site |
+| `--port 8080` | Porta HTTP, se a 80 já estiver em uso (sem SSL) |
+| `--local` | Instala no próprio computador (`http://localhost`), sem domínio nem SSL — veja a seção D |
 | `--admin-pass SENHA` | Senha do admin (padrão: gerada) |
 | `--dir /var/www/outro` | Pasta da aplicação |
 | `--php 8.2` | Versão do PHP |
@@ -174,8 +180,72 @@ php artisan system:install --no-interaction \
 
 Verificar só os requisitos: `php artisan system:install --check`.
 
+Se o banco informado não existir e o usuário tiver permissão, ele é criado automaticamente.
+
 O frontend já vem compilado em `public/build`. Para alterar o Vue/Tailwind:
 `npm ci && npm run build`.
+
+---
+
+## D. No seu computador (localhost)
+
+Para testar a plataforma, criar seus temas ou desenvolver. Escolha **uma** das opções:
+
+### D1. Linux, macOS ou Windows com WSL — 1 comando
+
+Requer PHP 8.1+ (com as extensões da tabela de requisitos) e MySQL/MariaDB rodando.
+
+```bash
+git clone https://github.com/Edton180/casino.git
+cd casino
+bash scripts/install-local.sh --db-user root --db-pass SUA_SENHA_DO_MYSQL
+```
+
+O script baixa o Composer se precisar, **cria o banco `casino_local`**, instala e já abre o servidor:
+
+| | |
+|---|---|
+| Site | http://127.0.0.1:8000 |
+| Painel | http://127.0.0.1:8000/admin |
+| Login | `admin@casino.local` / `admin12345` |
+
+Para ligar o site de novo depois: `bash scripts/install-local.sh --serve`.
+Opções: `--port`, `--db-host`, `--db-name`, `--admin-email`, `--admin-pass`, `--name`, `--no-serve` (veja `--help`).
+
+> No Ubuntu o usuário `root` do MariaDB não aceita senha pela rede; crie um usuário próprio — veja [Solução de problemas](SOLUCAO-DE-PROBLEMAS.md#instalação-local-localhost).
+
+### D2. Windows com XAMPP ou Laragon — duplo clique
+
+1. Instale o [XAMPP](https://www.apachefriends.org) (PHP 8.2+) ou o [Laragon](https://laragon.org).
+2. No XAMPP, abra `C:\xampp\php\php.ini` e tire o `;` da frente de `extension=intl`, `extension=zip` e `extension=gd`.
+3. Inicie o **MySQL** no painel do XAMPP/Laragon.
+4. Baixe o repositório (*Code → Download ZIP*) e extraia.
+5. Dê dois cliques em **`scripts\install-local-windows.bat`** (no Laragon, rode pelo *Terminal* do Laragon).
+6. O navegador abre em http://127.0.0.1:8000 — login `admin@casino.local` / `admin12345`.
+
+Para abrir de novo depois, dê dois cliques no mesmo arquivo (ele pula a instalação).
+
+### D3. Ubuntu/Debian com Nginx (igual a um servidor)
+
+```bash
+sudo bash scripts/auto-install.sh --local          # http://localhost
+sudo bash scripts/auto-install.sh --local --port 8080   # se a porta 80 estiver ocupada
+```
+
+Instala Nginx, PHP-FPM, MariaDB e o cron, como na VPS, mas sem domínio e sem SSL.
+
+### D4. Docker (qualquer sistema)
+
+Com o [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado, na pasta do repositório:
+
+```bash
+docker compose up -d
+```
+
+A primeira subida leva alguns minutos. Depois: http://localhost:8000 (painel em `/admin`, login `admin@casino.local` / `admin12345` — altere no `docker-compose.yml` **antes** da primeira subida).
+Parar: `docker compose down` · apagar tudo, inclusive o banco: `docker compose down -v`.
+
+> ⚠️ Em instalações locais o login padrão é público. Nunca exponha essa instalação na internet sem trocar a senha.
 
 ---
 
@@ -187,13 +257,15 @@ Mercado Pago, PagSeguro, Pagar.me, Asaas, Stripe e PayPal.
 Cadastre os webhooks no painel de cada gateway — detalhes em **[PAGAMENTOS.md](PAGAMENTOS.md)**.
 
 ### 2. Jogos
-- Os **jogos originais** (Mines, Crash, Dice, Plinko, Double) e os jogos locais já funcionam sem nenhuma configuração.
+- Os **jogos originais** (Mines, Crash, Dice, Plinko, Double, Tower, HiLo, Wheel) e os jogos locais já funcionam sem nenhuma configuração.
 - Para jogos de **provedores** (PlayFiver, Fivers, WorldSlot...): configure as chaves em **Configurações → Chaves dos Jogos** e ative os jogos em **Meus Jogos → Todos os Jogos** (selecione e use a ação em massa **Ativar Jogos**).
   Detalhes em **[JOGOS.md](JOGOS.md)**.
 
 ### 3. Aparência
 - **Configurações** → nome, logos, banners, limites de depósito/saque, bônus e rollover.
 - **Customização** → cores, CSS/JS, banners da home.
+
+O passo a passo de cada tela está no **[Manual de uso](MANUAL-DE-USO.md)**.
 
 ### 4. E-mail (recuperação de senha e notificações)
 **Definições de Email** no painel, ou no `.env`:

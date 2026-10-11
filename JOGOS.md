@@ -4,7 +4,7 @@ A plataforma tem três tipos de jogos:
 
 | Tipo | Onde roda | Precisa de contrato/chave? |
 |---|---|---|
-| **Originais** (Mines, Crash, Dice, Plinko, Double) | No seu servidor | Não |
+| **Originais** (Mines, Crash, Dice, Plinko, Double, Tower, HiLo, Wheel) | No seu servidor | Não |
 | **Jogos locais** (caça-níqueis e jogos de habilidade em `public/originals`) | No seu servidor | Não |
 | **Provedores** (PlayFiver, Fivers, WorldSlot, Slotegrator...) | No servidor do provedor | Sim |
 
@@ -23,10 +23,17 @@ Desenvolvidos para esta plataforma (código próprio, sem licença de terceiros)
 | **Dice** | Escolha o alvo (2–98) e role acima ou abaixo. Multiplicador = RTP ÷ chance. | 97% |
 | **Plinko** | 12 linhas, risco baixo/médio/alto. Tabela normalizada para o RTP. | 97% |
 | **Double** | Roleta de 15 casas: vermelho/preto 2×, branco 14×. | 93,3% (fixo) |
+| **Tower** | 10 andares × 5 portas, de 1 a 4 bombas por andar (Fácil → Expert). Cada andar multiplica o prêmio; retire quando quiser. | 97% |
+| **HiLo** | A próxima carta é maior ou menor (ou igual)? Cada acerto acumula o multiplicador; dá para pular a carta. Cartas com reposição, A é a menor e K a maior. | 97% |
+| **Wheel** | Roda de 54 casas: preto 2× (26 casas), vermelho 3× (17), verde 5× (10), amarelo 50× (1). | 92,6%–96,3% (fixo) |
 
 | Mines | Crash | Plinko |
 |---|---|---|
 | ![Mines](docs/img/jogo-mines.png) | ![Crash](docs/img/jogo-crash.png) | ![Plinko](docs/img/jogo-plinko.png) |
+| **Tower** | **HiLo** | **Wheel** |
+| ![Tower](docs/img/jogo-tower.png) | ![HiLo](docs/img/jogo-hilo.png) | ![Wheel](docs/img/jogo-wheel.png) |
+
+**Visual:** todos os originais têm histórico das últimas rodadas, sons (com botão para silenciar), animação de vitória com confete e efeito de derrota.
 
 **Segurança e justiça**
 - O resultado é calculado **somente no servidor**; o navegador envia só a aposta e as escolhas.
@@ -44,6 +51,15 @@ ORIGINALS_MAX_WIN=50000     # prêmio máximo por rodada
 
 Rodadas ficam na tabela `original_rounds` e no **Histórico de Partidas** do painel (provedor `originals`).
 
+### Origem dos jogos Tower, HiLo e Wheel
+As **mecânicas** vieram do projeto [Luck2x-Casino](https://github.com/Casino-Scripts-com/Luck2x-Casino) (Tower com 5 portas e 1–4 bombas; distribuição 2×/3×/5×/50× da roda). O código foi **reescrito** para esta plataforma porque o original:
+- decidia o resultado **depois** do clique do jogador, com `mt_rand` (não verificável, sujeito a manipulação);
+- usava o servidor Node/Redis/WebSocket próprio do Luck2x e tabelas de saldo incompatíveis.
+
+Aqui o resultado é sorteado no início da rodada (provably fair), calculado só no servidor e integrado à carteira, ao rollover e aos afiliados.
+
+Os jogos **multijogador** dos repositórios de referência (Jackpot, Battle, Coinflip PvP, roleta com rodadas cronometradas) dependem desses servidores em tempo real e não foram trazidos.
+
 ---
 
 ## 2. Jogos locais (`public/originals`)
@@ -55,6 +71,8 @@ Rodadas ficam na tabela `original_rounds` e no **Histórico de Partidas** do pai
 | Fortune Tiger, Fortune OX, Fortune Mouse, Fortune Rabbit, Fortune Panda, Phoenix Rises, Queen of Bounty, Bikini Paradise, Hood vs Wolf, Songkran Party | ⚠️ desativados |
 
 Os desativados têm **imagens corrompidas no próprio repositório** (já foram enviadas danificadas no primeiro commit, abril/2025): em vários deles a folha de símbolos é ilegível e o jogo abre com tela preta ou símbolos faltando. A lógica no servidor funciona — basta substituir as pastas `public/originals/<jogo>/images` por arquivos íntegros e ativar o jogo no painel.
+
+Esses arquivos também existem no repositório ViperPro-Casino, mas **não foram copiados** de lá: são arte e marcas da PG Soft (ver aviso abaixo), e aquele repositório não tem licença que permita a reutilização.
 
 > ⚠️ **Atenção:** esses caça-níqueis reproduzem jogos da **PG Soft** (marcas, arte e nomes). Operá-los sem licença da PG Soft é violação de direitos autorais. Para oferecer esses títulos legalmente, use um provedor/agregador licenciado.
 

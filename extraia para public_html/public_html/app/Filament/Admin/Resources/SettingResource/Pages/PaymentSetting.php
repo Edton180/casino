@@ -169,9 +169,9 @@ class PaymentSetting extends Page implements HasForms
                         ])->columnSpanFull()->columns(2),
                         
                         Toggle::make('disable_spin')
-                            ->label('Disable Spin'),
+                            ->label('Ativar Roleta da Sorte (Spin) para visitantes'),
                         Toggle::make('desativar_giros')
-                            ->label('Ativar Giros Grátis'),
+                            ->label('Desativar Giros Grátis'),
 
 
                     ])->columns(2)

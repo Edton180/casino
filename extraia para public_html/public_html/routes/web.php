@@ -16,14 +16,14 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "web" middleware group. Make something great!
 |Sme
 */
-Route::get('clear', function() {
-    Artisan::command('clear', function () {
-        Artisan::call('optimize:clear');
-       return back();
-    });
+// "Limpar o cache" no menu do painel (somente administradores)
+Route::get('clear', function () {
+    Artisan::call('optimize:clear');
+
+    \Filament\Notifications\Notification::make()->title('Cache limpo')->success()->send();
 
     return back();
-});
+})->middleware(['admin.filament', 'authorize.withdrawal']);
 
 // GAMES PROVIDER
 include_once(__DIR__ . '/groups/provider/playFiver.php'); // Adiciona somente essa linha no seu arquivo. 

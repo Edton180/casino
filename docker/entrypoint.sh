@@ -20,16 +20,19 @@ chmod -R ug+rwX storage bootstrap/cache || true
 
 if [[ ! -f storage/installed.lock ]]; then
   echo "[casino] instalando a aplicação..."
-  su -s /bin/bash www-data -c "php artisan system:install --no-interaction --overwrite \
-    --url='${APP_URL}' --name='${SITE_NAME}' \
-    --db-host='${DB_HOST}' --db-port='${DB_PORT}' --db-name='${DB_DATABASE}' \
-    --db-user='${DB_USERNAME}' --db-pass='${DB_PASSWORD}' \
-    --admin-email='${ADMIN_EMAIL}' --admin-pass='${ADMIN_PASSWORD}'"
-  # o .env gravado fica legível pelo seu usuário no computador
+  # roda como root (a pasta montada pode pertencer ao seu usuário) e depois
+  # entrega ao Apache os arquivos que ele precisa gravar
+  php artisan system:install --no-interaction --overwrite \
+    --url="${APP_URL}" --name="${SITE_NAME}" \
+    --db-host="${DB_HOST}" --db-port="${DB_PORT}" --db-name="${DB_DATABASE}" \
+    --db-user="${DB_USERNAME}" --db-pass="${DB_PASSWORD}" \
+    --admin-email="${ADMIN_EMAIL}" --admin-pass="${ADMIN_PASSWORD}"
+  chown -R www-data:www-data storage bootstrap/cache public/storage .env || true
   chmod 664 .env || true
   echo "[casino] pronto! Site: ${APP_URL}  |  Painel: ${APP_URL}/admin  |  Login: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}"
 else
-  su -s /bin/bash www-data -c "php artisan migrate --force" || true
+  php artisan migrate --force || true
+  chown -R www-data:www-data storage bootstrap/cache || true
 fi
 
 exec "$@"
