@@ -11,15 +11,17 @@
 #
 #  Diagnóstico:
 #     sudo bash auto-install.sh --diagnose
+#
+#  Instalar no próprio computador (localhost, Ubuntu/Debian ou WSL):
+#     sudo bash auto-install.sh --local          → http://localhost
 # =============================================================================
 set -Eeuo pipefail
 
-SCRIPT_VERSION="9.0.0"
+SCRIPT_VERSION="9.2.0"
 REPO_URL="${REPO_URL:-https://github.com/Edton180/casino.git}"
 BRANCH="${BRANCH:-main}"
 APP_DIR="${APP_DIR:-/var/www/casino}"
 SRC_DIR="/opt/casino-src"
-APP_SUBDIR="extraia para public_html/public_html"
 PHP_VERSION="${PHP_VERSION:-8.3}"
 CRED_FILE="/root/casino-credenciais.txt"
 
@@ -30,6 +32,8 @@ ADMIN_PASS=""
 ENABLE_SSL=0
 MODE="install"
 ASSUME_YES=0
+LOCAL=0
+HTTP_PORT=80
 
 c_green='\033[1;32m'; c_red='\033[1;31m'; c_yellow='\033[1;33m'; c_cyan='\033[1;36m'; c_off='\033[0m'
 log()  { echo -e "${c_cyan}==>${c_off} $*"; }
@@ -53,6 +57,9 @@ Uso: sudo bash auto-install.sh [opções]
   --repo <url>            Repositório (padrão: ${REPO_URL})
   --branch <branch>       Branch (padrão: ${BRANCH})
   --php <versão>          Versão do PHP (padrão: ${PHP_VERSION})
+  --local                 Instala no próprio computador (http://localhost, sem domínio/SSL)
+                          login padrão: admin@casino.local / admin12345
+  --port <porta>          Porta HTTP (padrão: 80; ex.: 8080 se a 80 estiver ocupada)
   --update                Atualiza uma instalação existente
   --diagnose              Mostra o diagnóstico do servidor
   -y                      Não pede confirmação
@@ -71,6 +78,8 @@ while [[ $# -gt 0 ]]; do
     --repo) REPO_URL="$2"; shift 2 ;;
     --branch) BRANCH="$2"; shift 2 ;;
     --php) PHP_VERSION="$2"; shift 2 ;;
+    --local) LOCAL=1; shift ;;
+    --port) HTTP_PORT="$2"; shift 2 ;;
     --update) MODE="update"; shift ;;
     --diagnose) MODE="diagnose"; shift ;;
     -y|--yes|--non-interactive) ASSUME_YES=1; shift ;;
@@ -80,6 +89,26 @@ while [[ $# -gt 0 ]]; do
     *) die "Opção desconhecida: $1 (use --help)" ;;
   esac
 done
+
+# URL pública do site (inclui a porta quando não é a 80)
+site_url() {
+  local scheme="http"; [[ ${ENABLE_SSL} -eq 1 ]] && scheme="https"
+  if [[ "${HTTP_PORT}" != "80" && ${ENABLE_SSL} -eq 0 ]]; then
+    echo "${scheme}://${DOMAIN}:${HTTP_PORT}"
+  else
+    echo "${scheme}://${DOMAIN}"
+  fi
+}
+
+# Falha cedo se outra aplicação (ex.: Apache) já usa a porta
+check_port() {
+  command -v ss >/dev/null || return 0
+  local owner
+  owner="$(ss -ltnpH "sport = :${HTTP_PORT}" 2>/dev/null | grep -v nginx | grep -o 'users:(("[^"]*' | head -1 | cut -d'"' -f2 || true)"
+  if [[ -n "${owner}" ]]; then
+    die "A porta ${HTTP_PORT} já está em uso por '${owner}'. Pare esse serviço (ex.: sudo systemctl stop ${owner}) ou use --port 8080."
+  fi
+}
 
 random_secret() { local s; s="$(openssl rand -hex 32)"; echo "${s:0:${1:-24}}"; }
 
@@ -176,14 +205,19 @@ fetch_code() {
     rm -rf "${SRC_DIR}"
     git clone -q --depth 1 --branch "${BRANCH}" "${REPO_URL}" "${SRC_DIR}"
   fi
-  [[ -f "${SRC_DIR}/${APP_SUBDIR}/artisan" ]] || die "Aplicação não encontrada em ${SRC_DIR}/${APP_SUBDIR}"
+  # a aplicação fica na raiz do repositório (versões antigas: "extraia para public_html/public_html")
+  local src="${SRC_DIR}"
+  [[ -f "${src}/artisan" ]] || src="${SRC_DIR}/extraia para public_html/public_html"
+  [[ -f "${src}/artisan" ]] || die "Aplicação não encontrada em ${SRC_DIR}"
 
   mkdir -p "${APP_DIR}"
   # preserva .env, uploads e trava de instalação em atualizações
   rsync -a --delete \
-    --exclude '.env' --exclude 'storage/app/' --exclude 'storage/logs/' --exclude 'storage/installed.lock' \
-    --exclude 'public/storage/' --exclude 'vendor/' --exclude 'node_modules/' \
-    "${SRC_DIR}/${APP_SUBDIR}/" "${APP_DIR}/"
+    --exclude '.git' --exclude '/.github' --exclude '/docs' --exclude '/scripts' --exclude '/docker' \
+    --exclude '/docker-compose.yml' --exclude '/.dockerignore' --exclude '/tests' --exclude '/dist' \
+    --exclude '/.env' --exclude '/storage/app/' --exclude '/storage/logs/' --exclude '/storage/installed.lock' \
+    --exclude '/public/storage/' --exclude '/vendor/' --exclude '/node_modules/' \
+    "${src}/" "${APP_DIR}/"
   mkdir -p "${APP_DIR}/storage/"{app/public,logs,framework/{cache/data,sessions,views}} "${APP_DIR}/bootstrap/cache"
   ok "Código copiado para ${APP_DIR}"
 }
@@ -191,7 +225,13 @@ fetch_code() {
 install_dependencies() {
   log "Instalando dependências PHP (composer)"
   cd "${APP_DIR}"
-  COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-progress --quiet
+  local args=(install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress --quiet)
+  if ! COMPOSER_ALLOW_SUPERUSER=1 composer "${args[@]}"; then
+    # vendor antigo/incompatível (ex.: atualização de versão do Laravel): recria do zero
+    warn "Recriando a pasta vendor"
+    rm -rf "${APP_DIR}/vendor"
+    COMPOSER_ALLOW_SUPERUSER=1 composer "${args[@]}"
+  fi
   if [[ ! -f public/build/manifest.json ]]; then
     warn "Frontend não compilado no repositório; compilando com Node.js"
     command -v npm >/dev/null || { curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null; apt-get install -y -qq nodejs >/dev/null; }
@@ -220,12 +260,11 @@ SQL
 }
 
 run_app_installer() {
-  local scheme="http"; [[ ${ENABLE_SSL} -eq 1 ]] && scheme="https"
   [[ -n "${ADMIN_PASS}" ]] || ADMIN_PASS="$(random_secret 16)"
   log "Instalando a aplicação"
   cd "${APP_DIR}"
   as_www php artisan system:install --no-interaction --overwrite \
-    --url="${scheme}://${DOMAIN}" --name="${SITE_NAME}" \
+    --url="$(site_url)" --name="${SITE_NAME}" \
     --db-host=localhost --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-pass="${DB_PASS}" \
     --admin-email="${EMAIL}" --admin-pass="${ADMIN_PASS}"
   ok "Aplicação instalada"
@@ -235,12 +274,14 @@ configure_nginx() {
   log "Configurando Nginx"
   local sock="/run/php/php${PHP_VERSION}-fpm.sock"
   local listen6=""
-  [[ -f /proc/net/if_inet6 ]] && listen6="listen [::]:80;"
+  [[ -f /proc/net/if_inet6 ]] && listen6="listen [::]:${HTTP_PORT};"
+  local server_names="${DOMAIN} www.${DOMAIN}"
+  [[ ${LOCAL} -eq 1 ]] && server_names="localhost 127.0.0.1 _"
   cat > /etc/nginx/sites-available/casino <<NGINX
 server {
-    listen 80;
+    listen ${HTTP_PORT};
     ${listen6}
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${server_names};
     root ${APP_DIR}/public;
     index index.php index.html;
     client_max_body_size 64M;
@@ -263,7 +304,8 @@ server {
     location ~* \.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|mp3|ogg|json|atlas)\$ {
         expires 30d;
         access_log off;
-        try_files \$uri =404;
+        # arquivos gerados por rotas do Laravel (ex.: /livewire/livewire.min.js) caem no index.php
+        try_files \$uri /index.php?\$query_string;
     }
 
     location ~ /\.(?!well-known) { deny all; }
@@ -273,6 +315,8 @@ NGINX
   rm -f /etc/nginx/sites-enabled/default
   nginx -t -q
   svc restart nginx
+  sleep 1
+  pgrep -x nginx >/dev/null || die "O Nginx não iniciou. Veja: journalctl -u nginx (ou /var/log/nginx/error.log)"
   ok "Nginx configurado (${DOMAIN} → ${APP_DIR}/public)"
 }
 
@@ -295,13 +339,13 @@ configure_cron() {
 }
 
 save_credentials() {
-  local scheme="http"; [[ ${ENABLE_SSL} -eq 1 ]] && scheme="https"
+  local url; url="$(site_url)"
   umask 077
   cat > "${CRED_FILE}" <<EOF
 Casino Platform — dados da instalação ($(date))
 
-Site:          ${scheme}://${DOMAIN}
-Painel admin:  ${scheme}://${DOMAIN}/admin
+Site:          ${url}
+Painel admin:  ${url}/admin
 Login:         ${EMAIL}
 Senha:         ${ADMIN_PASS}
 
@@ -317,11 +361,16 @@ EOF
 
 do_install() {
   require_root; detect_os; banner; legal_notice
+  if [[ ${LOCAL} -eq 1 ]]; then
+    DOMAIN="${DOMAIN:-localhost}"; EMAIL="${EMAIL:-admin@casino.local}"
+    ADMIN_PASS="${ADMIN_PASS:-admin12345}"; ENABLE_SSL=0
+  fi
   [[ -n "${DOMAIN}" ]] || read -rp "Domínio (ex: meusite.com): " DOMAIN
   [[ -n "${EMAIL}" ]] || read -rp "E-mail do administrador: " EMAIL
   [[ -n "${DOMAIN}" && "${EMAIL}" == *@* ]] || die "Informe --domain e --email válidos."
   DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN%%/*}"
 
+  check_port
   install_packages
   fetch_code
   install_dependencies
@@ -346,12 +395,19 @@ do_update() {
   [[ -f "${APP_DIR}/.env" ]] || die "Instalação não encontrada em ${APP_DIR}"
   log "Atualizando ${APP_DIR}"
   cd "${APP_DIR}" && as_www php artisan down --retry=30 || true
+  # se algo falhar, o site não fica preso em manutenção
+  trap 'cd "${APP_DIR}" && as_www php artisan up >/dev/null 2>&1; die "Falha na linha ${LINENO}: ${BASH_COMMAND} (o site foi reativado; veja o erro acima)"' ERR
   fetch_code
   install_dependencies
   fix_permissions
   cd "${APP_DIR}"
   as_www php artisan migrate --force
   as_www php artisan optimize:clear
+  # instalações antigas: arquivos estáticos que não existem passam a cair no Laravel
+  if [[ -f /etc/nginx/sites-available/casino ]] && grep -q 'try_files \$uri =404;' /etc/nginx/sites-available/casino; then
+    sed -i 's#try_files \$uri =404;#try_files $uri /index.php?$query_string;#' /etc/nginx/sites-available/casino
+    nginx -t -q && svc reload nginx || true
+  fi
   as_www php artisan up
   svc reload "php${PHP_VERSION}-fpm" || true
   ok "Atualização concluída"

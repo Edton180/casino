@@ -1,14 +1,19 @@
 # Normalize text files
 * text=auto eol=lf
 
-# Common binary assets (avoid textual diff/merge)
+*.blade.php diff=html
+*.css diff=css
+*.html diff=html
+*.md diff=markdown
+*.php diff=php
+
+# Binary assets used by frontend/games/install package
 *.png binary
 *.jpg binary
 *.jpeg binary
 *.gif binary
 *.webp binary
 *.ico binary
-*.pdf binary
 *.zip binary
 *.rar binary
 *.7z binary
@@ -20,7 +25,13 @@
 *.ttf binary
 *.eot binary
 
-# SQL dumps are often large snapshots; keep as raw text without eol conversion
+# SQL dumps should not be line-ending normalized
 *.sql -text
-# Markdown should always be treated as text
-*.md text diff=markdown
+
+/.github export-ignore
+CHANGELOG.md export-ignore
+.styleci.yml export-ignore
+
+# Scripts
+*.sh text eol=lf
+*.bat text eol=crlf

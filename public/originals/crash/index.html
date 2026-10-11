@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Crash</title>
+<link rel="stylesheet" href="../_shared/originals.css">
+<style>
+  canvas { width: 100%; height: 100%; position: absolute; inset: 0; }
+  .big { position: relative; z-index: 2; font-size: clamp(48px, 13vw, 110px); font-weight: 900; font-variant-numeric: tabular-nums; text-shadow: 0 4px 30px rgba(0,0,0,.5); }
+  .big.crashed { color: var(--danger); text-shadow: 0 0 30px rgba(237,65,99,.6); animation: crashed .5s; }
+  .big.cashed { color: var(--accent); text-shadow: 0 0 30px rgba(0,231,1,.55); }
+  .big.running { background: linear-gradient(180deg, #fff, #b8ffb9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  @keyframes crashed { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  .stars { position: absolute; inset: 0; opacity: .55; background-image:
+    radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 20%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 40% 70%, #cfe3ff, transparent), radial-gradient(1px 1px at 85% 60%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 10% 80%, #cfe3ff, transparent), radial-gradient(1px 1px at 55% 45%, #fff, transparent);
+    background-size: 300px 300px; animation: drift 40s linear infinite; }
+  .stars.fast { animation-duration: 6s; }
+  @keyframes drift { from { background-position: 0 0; } to { background-position: -300px 300px; } }
+  .sub { position: absolute; bottom: 18px; left: 0; right: 0; text-align: center; color: var(--muted); z-index: 2; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="og-app">
+  <aside class="og-side">
+    <div class="og-top"><span class="og-title">🚀 Crash</span><span class="og-balance"><small>Saldo</small><span data-balance>—</span></span></div>
+    <div>
+      <div class="og-label"><span>Valor da aposta</span></div>
+      <div class="og-field"><input id="bet" type="number" step="0.01" value="1.00"><button data-bet="half">½</button><button data-bet="double">2×</button></div>
+    </div>
+    <div>
+      <div class="og-label"><span>Auto retirar em (opcional)</span></div>
+      <div class="og-field"><input id="auto" type="number" step="0.01" min="1.01" placeholder="ex: 2.00"><button disabled>x</button></div>
+    </div>
+    <button id="play" class="og-btn">Apostar</button>
+    <button id="cashout" class="og-btn danger hidden">Retirar</button>
+    <div class="og-fair" id="fair"></div>
+    <div class="og-fair">RTP: <span data-rtp>—</span></div>
+  </aside>
+  <main class="og-stage">
+    <div class="stars" id="stars"></div>
+    <canvas id="chart"></canvas>
+    <div id="big" class="big">1.00x</div>
+    <div id="sub" class="sub">Faça sua aposta</div>
+  </main>
+</div>
+<script src="../_shared/originals.js"></script>
+<script>
+(function () {
+  var GROWTH = 0.00006;
+  var canvas = document.getElementById('chart'), ctx = canvas.getContext('2d');
+  var big = document.getElementById('big'), sub = document.getElementById('sub');
+  var playBtn = document.getElementById('play'), cashBtn = document.getElementById('cashout');
+  var getBet = Originals.betInput(document.getElementById('bet'));
+  var round = null, clockOffset = 0, raf = null, poll = null, finished = null;
+
+  function resize() { canvas.width = canvas.clientWidth * devicePixelRatio; canvas.height = canvas.clientHeight * devicePixelRatio; }
+  window.addEventListener('resize', resize); resize();
+
+  function elapsed() { return Date.now() + clockOffset - round.started_at; }
+  function multAt(ms) { return Math.floor(Math.exp(GROWTH * Math.max(0, ms)) * 100) / 100; }
+
+  function drawCurve(ms, color) {
+    var w = canvas.width, h = canvas.height, pad = 30 * devicePixelRatio;
+    ctx.clearRect(0, 0, w, h);
+    var maxT = Math.max(8000, ms * 1.15), maxM = Math.max(2, multAt(ms) * 1.15);
+    // grade de fundo
+    ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 1 * devicePixelRatio;
+    for (var gy = 1; gy <= 4; gy++) { var yy = h - pad - gy * (h - pad * 2) / 4; ctx.beginPath(); ctx.moveTo(pad, yy); ctx.lineTo(w - pad, yy); ctx.stroke(); }
+    var pts = [];
+    for (var t = 0; t <= ms; t += Math.max(16, ms / 120)) {
+      pts.push([pad + (t / maxT) * (w - pad * 2), h - pad - ((Math.exp(GROWTH * t) - 1) / (maxM - 1)) * (h - pad * 2)]);
+    }
+    if (!pts.length) return;
+    var last = pts[pts.length - 1];
+    // área preenchida sob a curva
+    var fill = ctx.createLinearGradient(0, last[1], 0, h - pad);
+    fill.addColorStop(0, color === '#ed4163' ? 'rgba(237,65,99,.35)' : 'rgba(0,231,1,.35)'); fill.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.moveTo(pts[0][0], h - pad);
+    pts.forEach(function (p) { ctx.lineTo(p[0], p[1]); });
+    ctx.lineTo(last[0], h - pad); ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+    // curva com brilho
+    ctx.save(); ctx.shadowColor = color; ctx.shadowBlur = 18 * devicePixelRatio;
+    ctx.strokeStyle = color; ctx.lineWidth = 5 * devicePixelRatio; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); pts.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.stroke();
+    ctx.restore();
+    // foguete na ponta
+    var prev = pts[Math.max(0, pts.length - 4)];
+    var ang = Math.atan2(last[1] - prev[1], last[0] - prev[0]);
+    ctx.save(); ctx.translate(last[0], last[1]); ctx.rotate(ang);
+    ctx.font = (28 * devicePixelRatio) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.rotate(Math.PI / 4); ctx.fillText(color === '#ed4163' ? '💥' : '🚀', 0, 0);
+    ctx.restore();
+  }
+
+  function setRunning(running) {
+    playBtn.classList.toggle('hidden', running);
+    cashBtn.classList.toggle('hidden', !running);
+  }
+
+  function frame() {
+    if (!round || finished) return;
+    var ms = elapsed(), m = multAt(ms);
+    big.textContent = m.toFixed(2) + 'x'; big.className = 'big running';
+    cashBtn.textContent = 'Retirar ' + Originals.money(round.bet * m);
+    drawCurve(ms, '#00e701');
+    raf = requestAnimationFrame(frame);
+  }
+
+  function finish(r) {
+    finished = r; round = r;
+    cancelAnimationFrame(raf); clearInterval(poll);
+    setRunning(false);
+    document.getElementById('stars').classList.remove('fast');
+    Originals.result({ won: r.status === 'won', payout: r.payout, multiplier: r.status === 'won' ? r.multiplier : 0 });
+    playBtn.disabled = false;
+    if (r.status === 'won') {
+      big.textContent = Number(r.multiplier).toFixed(2) + 'x'; big.className = 'big cashed';
+      sub.textContent = 'Você retirou ' + Originals.money(r.payout) + ' · quebrou em ' + Number(r.crash_point).toFixed(2) + 'x';
+    } else {
+      big.textContent = Number(r.crash_point).toFixed(2) + 'x'; big.className = 'big crashed';
+      sub.textContent = 'Quebrou!';
+      drawCurve(Math.log(Math.max(1, r.crash_point)) / GROWTH, '#ed4163');
+    }
+    Originals.fairness(document.getElementById('fair'), r.fairness);
+  }
+
+  function track(r) {
+    round = r; finished = null;
+    clockOffset = r.server_now - Date.now();
+    sub.textContent = r.auto_cashout ? 'Auto retirada em ' + Number(r.auto_cashout).toFixed(2) + 'x' : '';
+    setRunning(true);
+    document.getElementById('stars').classList.add('fast');
+    cancelAnimationFrame(raf); raf = requestAnimationFrame(frame);
+    clearInterval(poll);
+    poll = setInterval(function () {
+      Originals.api('status', { round: round.round }).then(function (d) { if (d.round.status !== 'open') finish(d.round); }).catch(function () {});
+    }, 400);
+  }
+
+  playBtn.addEventListener('click', function () {
+    playBtn.disabled = true;
+    var auto = document.getElementById('auto').value;
+    Originals.api('start', { bet: getBet(), auto_cashout: auto ? Number(auto) : null })
+      .then(function (d) { track(d.round); })
+      .catch(function (e) {
+        if (e.status === 409 && e.body.round) { track(e.body.round); return; }
+        Originals.fail(e); playBtn.disabled = false;
+      });
+  });
+
+  cashBtn.addEventListener('click', function () {
+    if (!round || finished) return;
+    cashBtn.disabled = true;
+    Originals.api('cashout', { round: round.round })
+      .then(function (d) { finish(d.round); })
+      .catch(Originals.fail)
+      .finally(function () { cashBtn.disabled = false; });
+  });
+
+  Originals.init('crash').then(function (info) {
+    if (info.round) { info.round.status === 'open' ? track(info.round) : null; }
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>
