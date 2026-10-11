@@ -70,7 +70,7 @@ abstract class PaymentGateway
 
     public function returnUrl(string $status = 'success'): string
     {
-        return url('/?deposit=' . $status, [], true);
+        return rtrim(url('/', [], true), '/') . '/?deposit=' . $status;
     }
 
     protected function http(): PendingRequest

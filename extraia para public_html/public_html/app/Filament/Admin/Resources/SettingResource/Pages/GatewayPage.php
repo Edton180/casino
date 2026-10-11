@@ -34,7 +34,7 @@ class GatewayPage extends Page implements HasForms
         return 'Gateways';
     }
 
-    private const TOGGLES = ['mp_is_enable', 'pagseguro_is_enable', 'pagarme_is_enable', 'asaas_is_enable', 'stripe_is_enable'];
+    private const TOGGLES = ['mp_is_enable', 'pagseguro_is_enable', 'pagarme_is_enable', 'asaas_is_enable', 'stripe_is_enable', 'paypal_is_enable'];
 
     public Setting $record;
     public ?array $data = [];
@@ -120,6 +120,8 @@ class GatewayPage extends Page implements HasForms
                             ->label('Asaas'),
                         Toggle::make('stripe_is_enable')
                             ->label('Stripe'),
+                        Toggle::make('paypal_is_enable')
+                            ->label('PayPal'),
                     ])->columns(2)
             ])
             ->statePath('data') ;

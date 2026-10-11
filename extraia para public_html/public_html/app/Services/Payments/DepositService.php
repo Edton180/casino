@@ -238,7 +238,7 @@ class DepositService
     {
         try {
             $user = User::find($transaction->user_id);
-            foreach (User::where('role_id', 0)->get() as $admin) {
+            foreach (User::role('admin')->get() as $admin) {
                 $admin->notify(new NewDepositNotification($user->name ?? '', $transaction->price));
             }
         } catch (\Throwable $e) {

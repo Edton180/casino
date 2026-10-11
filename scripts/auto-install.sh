@@ -1,335 +1,383 @@
 #!/usr/bin/env bash
+# =============================================================================
+#  Casino Platform — instalador automático para VPS (Ubuntu 22.04/24.04, Debian 12)
+#
+#  Instalação completa (Nginx + PHP 8.3 + MariaDB + SSL + cron):
+#     curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/scripts/auto-install.sh -o auto-install.sh
+#     sudo bash auto-install.sh --domain meusite.com --email voce@meusite.com --ssl
+#
+#  Atualizar uma instalação existente:
+#     sudo bash auto-install.sh --update
+#
+#  Diagnóstico:
+#     sudo bash auto-install.sh --diagnose
+# =============================================================================
 set -Eeuo pipefail
 
-SCRIPT_VERSION="v8.0.0"
-APP_DIR="/opt/casino"
-REPO_URL="https://github.com/Edton180/casino.git"
-MODE=""
+VERSION="9.0.0"
+REPO_URL="${REPO_URL:-https://github.com/Edton180/casino.git}"
+BRANCH="${BRANCH:-main}"
+APP_DIR="${APP_DIR:-/var/www/casino}"
+SRC_DIR="/opt/casino-src"
+APP_SUBDIR="extraia para public_html/public_html"
+PHP_VERSION="${PHP_VERSION:-8.3}"
+CRED_FILE="/root/casino-credenciais.txt"
+
 DOMAIN=""
 EMAIL=""
+SITE_NAME="Casino"
+ADMIN_PASS=""
 ENABLE_SSL=0
-NON_INTERACTIVE=0
+MODE="install"
+ASSUME_YES=0
 
-print_banner() {
-echo -e "\e[1;35m"
-cat <<'BANNER'
-╔════════════════════════════════════════════════════════════╗
-║                                                            ║
-║   ██████╗  █████╗ ███████╗██╗███╗   ██╗ ██████╗          ║
-║  ██╔════╝ ██╔══██╗██╔════╝██║████╗  ██║██╔═══██╗         ║
-║  ██║      ███████║███████╗██║██╔██╗ ██║██║   ██║         ║
-║  ██║      ██╔══██║╚════██║██║██║╚██╗██║██║   ██║         ║
-║  ╚██████╗ ██║  ██║███████║██║██║ ╚████║╚██████╔╝         ║
-║   ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝          ║
-║                                                            ║
-║        🎰 CASINO PLATFORM - INSTALLER v8.0.0              ║
-║        Sistema Profissional de Apostas Online             ║
-║                                                            ║
-╚════════════════════════════════════════════════════════════╝
-BANNER
-echo -e "\e[0m"
-}
-
-print_legal_notice() {
-echo -e "\e[1;33m"
-cat <<'LEGAL'
-
-══════════════════════════════════════════════════════════════
-                    AVISO LEGAL IMPORTANTE
-══════════════════════════════════════════════════════════════
-
-Este software é protegido por direitos autorais.
-
-© 2026 Edton180 - Todos os direitos reservados.
-
-• Proibida revenda não autorizada
-• Proibida redistribuição sem licença
-• Modificação apenas para uso próprio
-• Uso comercial sob responsabilidade do operador
-
-O uso deste sistema deve respeitar as leis locais
-sobre apostas e jogos online do seu país.
-
-══════════════════════════════════════════════════════════════
-
-LEGAL
-echo -e "\e[0m"
-}
-
-require_legal_acceptance() {
-  local confirm
-  read -rp "Digite 'EU ACEITO' para continuar: " confirm
-
-  if [[ "${confirm}" != "EU ACEITO" ]]; then
-    echo "Instalação cancelada."
-    exit 1
-  fi
-}
-
-print_menu() {
-echo -e "\e[1;36m"
-cat <<'MENU'
-╔════════════════════════════════════════════════════════════╗
-║                    MENU DE INSTALAÇÃO                     ║
-╠════════════════════════════════════════════════════════════╣
-║                                                            ║
-║  1) 🚀 VPS Produção Completa                              ║
-║     PHP 8.2 + MySQL + Nginx + SSL                         ║
-║                                                            ║
-║  2) 🐳 Instalação Docker                                  ║
-║     Ambiente isolado em containers                        ║
-║                                                            ║
-║  3) 💻 Localhost / Desenvolvimento                        ║
-║     Ambiente para desenvolvimento Laravel                 ║
-║                                                            ║
-║  4) 🌐 Instruções cPanel                                  ║
-║     Hosting compartilhado                                 ║
-║                                                            ║
-║  5) 🧪 VirtualBox / VM                                    ║
-║     Ambiente de testes                                    ║
-║                                                            ║
-║  6) 🔍 Diagnóstico do Sistema                             ║
-║     Verificar requisitos                                  ║
-║                                                            ║
-║  0) ❌ Sair                                               ║
-║                                                            ║
-╚════════════════════════════════════════════════════════════╝
-MENU
-echo -e "\e[0m"
-}
-
-print_install_identification() {
-  local install_date server_ip
-  install_date="$(date)"
-  server_ip="$(hostname -I | awk '{print $1}')"
-  echo "Instalação iniciada em: ${install_date}"
-  echo "IP do servidor: ${server_ip:-não detectado}"
-}
-
-print_success_footer() {
-echo -e "\e[1;32m"
-cat <<'FOOTER'
-
-══════════════════════════════════════════════════════════════
-
-🎰 CASINO PLATFORM INSTALADO COM SUCESSO
-
-Desenvolvido por: Edton180
-Versão: 8.0.0
-Ano: 2026
-
-Para suporte e atualizações oficiais,
-utilize apenas o repositório autorizado.
-
-══════════════════════════════════════════════════════════════
-
-FOOTER
-echo -e "\e[0m"
-}
+c_green='\033[1;32m'; c_red='\033[1;31m'; c_yellow='\033[1;33m'; c_cyan='\033[1;36m'; c_off='\033[0m'
+log()  { echo -e "${c_cyan}==>${c_off} $*"; }
+ok()   { echo -e "${c_green}✔${c_off} $*"; }
+warn() { echo -e "${c_yellow}!${c_off} $*"; }
+die()  { echo -e "${c_red}✖ $*${c_off}" >&2; exit 1; }
+trap 'die "Falha na linha ${LINENO}: ${BASH_COMMAND}"' ERR
 
 usage() {
-cat <<EOF2
-Casino Platform Auto Installer ${SCRIPT_VERSION}
+  cat <<EOF
+Casino Platform — instalador para VPS v${VERSION}
 
-Uso:
-  bash scripts/auto-install.sh [opções]
+Uso: sudo bash auto-install.sh [opções]
 
-Opções:
-  --mode vps|docker|localhost|cpanel|virtualbox|diagnose
-  --domain <dominio>
-  --email <email>
-  --ssl
-  --non-interactive
-  --help
-
-Exemplo:
-  sudo bash auto-install.sh --mode vps --domain casino.com --email admin@casino.com --ssl
-EOF2
+  --domain <dominio>      Domínio do site (obrigatório na instalação)
+  --email <email>         E-mail do administrador (login do painel) e do SSL
+  --name <nome>           Nome do site (padrão: Casino)
+  --admin-pass <senha>    Senha do administrador (padrão: gerada automaticamente)
+  --ssl                   Emite certificado SSL gratuito (Let's Encrypt)
+  --dir <pasta>           Pasta da aplicação (padrão: ${APP_DIR})
+  --repo <url>            Repositório (padrão: ${REPO_URL})
+  --branch <branch>       Branch (padrão: ${BRANCH})
+  --php <versão>          Versão do PHP (padrão: ${PHP_VERSION})
+  --update                Atualiza uma instalação existente
+  --diagnose              Mostra o diagnóstico do servidor
+  -y                      Não pede confirmação
+  -h, --help              Ajuda
+EOF
 }
 
-require_root() {
-  if [[ ${EUID} -ne 0 ]]; then
-    echo "Execute como root (sudo)."
-    exit 1
-  fi
-}
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --domain) DOMAIN="$2"; shift 2 ;;
+    --email) EMAIL="$2"; shift 2 ;;
+    --name) SITE_NAME="$2"; shift 2 ;;
+    --admin-pass) ADMIN_PASS="$2"; shift 2 ;;
+    --ssl) ENABLE_SSL=1; shift ;;
+    --dir) APP_DIR="$2"; shift 2 ;;
+    --repo) REPO_URL="$2"; shift 2 ;;
+    --branch) BRANCH="$2"; shift 2 ;;
+    --php) PHP_VERSION="$2"; shift 2 ;;
+    --update) MODE="update"; shift ;;
+    --diagnose) MODE="diagnose"; shift ;;
+    -y|--yes|--non-interactive) ASSUME_YES=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    # compatibilidade com a versão anterior
+    --mode) case "$2" in diagnose) MODE="diagnose" ;; *) ;; esac; shift 2 ;;
+    *) die "Opção desconhecida: $1 (use --help)" ;;
+  esac
+done
 
-run_cmd() {
-  echo "→ $*"
-  "$@"
-}
+random_secret() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${1:-24}"; }
 
-install_base_stack() {
-  run_cmd apt update
-  run_cmd apt upgrade -y
-  run_cmd apt install -y software-properties-common curl unzip git nginx mysql-server certbot python3-certbot-nginx supervisor
-  run_cmd add-apt-repository -y ppa:ondrej/php
-  run_cmd apt update
-  run_cmd apt install -y php8.2 php8.2-fpm php8.2-cli php8.2-mysql php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-  run_cmd apt install -y nodejs
-  php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-  run_cmd php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-  run_cmd rm -f composer-setup.php
-}
-
-install_app() {
-  if [[ -d "${APP_DIR}" ]]; then
-    echo "Diretório ${APP_DIR} já existe, atualizando..."
-    run_cmd git -C "${APP_DIR}" pull --ff-only
+svc() {
+  # systemctl quando disponível; "service" em containers/VMs sem systemd
+  local action="$1" name="$2"
+  if command -v systemctl >/dev/null && [[ -d /run/systemd/system ]]; then
+    systemctl "${action}" "${name}"
   else
-    run_cmd git clone "${REPO_URL}" "${APP_DIR}"
+    service "${name}" "${action}" || true
+  fi
+}
+
+as_www() {
+  if command -v sudo >/dev/null; then sudo -u www-data "$@"; else runuser -u www-data -- "$@"; fi
+}
+
+require_root() { [[ ${EUID} -eq 0 ]] || die "Execute como root: sudo bash $0 ..."; }
+
+detect_os() {
+  [[ -f /etc/os-release ]] || die "Sistema não suportado (use Ubuntu 22.04/24.04 ou Debian 12)."
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  OS_ID="${ID}"; OS_VERSION="${VERSION_ID:-}"
+  case "${OS_ID}" in ubuntu|debian) ;; *) die "Sistema ${PRETTY_NAME:-desconhecido} não suportado. Use Ubuntu ou Debian." ;; esac
+}
+
+banner() {
+  echo -e "${c_green}"
+  cat <<'EOF'
+   ____          _               ____  _       _    __
+  / ___|__ _ ___(_)_ __   ___   |  _ \| | __ _| |_ / _| ___  _ __ _ __ ___
+ | |   / _` / __| | '_ \ / _ \  | |_) | |/ _` | __| |_ / _ \| '__| '_ ` _ \
+ | |__| (_| \__ \ | | | | (_) | |  __/| | (_| | |_|  _| (_) | |  | | | | | |
+  \____\__,_|___/_|_| |_|\___/  |_|   |_|\__,_|\__|_|  \___/|_|  |_| |_| |_|
+EOF
+  echo -e "${c_off}  Instalador para VPS v${VERSION}\n"
+}
+
+legal_notice() {
+  cat <<'EOF'
+AVISO: operar apostas/jogos de azar exige licença na maioria dos países (no Brasil,
+autorização da SPA/Ministério da Fazenda — Lei 14.790/2023). Você é responsável por
+licenças, KYC/PLD, jogo responsável, LGPD e pelo direito de uso dos jogos/provedores.
+EOF
+  if [[ ${ASSUME_YES} -eq 0 ]]; then
+    read -rp "Digite 'ACEITO' para continuar: " answer
+    [[ "${answer}" == "ACEITO" ]] || die "Instalação cancelada."
+  fi
+}
+
+install_packages() {
+  log "Instalando pacotes do sistema"
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -qq
+  apt-get install -y -qq ca-certificates curl gnupg lsb-release unzip git rsync cron software-properties-common >/dev/null
+
+  if ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
+    log "Adicionando repositório do PHP ${PHP_VERSION}"
+    if [[ "${OS_ID}" == "ubuntu" ]]; then
+      add-apt-repository -y ppa:ondrej/php >/dev/null
+    else
+      curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg
+      echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/sury-php.list
+    fi
+    apt-get update -qq
   fi
 
+  apt-get install -y -qq nginx mariadb-server \
+    "php${PHP_VERSION}-fpm" "php${PHP_VERSION}-cli" "php${PHP_VERSION}-mysql" "php${PHP_VERSION}-mbstring" \
+    "php${PHP_VERSION}-xml" "php${PHP_VERSION}-curl" "php${PHP_VERSION}-zip" "php${PHP_VERSION}-intl" \
+    "php${PHP_VERSION}-gd" "php${PHP_VERSION}-bcmath" >/dev/null
+
+  if [[ ${ENABLE_SSL} -eq 1 ]]; then
+    apt-get install -y -qq certbot python3-certbot-nginx >/dev/null
+  fi
+
+  if ! command -v composer >/dev/null; then
+    log "Instalando Composer"
+    curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php
+    php /tmp/composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer
+    rm -f /tmp/composer-setup.php
+  fi
+
+  svc start mariadb || svc start mysql
+  svc start "php${PHP_VERSION}-fpm"
+  ok "Pacotes instalados (PHP $(php -r 'echo PHP_VERSION;'))"
+}
+
+fetch_code() {
+  log "Baixando o código (${REPO_URL} @ ${BRANCH})"
+  if [[ -d "${SRC_DIR}/.git" ]]; then
+    git -C "${SRC_DIR}" fetch -q --depth 1 origin "${BRANCH}"
+    git -C "${SRC_DIR}" reset -q --hard "origin/${BRANCH}"
+  else
+    rm -rf "${SRC_DIR}"
+    git clone -q --depth 1 --branch "${BRANCH}" "${REPO_URL}" "${SRC_DIR}"
+  fi
+  [[ -f "${SRC_DIR}/${APP_SUBDIR}/artisan" ]] || die "Aplicação não encontrada em ${SRC_DIR}/${APP_SUBDIR}"
+
+  mkdir -p "${APP_DIR}"
+  # preserva .env, uploads e trava de instalação em atualizações
+  rsync -a --delete \
+    --exclude '.env' --exclude 'storage/app/' --exclude 'storage/logs/' --exclude 'storage/installed.lock' \
+    --exclude 'public/storage/' --exclude 'vendor/' --exclude 'node_modules/' \
+    "${SRC_DIR}/${APP_SUBDIR}/" "${APP_DIR}/"
+  mkdir -p "${APP_DIR}/storage/"{app/public,logs,framework/{cache/data,sessions,views}} "${APP_DIR}/bootstrap/cache"
+  ok "Código copiado para ${APP_DIR}"
+}
+
+install_dependencies() {
+  log "Instalando dependências PHP (composer)"
   cd "${APP_DIR}"
-  [[ -f .env ]] || run_cmd cp .env.example .env
+  COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-progress --quiet
+  if [[ ! -f public/build/manifest.json ]]; then
+    warn "Frontend não compilado no repositório; compilando com Node.js"
+    command -v npm >/dev/null || { curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null; apt-get install -y -qq nodejs >/dev/null; }
+    npm ci --no-audit --no-fund --silent && npm run build --silent
+  fi
+  ok "Dependências instaladas"
+}
 
-  run_cmd composer install --no-dev --optimize-autoloader
-  run_cmd npm install
-  run_cmd npm run build
-  run_cmd php artisan key:generate --force
-  run_cmd php artisan migrate --force
-  run_cmd php artisan storage:link
-  run_cmd php artisan optimize
+fix_permissions() {
+  chown -R www-data:www-data "${APP_DIR}"
+  find "${APP_DIR}/storage" "${APP_DIR}/bootstrap/cache" -type d -exec chmod 775 {} +
+  [[ -f "${APP_DIR}/.env" ]] && chmod 640 "${APP_DIR}/.env"
+}
 
-  run_cmd mkdir -p storage
-  run_cmd touch storage/installed.lock
-  run_cmd chown -R www-data:www-data storage bootstrap/cache || true
-  run_cmd chmod -R 775 storage bootstrap/cache || true
+create_database() {
+  DB_NAME="casino"; DB_USER="casino"; DB_PASS="$(random_secret 28)"
+  log "Criando banco de dados ${DB_NAME}"
+  mysql -uroot <<SQL
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
+ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+  ok "Banco criado"
+}
+
+run_app_installer() {
+  local scheme="http"; [[ ${ENABLE_SSL} -eq 1 ]] && scheme="https"
+  [[ -n "${ADMIN_PASS}" ]] || ADMIN_PASS="$(random_secret 16)"
+  log "Instalando a aplicação"
+  cd "${APP_DIR}"
+  as_www php artisan system:install --no-interaction --overwrite \
+    --url="${scheme}://${DOMAIN}" --name="${SITE_NAME}" \
+    --db-host=localhost --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-pass="${DB_PASS}" \
+    --admin-email="${EMAIL}" --admin-pass="${ADMIN_PASS}"
+  ok "Aplicação instalada"
 }
 
 configure_nginx() {
-  [[ -n "${DOMAIN}" ]] || return 0
+  log "Configurando Nginx"
+  local sock="/run/php/php${PHP_VERSION}-fpm.sock"
   cat > /etc/nginx/sites-available/casino <<NGINX
 server {
     listen 80;
-    server_name ${DOMAIN};
+    listen [::]:80;
+    server_name ${DOMAIN} www.${DOMAIN};
     root ${APP_DIR}/public;
-
     index index.php index.html;
+    client_max_body_size 64M;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
-    location ~ \.php$ {
+    location ~ \.php\$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:${sock};
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        fastcgi_read_timeout 300;
     }
 
-    location ~ /\.ht {
-        deny all;
+    location ~* \.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|mp3|ogg|json|atlas)\$ {
+        expires 30d;
+        access_log off;
+        try_files \$uri =404;
     }
+
+    location ~ /\.(?!well-known) { deny all; }
 }
 NGINX
-  run_cmd ln -sf /etc/nginx/sites-available/casino /etc/nginx/sites-enabled/casino
-  run_cmd rm -f /etc/nginx/sites-enabled/default
-  run_cmd nginx -t
-  run_cmd systemctl restart nginx
+  ln -sf /etc/nginx/sites-available/casino /etc/nginx/sites-enabled/casino
+  rm -f /etc/nginx/sites-enabled/default
+  nginx -t -q
+  svc reload nginx || svc restart nginx
+  ok "Nginx configurado (${DOMAIN} → ${APP_DIR}/public)"
+}
 
-  if [[ ${ENABLE_SSL} -eq 1 && -n "${EMAIL}" ]]; then
-    run_cmd certbot --nginx -d "${DOMAIN}" -m "${EMAIL}" --agree-tos --non-interactive --redirect
+configure_ssl() {
+  [[ ${ENABLE_SSL} -eq 1 ]] || return 0
+  log "Emitindo certificado SSL (Let's Encrypt)"
+  if certbot --nginx -d "${DOMAIN}" -m "${EMAIL}" --agree-tos --non-interactive --redirect; then
+    ok "SSL ativo"
+  else
+    warn "Não foi possível emitir o SSL agora. Confira se o DNS de ${DOMAIN} aponta para este servidor e rode:"
+    warn "  certbot --nginx -d ${DOMAIN} -m ${EMAIL} --agree-tos --redirect"
   fi
 }
 
 configure_cron() {
-  local cron_line="* * * * * cd ${APP_DIR} && php artisan schedule:run >> /dev/null 2>&1"
-  (crontab -l 2>/dev/null | grep -Fv "${APP_DIR} && php artisan schedule:run"; echo "${cron_line}") | crontab -
+  local line="* * * * * cd ${APP_DIR} && php artisan schedule:run >> /dev/null 2>&1"
+  (crontab -u www-data -l 2>/dev/null | grep -Fv "artisan schedule:run" || true; echo "${line}") | crontab -u www-data -
+  svc start cron || true
+  ok "Cron do agendador configurado"
 }
 
-create_backup_script() {
-  cat > /usr/local/bin/casino-backup <<'BACKUP'
-#!/usr/bin/env bash
-set -euo pipefail
-STAMP=$(date +%F_%H%M%S)
-DEST=/opt/casino-backups
-mkdir -p "$DEST"
-tar -czf "$DEST/casino_${STAMP}.tar.gz" /opt/casino
-find "$DEST" -type f -name 'casino_*.tar.gz' -mtime +7 -delete
-BACKUP
-  chmod +x /usr/local/bin/casino-backup
+save_credentials() {
+  local scheme="http"; [[ ${ENABLE_SSL} -eq 1 ]] && scheme="https"
+  umask 077
+  cat > "${CRED_FILE}" <<EOF
+Casino Platform — dados da instalação ($(date))
+
+Site:          ${scheme}://${DOMAIN}
+Painel admin:  ${scheme}://${DOMAIN}/admin
+Login:         ${EMAIL}
+Senha:         ${ADMIN_PASS}
+
+Banco MySQL:   ${DB_NAME}
+Usuário:       ${DB_USER}
+Senha:         ${DB_PASS}
+
+Pasta:         ${APP_DIR}
+Logs:          ${APP_DIR}/storage/logs
+EOF
+  ok "Credenciais salvas em ${CRED_FILE} (somente root pode ler)"
 }
 
-run_diagnose() {
-  echo "== Diagnóstico do Sistema =="
-  command -v php >/dev/null && php -v | head -n 1 || echo "PHP não encontrado"
-  command -v composer >/dev/null && composer --version || echo "Composer não encontrado"
-  command -v node >/dev/null && node -v || echo "Node não encontrado"
-  command -v npm >/dev/null && npm -v || echo "NPM não encontrado"
-  command -v mysql >/dev/null && mysql --version || echo "MySQL não encontrado"
-  command -v nginx >/dev/null && nginx -v 2>&1 || echo "Nginx não encontrado"
+do_install() {
+  require_root; detect_os; banner; legal_notice
+  [[ -n "${DOMAIN}" ]] || read -rp "Domínio (ex: meusite.com): " DOMAIN
+  [[ -n "${EMAIL}" ]] || read -rp "E-mail do administrador: " EMAIL
+  [[ -n "${DOMAIN}" && "${EMAIL}" == *@* ]] || die "Informe --domain e --email válidos."
+  DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN%%/*}"
+
+  install_packages
+  fetch_code
+  install_dependencies
+  create_database
+  fix_permissions
+  run_app_installer
+  fix_permissions
+  configure_nginx
+  configure_ssl
+  configure_cron
+  save_credentials
+
+  echo
+  echo -e "${c_green}════════════════════════════════════════════════════${c_off}"
+  echo -e "${c_green}  Instalação concluída!${c_off}"
+  cat "${CRED_FILE}" | sed -n '3,6p'
+  echo -e "${c_green}════════════════════════════════════════════════════${c_off}"
 }
 
-handle_mode() {
-  print_install_identification
-
-  case "$MODE" in
-    vps)
-      require_root
-      install_base_stack
-      install_app
-      configure_nginx
-      configure_cron
-      create_backup_script
-      print_success_footer
-      ;;
-    docker)
-      echo "Modo docker: configure via docker-compose do projeto."
-      ;;
-    cpanel)
-      echo "Modo cPanel: siga o arquivo MANUAL_INSTALL_CPANEL.md"
-      ;;
-    localhost)
-      echo "Modo localhost: use os comandos em INSTALLATION.md"
-      ;;
-    virtualbox)
-      echo "Modo virtualbox: semelhante ao modo VPS em VM Ubuntu."
-      ;;
-    diagnose)
-      run_diagnose
-      ;;
-    *)
-      echo "Modo inválido: ${MODE}"
-      usage
-      exit 1
-      ;;
-  esac
+do_update() {
+  require_root; detect_os
+  [[ -f "${APP_DIR}/.env" ]] || die "Instalação não encontrada em ${APP_DIR}"
+  log "Atualizando ${APP_DIR}"
+  cd "${APP_DIR}" && as_www php artisan down --retry=30 || true
+  fetch_code
+  install_dependencies
+  fix_permissions
+  cd "${APP_DIR}"
+  as_www php artisan migrate --force
+  as_www php artisan optimize:clear
+  as_www php artisan up
+  svc reload "php${PHP_VERSION}-fpm" || true
+  ok "Atualização concluída"
 }
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --mode) MODE="$2"; shift 2 ;;
-    --domain) DOMAIN="$2"; shift 2 ;;
-    --email) EMAIL="$2"; shift 2 ;;
-    --ssl) ENABLE_SSL=1; shift ;;
-    --non-interactive) NON_INTERACTIVE=1; shift ;;
-    --help|-h) usage; exit 0 ;;
-    *) echo "Opção desconhecida: $1"; usage; exit 1 ;;
-  esac
-done
+do_diagnose() {
+  echo "== Diagnóstico =="
+  [[ -f /etc/os-release ]] && . /etc/os-release && echo "Sistema:   ${PRETTY_NAME}"
+  echo "PHP:       $(php -r 'echo PHP_VERSION;' 2>/dev/null || echo 'não instalado')"
+  for ext in pdo_mysql mbstring xml curl zip intl gd bcmath; do
+    php -m 2>/dev/null | grep -qi "^${ext}$" && echo "  ✔ ${ext}" || echo "  ✖ ${ext}"
+  done
+  echo "Composer:  $(composer --version 2>/dev/null | head -1 || echo 'não instalado')"
+  echo "MariaDB:   $(mysql --version 2>/dev/null || echo 'não instalado')"
+  echo "Nginx:     $(nginx -v 2>&1 || echo 'não instalado')"
+  if [[ -f "${APP_DIR}/artisan" ]]; then
+    echo "Aplicação: ${APP_DIR}"
+    [[ -f "${APP_DIR}/storage/installed.lock" ]] && echo "  ✔ instalada" || echo "  ✖ não instalada"
+    (cd "${APP_DIR}" && php artisan system:install --check 2>/dev/null | tail -n +1) || true
+  else
+    echo "Aplicação: não encontrada em ${APP_DIR}"
+  fi
+}
 
-if [[ -z "${MODE}" && ${NON_INTERACTIVE} -eq 0 ]]; then
-  clear
-  print_banner
-  print_legal_notice
-  require_legal_acceptance
-  print_menu
-  read -rp "Selecione uma opção: " option
-  case "${option}" in
-    1) MODE="vps" ;;
-    2) MODE="docker" ;;
-    3) MODE="localhost" ;;
-    4) MODE="cpanel" ;;
-    5) MODE="virtualbox" ;;
-    6) MODE="diagnose" ;;
-    0) echo "Saindo."; exit 0 ;;
-    *) echo "Opção inválida."; exit 1 ;;
-  esac
-fi
-
-if [[ -z "${MODE}" ]]; then
-  echo "--mode é obrigatório com --non-interactive"
-  exit 1
-fi
-
-handle_mode
+case "${MODE}" in
+  install)  do_install ;;
+  update)   do_update ;;
+  diagnose) do_diagnose ;;
+esac
