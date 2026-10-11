@@ -14,12 +14,21 @@ Plataforma de cassino online com programa de indicação (afiliados com revshare
 
 ## ⚡ Instalação rápida
 
-O repositório é **privado**: baixe o código logado no GitHub (**Code → Download ZIP**, ou `git clone` com seu token) e rode o assistente. Ele identifica o sistema, mostra o que falta, **instala PHP, banco e dependências sozinho**, instala o site e sabe atualizá-lo.
+**Um comando, 100% automático:** o assistente identifica o sistema, baixa o código, **instala PHP, banco e dependências sozinho**, instala o site, liga e sabe atualizá-lo.
+
+```bash
+# Linux / macOS / WSL (no seu computador)
+curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/instalar.sh | bash -s -- --auto
+```
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Edton180/casino/main/scripts/install-windows.ps1 | iex
+```
 
 | Onde | Como |
 |---|---|
-| **Seu computador — Linux, macOS, WSL** | `bash instalar.sh` → menu → *Instalar no meu computador* |
-| **Seu computador — Windows** | dois cliques em `instalar-windows.bat` |
+| **Seu computador — Linux, macOS, WSL** | comando acima, ou `bash instalar.sh --auto` (ou `bash instalar.sh` para o menu) |
+| **Seu computador — Windows** | comando acima, ou dois cliques em `instalar-windows.bat` |
 | **VPS** (Ubuntu 22.04/24.04, Debian 12) | `sudo bash instalar.sh` → menu → *Instalar em um servidor* (ou direto: `sudo bash scripts/auto-install.sh --domain meusite.com --email voce@meusite.com --ssl`) |
 | **Hospedagem compartilhada** (cPanel, Hostinger...) | Baixe `casino-pronto-para-hospedagem.zip` em **[Releases](../../releases)**, extraia no `public_html`, crie um banco MySQL e abra `https://seu-dominio/install/` |
 | **Docker** | `docker compose up -d` |
