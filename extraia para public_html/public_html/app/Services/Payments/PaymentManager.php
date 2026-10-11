@@ -7,6 +7,7 @@ use App\Services\Payments\Gateways\AsaasGateway;
 use App\Services\Payments\Gateways\MercadoPagoGateway;
 use App\Services\Payments\Gateways\PagarmeGateway;
 use App\Services\Payments\Gateways\PagSeguroGateway;
+use App\Services\Payments\Gateways\PayPalGateway;
 use App\Services\Payments\Gateways\StripeGateway;
 
 /**
@@ -21,6 +22,7 @@ class PaymentManager
         'pagarme'     => PagarmeGateway::class,
         'asaas'       => AsaasGateway::class,
         'stripe'      => StripeGateway::class,
+        'paypal'      => PayPalGateway::class,
     ];
 
     private ?Gateway $config = null;
@@ -62,14 +64,13 @@ class PaymentManager
         $methods = [];
 
         foreach ($this->enabled() as $key => $gateway) {
-            $hasPix = !($gateway instanceof StripeGateway) || $gateway->supportsPix();
-
-            if ($hasPix) {
+            if ($gateway->supportsPix()) {
                 $methods[] = ['gateway' => $key, 'method' => 'pix', 'label' => $gateway->label() . ' PIX'];
             }
 
             if ($gateway->supportsCreditCard()) {
-                $methods[] = ['gateway' => $key, 'method' => 'credit_card', 'label' => $gateway->label() . ' Cartão'];
+                $label = $gateway instanceof PayPalGateway ? 'PayPal (saldo ou cartão)' : $gateway->label() . ' Cartão';
+                $methods[] = ['gateway' => $key, 'method' => 'credit_card', 'label' => $label];
             }
         }
 

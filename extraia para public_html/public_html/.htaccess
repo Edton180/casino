@@ -1,25 +1,32 @@
-RewriteEngine on
-RewriteCond %{HTTP_HOST} ^seudominio.com$ [NC,OR] 
-RewriteCond %{HTTP_HOST} ^www.seudominio.com$
-RewriteCond %{REQUEST_URI} !public/ 
-RewriteRule (.*) /public/$1 [L]
-# BEGIN WordPress
-# As diretrizes (linhas) entre "BEGIN WordPress" e "END WordPress" são
-# geradas dinamicamente e só devem ser modificadas através de filtros do WordPress.
-# Quaisquer alterações nas diretivas entre esses marcadores serão sobrescritas.
+# ---------------------------------------------------------------------------
+# Hospedagem compartilhada (cPanel, Hostinger, HostGator, Locaweb...)
+#
+# Quando os arquivos ficam direto em public_html, este arquivo envia todos os
+# acessos para a pasta public/ e bloqueia o acesso aos arquivos internos
+# (.env, storage, vendor...). Em VPS o servidor aponta direto para public/
+# e este arquivo não é usado.
+# ---------------------------------------------------------------------------
+
+Options -Indexes
+
 <IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-RewriteBase /
-RewriteRule ^index\.php$ - [L]
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /index.php [L]
+    RewriteEngine On
+
+    # Repassa o cabeçalho Authorization (login do app/API)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Bloqueia pastas e arquivos internos
+    RewriteRule ^(app|bootstrap|config|database|lang|resources|routes|storage|tests|vendor|node_modules|stubs|INSTALL\ CASSINO)(/.*)?$ - [F,L,NC]
+    RewriteRule ^(\.env.*|\.git.*|artisan|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|vite\.config\.js|.*\.(sql|log|md|zip|py|sh))$ - [F,L,NC]
+
+    # Tudo o mais vai para public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
-# END WordPress
-# php -- BEGIN cPanel-generated handler, do not edit
-# Defina o pacote “ea-php82” como a linguagem padrão de programação “PHP”.
-<IfModule mime_module>
-  AddHandler application/x-httpd-ea-php82___lsphp .php .php8 .phtml
-</IfModule>
-# php -- END cPanel-generated handler, do not edit
+
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>

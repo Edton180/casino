@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mines</title>
+<link rel="stylesheet" href="../_shared/originals.css">
+<style>
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: min(100%, 460px); aspect-ratio: 1; }
+  .cell { border: 0; border-radius: 10px; background: var(--line); cursor: pointer; position: relative;
+    box-shadow: 0 5px 0 #1a2c38; transition: transform .1s, background .2s; display: flex; align-items: center; justify-content: center; font-size: clamp(18px, 6vw, 34px); }
+  .cell:hover:not(:disabled) { transform: translateY(-3px); background: #557086; }
+  .cell:disabled { cursor: default; }
+  .cell.gem { background: #0b3d2e; box-shadow: 0 5px 0 #062a20; }
+  .cell.mine { background: #4a1220; box-shadow: 0 5px 0 #2d0a14; }
+  .cell.ghost { opacity: .45; }
+  .cell .ic { animation: pop .25s ease-out; }
+  @keyframes pop { from { transform: scale(.2); } to { transform: scale(1); } }
+</style>
+</head>
+<body>
+<div class="og-app">
+  <aside class="og-side">
+    <div class="og-top"><span class="og-title">💎 Mines</span><span class="og-balance"><small>Saldo</small><span data-balance>—</span></span></div>
+
+    <div>
+      <div class="og-label"><span>Valor da aposta</span></div>
+      <div class="og-field">
+        <input id="bet" type="number" step="0.01" min="0" value="1.00">
+        <button data-bet="half">½</button><button data-bet="double">2×</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="og-label"><span>Minas</span><span>Casas: 25</span></div>
+      <div class="og-field"><select id="mines"></select></div>
+    </div>
+
+    <div class="og-row">
+      <div class="og-stat"><span>Multiplicador</span><b id="mult">0,00x</b></div>
+      <div class="og-stat"><span>Próxima casa</span><b id="next">—</b></div>
+    </div>
+
+    <button id="play" class="og-btn">Apostar</button>
+    <button id="cashout" class="og-btn danger hidden">Retirar</button>
+    <div class="og-fair" id="fair"></div>
+    <div class="og-fair">RTP: <span data-rtp>—</span></div>
+  </aside>
+
+  <main class="og-stage">
+    <div id="result" class="og-result hidden"></div>
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<script src="../_shared/originals.js"></script>
+<script>
+(function () {
+  var grid = document.getElementById('grid');
+  var playBtn = document.getElementById('play');
+  var cashBtn = document.getElementById('cashout');
+  var minesSel = document.getElementById('mines');
+  var resultEl = document.getElementById('result');
+  var getBet = Originals.betInput(document.getElementById('bet'));
+  var round = null;
+  var busy = false;
+
+  for (var m = 1; m <= 24; m++) {
+    var o = document.createElement('option');
+    o.value = m; o.textContent = m + (m === 1 ? ' mina' : ' minas');
+    if (m === 3) o.selected = true;
+    minesSel.appendChild(o);
+  }
+
+  var cells = [];
+  for (var i = 0; i < 25; i++) {
+    var b = document.createElement('button');
+    b.className = 'cell'; b.disabled = true; b.dataset.index = i;
+    b.addEventListener('click', onCell);
+    grid.appendChild(b); cells.push(b);
+  }
+
+  function fmtMult(v) { return Number(v || 0).toFixed(2).replace('.', ',') + 'x'; }
+
+  function render(r) {
+    round = r;
+    var open = r && r.status === 'open';
+    cells.forEach(function (c, idx) {
+      c.className = 'cell'; c.innerHTML = '';
+      c.disabled = !open || (r && r.revealed.indexOf(idx) !== -1);
+      if (!r) return;
+      if (r.revealed.indexOf(idx) !== -1) { c.classList.add('gem'); c.innerHTML = '<span class="ic">💎</span>'; }
+      if (r.layout) {
+        if (r.layout.indexOf(idx) !== -1) { c.classList.add('mine'); c.innerHTML = '<span class="ic">💣</span>'; if (r.hit !== idx) c.classList.add('ghost'); }
+        else if (r.revealed.indexOf(idx) === -1) { c.classList.add('gem', 'ghost'); c.innerHTML = '💎'; }
+      }
+    });
+    document.getElementById('mult').textContent = fmtMult(r ? r.multiplier : 0);
+    document.getElementById('next').textContent = r && r.next_multiplier && open ? fmtMult(r.next_multiplier) : '—';
+    playBtn.classList.toggle('hidden', !!open);
+    cashBtn.classList.toggle('hidden', !open);
+    cashBtn.disabled = !open || !r.revealed.length;
+    cashBtn.textContent = open && r.revealed.length ? 'Retirar ' + Originals.money(r.bet * r.multiplier) : 'Retirar';
+    minesSel.disabled = !!open;
+    Originals.fairness(document.getElementById('fair'), r && r.fairness);
+
+    resultEl.classList.add('hidden');
+    if (r && r.status === 'won') { resultEl.className = 'og-result'; resultEl.textContent = '+' + Originals.money(r.payout) + ' (' + fmtMult(r.multiplier) + ')'; }
+    if (r && r.status === 'lost') { resultEl.className = 'og-result lose'; resultEl.textContent = 'Você encontrou uma mina!'; }
+  }
+
+  function onCell(e) {
+    if (busy || !round || round.status !== 'open') return;
+    busy = true;
+    var idx = Number(e.currentTarget.dataset.index);
+    Originals.api('reveal', { round: round.round, cell: idx })
+      .then(function (data) { render(data.round); })
+      .catch(Originals.fail)
+      .finally(function () { busy = false; });
+  }
+
+  playBtn.addEventListener('click', function () {
+    if (busy) return;
+    busy = true; playBtn.disabled = true;
+    Originals.api('start', { bet: getBet(), mines: Number(minesSel.value) })
+      .then(function (data) { render(data.round); })
+      .catch(function (err) { if (err.status === 409 && err.body.round) render(err.body.round); else Originals.fail(err); })
+      .finally(function () { busy = false; playBtn.disabled = false; });
+  });
+
+  cashBtn.addEventListener('click', function () {
+    if (busy || !round) return;
+    busy = true; cashBtn.disabled = true;
+    Originals.api('cashout', { round: round.round })
+      .then(function (data) { render(data.round); })
+      .catch(Originals.fail)
+      .finally(function () { busy = false; });
+  });
+
+  Originals.init('mines').then(function (info) { render(info.round || null); }).catch(function () {});
+})();
+</script>
+</body>
+</html>

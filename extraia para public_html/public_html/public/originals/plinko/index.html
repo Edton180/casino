@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Plinko</title>
+<link rel="stylesheet" href="../_shared/originals.css">
+<style>
+  canvas { width: 100%; max-width: 640px; height: auto; display: block; }
+</style>
+</head>
+<body>
+<div class="og-app">
+  <aside class="og-side">
+    <div class="og-top"><span class="og-title">🔴 Plinko</span><span class="og-balance"><small>Saldo</small><span data-balance>—</span></span></div>
+    <div>
+      <div class="og-label"><span>Valor da aposta</span></div>
+      <div class="og-field"><input id="bet" type="number" step="0.01" value="1.00"><button data-bet="half">½</button><button data-bet="double">2×</button></div>
+    </div>
+    <div>
+      <div class="og-label"><span>Risco</span><span>12 linhas</span></div>
+      <div class="og-tabs" id="risk"><button data-risk="low">Baixo</button><button data-risk="medium" class="active">Médio</button><button data-risk="high">Alto</button></div>
+    </div>
+    <button id="play" class="og-btn">Soltar bola</button>
+    <div class="og-fair" id="fair"></div>
+    <div class="og-fair">RTP: <span data-rtp>—</span></div>
+  </aside>
+  <main class="og-stage">
+    <canvas id="board" width="640" height="560"></canvas>
+  </main>
+</div>
+<script src="../_shared/originals.js"></script>
+<script>
+(function () {
+  var ROWS = 12, W = 640, H = 560, TOP = 40, GAP_Y = 38, GAP_X = 44;
+  var canvas = document.getElementById('board'), ctx = canvas.getContext('2d');
+  var risk = 'medium', tables = null, balls = [], flashes = {};
+  var getBet = Originals.betInput(document.getElementById('bet'));
+
+  function pegX(row, col) { return W / 2 + (col - row / 2) * GAP_X; }
+  function pegY(row) { return TOP + row * GAP_Y; }
+  function bucketX(i) { return W / 2 + (i - ROWS / 2) * GAP_X; }
+  var BUCKET_Y = pegY(ROWS) + 6;
+
+  function colorFor(m) {
+    if (m >= 10) return '#ff003f'; if (m >= 3) return '#ff6020'; if (m >= 1.5) return '#ffa500';
+    if (m >= 1) return '#ffc000'; return '#ffd23f';
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    for (var r = 2; r < ROWS + 1; r++) {
+      for (var c = 0; c <= r; c++) {
+        if (r === ROWS) continue;
+        ctx.beginPath(); ctx.arc(pegX(r, c), pegY(r), 4, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    var table = tables ? tables[risk] : [];
+    for (var i = 0; i <= ROWS; i++) {
+      var x = bucketX(i), m = table[i];
+      var lift = flashes[i] ? 6 : 0;
+      ctx.fillStyle = colorFor(m || 0);
+      roundRect(x - GAP_X / 2 + 2, BUCKET_Y - lift, GAP_X - 4, 30, 6); ctx.fill();
+      ctx.fillStyle = '#1a1a1a'; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(m !== undefined ? m + 'x' : '', x, BUCKET_Y + 19 - lift);
+    }
+    balls.forEach(function (b) {
+      ctx.fillStyle = '#ff2d55'; ctx.beginPath(); ctx.arc(b.x, b.y, 8, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // pontos da trajetória a partir do caminho sorteado pelo servidor
+  function waypoints(path) {
+    var pts = [{ x: W / 2, y: TOP }], col = 0;
+    for (var r = 0; r < ROWS; r++) {
+      col += path[r];
+      pts.push({ x: W / 2 + (col - (r + 1) / 2) * GAP_X, y: pegY(r + 1) - 10 });
+    }
+    pts.push({ x: bucketX(col), y: BUCKET_Y + 4 });
+    return pts;
+  }
+
+  function drop(data) {
+    var pts = waypoints(data.result.path), seg = 0, t = 0;
+    var ball = { x: pts[0].x, y: pts[0].y };
+    balls.push(ball);
+    function step() {
+      t += 0.12;
+      if (t >= 1) { t = 0; seg++; }
+      if (seg >= pts.length - 1) {
+        balls.splice(balls.indexOf(ball), 1);
+        flashes[data.result.bucket] = true;
+        setTimeout(function () { delete flashes[data.result.bucket]; }, 250);
+        Originals.setBalance(data.balance);
+        if (data.result.multiplier >= 1) Originals.toast(data.result.multiplier + 'x · ' + Originals.money(data.payout), 'success');
+        return;
+      }
+      var a = pts[seg], b = pts[seg + 1];
+      ball.x = a.x + (b.x - a.x) * t;
+      ball.y = a.y + (b.y - a.y) * t - Math.sin(t * Math.PI) * 12; // pequeno quique
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function loop() { draw(); requestAnimationFrame(loop); }
+  loop();
+
+  document.querySelectorAll('[data-risk]').forEach(function (b) {
+    b.onclick = function () {
+      risk = b.dataset.risk;
+      document.querySelectorAll('[data-risk]').forEach(function (x) { x.classList.toggle('active', x === b); });
+    };
+  });
+
+  var balanceShown = null;
+  document.getElementById('play').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    Originals.api('play', { bet: getBet(), risk: risk })
+      .then(function (data) {
+        // o saldo final só aparece quando a bola cai
+        Originals.setBalance(Number(data.balance) - Number(data.payout));
+        drop(data);
+        Originals.fairness(document.getElementById('fair'), data.fairness);
+      })
+      .catch(Originals.fail)
+      .finally(function () { setTimeout(function () { btn.disabled = false; }, 250); });
+  });
+
+  Originals.init('plinko').then(function (info) { tables = info.tables; }).catch(function () {});
+})();
+</script>
+</body>
+</html>

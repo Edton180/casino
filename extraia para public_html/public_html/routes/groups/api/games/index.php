@@ -39,3 +39,24 @@ Route::prefix('skillgames')
         Route::post('start', [SkillGameController::class, 'start']);
         Route::post('finish', [SkillGameController::class, 'finish']);
     });
+
+// Jogos originais (Mines, Dice, Plinko, Crash, Double)
+Route::prefix('originals')
+    ->middleware('throttle:240,1')
+    ->group(function ()
+    {
+        Route::post('{game}/info', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'info'])
+            ->whereIn('game', ['mines', 'dice', 'plinko', 'crash', 'double']);
+
+        Route::post('dice/play', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'dice']);
+        Route::post('double/play', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'double']);
+        Route::post('plinko/play', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'plinko']);
+
+        Route::post('mines/start', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'minesStart']);
+        Route::post('mines/reveal', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'minesReveal']);
+        Route::post('mines/cashout', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'minesCashout']);
+
+        Route::post('crash/start', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'crashStart']);
+        Route::post('crash/status', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'crashStatus']);
+        Route::post('crash/cashout', [\App\Http\Controllers\Api\Games\OriginalsController::class, 'crashCashout']);
+    });

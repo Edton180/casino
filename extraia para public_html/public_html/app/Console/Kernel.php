@@ -12,8 +12,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-
-
+        // Libera o cashback acumulado para resgate (antes era o script público updatecash.php)
+        $schedule->call(function () {
+            \Illuminate\Support\Facades\DB::table('wallets')->where('cashback', '>', 0)->update(['cashbackliquido' => 1]);
+        })->dailyAt('00:05')->name('wallet-release-cashback')->withoutOverlapping();
     }
 
     /**

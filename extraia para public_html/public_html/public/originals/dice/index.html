@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Dice</title>
+<link rel="stylesheet" href="../_shared/originals.css">
+<style>
+  .board { width: min(100%, 620px); display: flex; flex-direction: column; gap: 28px; }
+  .roll { text-align: center; font-size: clamp(48px, 14vw, 96px); font-weight: 900; font-variant-numeric: tabular-nums; }
+  .roll.win { color: var(--accent); } .roll.lose { color: var(--danger); }
+  .track { position: relative; height: 18px; border-radius: 999px; background: var(--danger); }
+  .track .ok { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 999px; }
+  .track input[type=range] { position: absolute; inset: -8px 0; width: 100%; opacity: 0; cursor: pointer; }
+  .thumb { position: absolute; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; background: #557086; border-radius: 6px; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+  .marker { position: absolute; top: -40px; transform: translateX(-50%); background: #fff; color: #0f1923; padding: 4px 8px; border-radius: 6px; font-weight: 900; transition: left .35s ease-out; }
+  .scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="og-app">
+  <aside class="og-side">
+    <div class="og-top"><span class="og-title">🎲 Dice</span><span class="og-balance"><small>Saldo</small><span data-balance>—</span></span></div>
+    <div>
+      <div class="og-label"><span>Valor da aposta</span></div>
+      <div class="og-field"><input id="bet" type="number" step="0.01" value="1.00"><button data-bet="half">½</button><button data-bet="double">2×</button></div>
+    </div>
+    <div class="og-tabs"><button id="under">Rolar abaixo</button><button id="over" class="active">Rolar acima</button></div>
+    <div class="og-row">
+      <div class="og-stat"><span>Multiplicador</span><b id="mult">—</b></div>
+      <div class="og-stat"><span>Chance de vitória</span><b id="chance">—</b></div>
+    </div>
+    <div class="og-stat"><span>Lucro se ganhar</span><b id="profit">—</b></div>
+    <button id="play" class="og-btn">Rolar</button>
+    <div class="og-fair" id="fair"></div>
+    <div class="og-fair">RTP: <span data-rtp>—</span></div>
+  </aside>
+  <main class="og-stage">
+    <div class="board">
+      <div id="roll" class="roll">50.00</div>
+      <div>
+        <div class="track" id="track">
+          <div class="ok" id="ok"></div>
+          <div class="thumb" id="thumb"></div>
+          <div class="marker hidden" id="marker">0</div>
+          <input id="target" type="range" min="2" max="98" step="0.01" value="50">
+        </div>
+        <div class="scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+      </div>
+      <div style="text-align:center;color:var(--muted)">Alvo: <b id="targetLabel" style="color:#fff">50.00</b></div>
+    </div>
+  </main>
+</div>
+<script src="../_shared/originals.js"></script>
+<script>
+(function () {
+  var over = true, busy = false, rtp = 97;
+  var target = document.getElementById('target');
+  var getBet = Originals.betInput(document.getElementById('bet'));
+
+  function chance() { var t = Number(target.value); return over ? 100 - t : t; }
+  function mult() { return Math.floor((rtp / chance()) * 10000) / 10000; }
+
+  function update() {
+    var t = Number(target.value);
+    document.getElementById('targetLabel').textContent = t.toFixed(2);
+    document.getElementById('thumb').style.left = t + '%';
+    var ok = document.getElementById('ok');
+    if (over) { ok.style.left = t + '%'; ok.style.right = '0'; } else { ok.style.left = '0'; ok.style.right = (100 - t) + '%'; }
+    document.getElementById('chance').textContent = chance().toFixed(2) + '%';
+    document.getElementById('mult').textContent = mult().toFixed(4) + 'x';
+    document.getElementById('profit').textContent = Originals.money(getBet() * mult() - getBet());
+  }
+
+  function side(isOver) {
+    over = isOver;
+    document.getElementById('over').classList.toggle('active', over);
+    document.getElementById('under').classList.toggle('active', !over);
+    update();
+  }
+
+  document.getElementById('over').onclick = function () { side(true); };
+  document.getElementById('under').onclick = function () { side(false); };
+  target.addEventListener('input', update);
+  document.getElementById('bet').addEventListener('input', update);
+
+  document.getElementById('play').addEventListener('click', function () {
+    if (busy) return;
+    busy = true; this.disabled = true;
+    var btn = this;
+    Originals.api('play', { bet: getBet(), target: Number(target.value), over: over })
+      .then(function (data) {
+        var r = data.result, rollEl = document.getElementById('roll'), marker = document.getElementById('marker');
+        rollEl.textContent = Number(r.roll).toFixed(2);
+        rollEl.className = 'roll ' + (data.won ? 'win' : 'lose');
+        marker.classList.remove('hidden');
+        marker.style.left = r.roll + '%';
+        marker.textContent = Number(r.roll).toFixed(2);
+        if (data.won) Originals.toast('Você ganhou ' + Originals.money(data.payout) + '!', 'success');
+        Originals.fairness(document.getElementById('fair'), data.fairness);
+      })
+      .catch(Originals.fail)
+      .finally(function () { busy = false; btn.disabled = false; });
+  });
+
+  Originals.init('dice').then(function (info) { rtp = info.rtp; update(); }).catch(function () {});
+  update();
+})();
+</script>
+</body>
+</html>

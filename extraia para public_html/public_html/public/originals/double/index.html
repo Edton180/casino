@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Double</title>
+<link rel="stylesheet" href="../_shared/originals.css">
+<style>
+  .wheel { width: 100%; max-width: 760px; overflow: hidden; position: relative; padding: 18px 0; }
+  .strip { display: flex; gap: 8px; will-change: transform; }
+  .tile { flex: none; width: 84px; height: 84px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 22px; }
+  .tile.red { background: #e63946; } .tile.black { background: #262f3c; } .tile.white { background: #f1faee; color: #e63946; }
+  .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #ffd166; z-index: 2; border-radius: 2px; box-shadow: 0 0 12px #ffd166; }
+  .colors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .colors button { border: 2px solid transparent; border-radius: 8px; padding: 12px 4px; font-weight: 900; cursor: pointer; color: #fff; }
+  .colors .red { background: #e63946; } .colors .black { background: #262f3c; } .colors .white { background: #f1faee; color: #e63946; }
+  .colors button.active { border-color: #ffd166; box-shadow: 0 0 0 2px #ffd16655; }
+  .history { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 16px; justify-content: center; }
+  .history span { width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+</style>
+</head>
+<body>
+<div class="og-app">
+  <aside class="og-side">
+    <div class="og-top"><span class="og-title">🎡 Double</span><span class="og-balance"><small>Saldo</small><span data-balance>—</span></span></div>
+    <div>
+      <div class="og-label"><span>Valor da aposta</span></div>
+      <div class="og-field"><input id="bet" type="number" step="0.01" value="1.00"><button data-bet="half">½</button><button data-bet="double">2×</button></div>
+    </div>
+    <div>
+      <div class="og-label"><span>Escolha a cor</span></div>
+      <div class="colors">
+        <button class="red active" data-color="red">2x</button>
+        <button class="white" data-color="white">14x</button>
+        <button class="black" data-color="black">2x</button>
+      </div>
+    </div>
+    <button id="play" class="og-btn">Girar</button>
+    <div class="og-fair" id="fair"></div>
+  </aside>
+  <main class="og-stage" style="flex-direction:column">
+    <div id="result" class="og-result hidden"></div>
+    <div class="wheel"><div class="pointer"></div><div class="strip" id="strip"></div></div>
+    <div class="history" id="history"></div>
+  </main>
+</div>
+<script src="../_shared/originals.js"></script>
+<script>
+(function () {
+  // ordem das casas na roleta (0 = branco, 1-7 vermelho, 8-14 preto)
+  var ORDER = [0, 11, 5, 10, 6, 9, 7, 8, 1, 14, 2, 13, 3, 12, 4];
+  var TILE = 92; // largura + gap
+  var strip = document.getElementById('strip');
+  var color = 'red', busy = false;
+  var getBet = Originals.betInput(document.getElementById('bet'));
+
+  function colorOf(n) { return n === 0 ? 'white' : (n <= 7 ? 'red' : 'black'); }
+
+  for (var rep = 0; rep < 8; rep++) {
+    ORDER.forEach(function (n) {
+      var t = document.createElement('div');
+      t.className = 'tile ' + colorOf(n);
+      t.textContent = n === 0 ? '★' : n;
+      strip.appendChild(t);
+    });
+  }
+
+  function offsetFor(slot, loops) {
+    var idx = loops * ORDER.length + ORDER.indexOf(slot);
+    var center = strip.parentElement.clientWidth / 2;
+    return -(idx * TILE + TILE / 2 - 4) + center + (Math.random() * 50 - 25);
+  }
+
+  strip.style.transform = 'translateX(' + offsetFor(0, 1) + 'px)';
+
+  document.querySelectorAll('[data-color]').forEach(function (b) {
+    b.onclick = function () {
+      color = b.dataset.color;
+      document.querySelectorAll('[data-color]').forEach(function (x) { x.classList.toggle('active', x === b); });
+    };
+  });
+
+  document.getElementById('play').addEventListener('click', function () {
+    if (busy) return;
+    var btn = this;
+    busy = true; btn.disabled = true;
+    document.getElementById('result').classList.add('hidden');
+
+    Originals.api('play', { bet: getBet(), color: color }).then(function (data) {
+      var r = data.result;
+      strip.style.transition = 'none';
+      strip.style.transform = 'translateX(' + offsetFor(ORDER[0], 1) + 'px)';
+      strip.offsetHeight; // reflow
+      strip.style.transition = 'transform 4.5s cubic-bezier(.12,.8,.18,1)';
+      strip.style.transform = 'translateX(' + offsetFor(r.slot, 6) + 'px)';
+
+      setTimeout(function () {
+        var res = document.getElementById('result');
+        res.className = 'og-result' + (data.won ? '' : ' lose');
+        res.textContent = data.won ? '+' + Originals.money(data.payout) : 'Saiu ' + ({ red: 'vermelho', black: 'preto', white: 'branco' })[r.color];
+        var h = document.createElement('span');
+        h.className = 'tile ' + r.color; h.textContent = r.slot === 0 ? '★' : r.slot;
+        var hist = document.getElementById('history');
+        hist.prepend(h);
+        while (hist.children.length > 14) hist.lastChild.remove();
+        Originals.fairness(document.getElementById('fair'), data.fairness);
+        busy = false; btn.disabled = false;
+      }, 4600);
+    }).catch(function (e) { Originals.fail(e); busy = false; btn.disabled = false; });
+  });
+
+  Originals.init('double').catch(function () {});
+})();
+</script>
+</body>
+</html>

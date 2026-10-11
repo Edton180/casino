@@ -30,6 +30,7 @@ class Gateway extends Model
         'asaas_webhook_key',
         'stripe_secret_key',
         'stripe_webhook_key',
+        'paypal_client_secret',
     ];
 
     /**
@@ -73,6 +74,13 @@ class Gateway extends Model
         'stripe_public_key',
         'stripe_secret_key',
         'stripe_webhook_key',
+
+        // PayPal
+        'paypal_is_enable',
+        'paypal_sandbox',
+        'paypal_client_id',
+        'paypal_client_secret',
+        'paypal_webhook_key',
     ];
 
     protected $casts = [
@@ -90,6 +98,8 @@ class Gateway extends Model
         'stripe_is_enable'             => 'boolean',
         'stripe_pix_enable'            => 'boolean',
         'stripe_production'            => 'boolean',
+        'paypal_is_enable'             => 'boolean',
+        'paypal_sandbox'               => 'boolean',
     ];
 
     protected $hidden = ['updated_at'];

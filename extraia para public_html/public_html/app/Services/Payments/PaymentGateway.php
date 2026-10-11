@@ -30,6 +30,11 @@ abstract class PaymentGateway
 
     abstract public function supportsCreditCard(): bool;
 
+    public function supportsPix(): bool
+    {
+        return true;
+    }
+
     /**
      * Gera uma cobrança PIX.
      * @return array{gateway_payment_id: string, qrcode: string, qrcode_image?: ?string}
