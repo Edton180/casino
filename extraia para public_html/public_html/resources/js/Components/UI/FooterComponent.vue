@@ -77,7 +77,8 @@
     <hr class="border-t border-gray-300 w-full mt-5"> <!-- Linha inferior -->
 
 <div class="relative overflow-hidden max-h-24" id="text-container">
-        <div class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm" id="text-content">
+        <div v-if="setting && setting.footer_about" class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm whitespace-pre-line" id="text-content">{{ setting.footer_about }}</div>
+        <div v-else class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm" id="text-content">
 {{ setting.software_name }} é um cassino online que oferece aos seus usuários uma experiência única de jogos de cassino. Com uma plataforma intuitiva e fácil de usar, {{ setting.software_name }} permite que seus usuários desfrutem de uma ampla variedade de jogos, incluindo os clássicos e os mais recentes lançamentos.
 
 Com o objetivo de proporcionar a melhor experiência de jogos aos seus usuários, {{ setting.software_name }} oferece uma série de recursos e ferramentas, como estatísticas detalhadas dos jogos, histórico de resultados e análises de especialistas. Além disso, o site destaca-se por suas diversas promoções e bônus exclusivos, que aumentam as chances de lucro e tornam a experiência ainda mais emocionante.
@@ -98,10 +99,10 @@ Com o objetivo de proporcionar a melhor experiência de jogos aos seus usuários
 </div>
 
 
-<div class="flex flex-col items-center mt-4 space-y-2">
-    <span class="text-gray-500 text-sm">Suporte <span class="text-gray-400">suporte@{{ setting.software_name }}.com</span></span>
-    <span class="text-gray-500 text-sm">Jurídico <span class="text-gray-400">juridico@{{ setting.software_name }}.com</span></span>
-    <span class="text-gray-500 text-sm">Parceiros <span class="text-gray-400">parceiros@{{ setting.software_name }}.com</span></span>
+<div v-if="setting" class="flex flex-col items-center mt-4 space-y-2">
+    <span v-if="setting.support_email" class="text-gray-500 text-sm">Suporte <a :href="'mailto:' + setting.support_email" class="text-gray-400">{{ setting.support_email }}</a></span>
+    <span v-if="setting.legal_email" class="text-gray-500 text-sm">Jurídico <a :href="'mailto:' + setting.legal_email" class="text-gray-400">{{ setting.legal_email }}</a></span>
+    <span v-if="setting.partners_email" class="text-gray-500 text-sm">Parceiros <a :href="'mailto:' + setting.partners_email" class="text-gray-400">{{ setting.partners_email }}</a></span>
 </div>
 
 <div class="flex justify-center items-center mt-5">
@@ -111,6 +112,14 @@ Com o objetivo de proporcionar a melhor experiência de jogos aos seus usuários
         </svg>
         <span>De volta ao topo</span>
     </button>
+</div>
+
+<div v-if="setting" class="flex flex-col items-center mt-5 space-y-1 text-xs text-gray-500">
+    <span>{{ setting.footer_copyright || ('© ' + year + ' ' + setting.software_name + '. Todos os direitos reservados.') }}</span>
+    <span v-if="setting.footer_show_credit && setting.footer_credit">
+        <a v-if="setting.footer_credit_url" :href="setting.footer_credit_url" target="_blank" rel="noopener" class="hover:text-gray-300">{{ setting.footer_credit }}</a>
+        <template v-else>{{ setting.footer_credit }}</template>
+    </span>
 </div>
 
 

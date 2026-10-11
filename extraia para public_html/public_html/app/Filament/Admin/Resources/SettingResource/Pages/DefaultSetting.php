@@ -9,6 +9,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -256,6 +257,36 @@ class DefaultSetting extends Page implements HasForms
                                 ->label('LINK DO FOOTBALL')
                                 ->maxLength(191),
                     ])->columns(2),
+                    Section::make('Rodapé')
+                    ->description('Textos e contatos exibidos no rodapé do site')
+                    ->schema([
+                        TextInput::make('footer_copyright')
+                            ->label('Direitos autorais')
+                            ->placeholder('© ' . date('Y') . ' Meu Cassino. Todos os direitos reservados.')
+                            ->helperText('Deixe vazio para usar o padrão com o nome do site e o ano atual.')
+                            ->maxLength(191)
+                            ->columnSpanFull(),
+                        TextInput::make('footer_credit')
+                            ->label('Crédito do desenvolvedor')
+                            ->placeholder('Desenvolvido por ...')
+                            ->maxLength(191),
+                        TextInput::make('footer_credit_url')
+                            ->label('Link do crédito (opcional)')
+                            ->placeholder('https://...')
+                            ->url()
+                            ->maxLength(191),
+                        Toggle::make('footer_show_credit')
+                            ->inline(false)
+                            ->label('Mostrar crédito do desenvolvedor'),
+                        Textarea::make('footer_about')
+                            ->label('Texto "Sobre" do rodapé (opcional)')
+                            ->placeholder('Deixe vazio para usar o texto padrão')
+                            ->rows(3)
+                            ->columnSpanFull(),
+                        TextInput::make('support_email')->label('E-mail de suporte')->email()->maxLength(191),
+                        TextInput::make('legal_email')->label('E-mail jurídico')->email()->maxLength(191),
+                        TextInput::make('partners_email')->label('E-mail de parceiros')->email()->maxLength(191),
+                    ])->columns(3),
                     Section::make('Cassino Winners')
                     ->description('Ativar ou desativar o cassino winners')
                     ->schema([
