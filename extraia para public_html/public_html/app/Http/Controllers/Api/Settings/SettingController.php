@@ -12,7 +12,16 @@ class SettingController extends Controller
      */
     public function index()
     {
-        return response()->json(['setting' => \Helper::getSetting()], 200);
+        $setting = \Helper::getSetting();
+
+        // dados internos (cupons, regras de comissão/rollover) não vão para o navegador
+        $public = $setting ? (clone $setting)->makeHidden([
+            'cupom', 'cupomvalor', 'ngr_percent', 'revshare_reverse', 'perc_sub_lv1', 'perc_sub_lv2', 'perc_sub_lv3',
+            'rollover_protection', 'suitpay_is_enable', 'bspay_is_enable', 'sharkpay_is_enable', 'digitopay_is_enable',
+            'asaas_is_enable', 'mercadopago_is_enable', 'default_gateway', 'storage',
+        ]) : null;
+
+        return response()->json(['setting' => $public], 200);
     }
 
     /**

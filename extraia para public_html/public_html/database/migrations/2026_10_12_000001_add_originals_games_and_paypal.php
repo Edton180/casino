@@ -129,11 +129,18 @@ return new class extends Migration
 
         // Jogos locais antigos: usa a capa que já vem em public/ quando o arquivo enviado não existe
         foreach (DB::table('games')->where('distribution', 'source')->get(['id', 'game_code', 'cover']) as $game) {
-            $local = public_path($game->game_code . '.png');
-            $uploaded = $game->cover && !str_starts_with($game->cover, '/') ? storage_path('app/public/' . $game->cover) : null;
+            $candidates = [
+                $game->game_code . '.png',
+                'originals/' . $game->game_code . '/icons/icon-512.png',
+                $game->game_code === 'fruitninja' ? 'fruit.png' : null,
+            ];
+            $local = collect($candidates)->filter()->first(fn ($c) => is_file(public_path($c)));
 
-            if (is_file($local) && $uploaded && !is_file($uploaded)) {
-                DB::table('games')->where('id', $game->id)->update(['cover' => '/' . $game->game_code . '.png']);
+            $uploaded = $game->cover && !str_starts_with($game->cover, '/')
+                && (is_file(public_path('storage/' . $game->cover)) || is_file(storage_path('app/public/' . $game->cover)));
+
+            if ($local && !$uploaded && !str_starts_with((string) $game->cover, '/')) {
+                DB::table('games')->where('id', $game->id)->update(['cover' => '/' . $local]);
             }
         }
     }

@@ -406,6 +406,16 @@ class CasinoInstaller
             $warnings[] = 'Crie a pasta public/storage com permissão 775 para os uploads do painel.';
         }
 
+        // logos e banners padrão (podem ser trocados no painel)
+        $defaults = $this->path('database/install/defaults');
+        @mkdir($publicStorage . '/defaults', 0775, true);
+        foreach (glob($defaults . '/*') ?: [] as $file) {
+            $dest = $publicStorage . '/defaults/' . basename($file);
+            if (!is_file($dest)) {
+                @copy($file, $dest);
+            }
+        }
+
         if (!empty($settings)) {
             $setting = \App\Models\Setting::first();
             if ($setting) {

@@ -68,7 +68,7 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'auth.jwt' => \App\Http\Middleware\JwtMiddleWare::class,
+        'auth.jwt' => \App\Http\Middleware\JWTMiddleWare::class,
         'admin.filament' => \App\Http\Middleware\RedirectIfNotFilamentAdmin::class,
         'authorize.withdrawal' => \App\Http\Middleware\AuthorizeWithdrawalApproval::class,
         'check.installed' => \App\Http\Middleware\CheckInstalled::class,
