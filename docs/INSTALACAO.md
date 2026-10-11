@@ -161,6 +161,8 @@ O assistente abre um menu (use as setas e Enter). Escolha **"Instalar em um serv
 | 6. Site | Cria as tabelas, os jogos iniciais e o administrador. |
 | 7. Web, SSL e cron | Configura o Nginx, emite o **certificado HTTPS** (Let's Encrypt), liga o agendador e **testa se o site respondeu**. |
 
+Além disso, no servidor ele aplica o endurecimento de produção: `APP_ENV=production` e `APP_DEBUG=false`, limites do PHP-FPM (uploads de 64 MB, 512 MB de memória, OPcache), **swap** automático em máquinas com pouca RAM, **firewall `ufw`** (só se já estiver ativo: libera SSH, 80 e 443), rotação dos logs (`logrotate`) e um teste final que bate no Nginx local mesmo antes do DNS propagar. Se o certificado não puder ser emitido (DNS ainda não aponta), o site fica em HTTP e o assistente mostra o comando `certbot` para rodar depois.
+
 No final aparece um quadro com o endereço do site, do painel e o login; tudo também fica em `/root/casino-credenciais.txt`.
 
 **Sem menu (automação):**

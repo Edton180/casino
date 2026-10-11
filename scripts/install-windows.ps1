@@ -88,11 +88,11 @@ function Linha($estado, $rotulo, $valor) {
 function Caixa($titulo, $linhasCaixa) {
   $largura = 74
   $sem = { param($s) ($s -replace "$Esc\[[0-9;]*m", '').Length }
-  $topo = '╭─ ' + $titulo + ' ' + ('─' * [math]::Max(0, $largura - 4 - $titulo.Length - 2)) + '╮'
+  $topo = '╭─ ' + $titulo + ' ' + ('─' * [math]::Max(0, $largura - 5 - $titulo.Length)) + '╮'
   Write-Host (Cinza $topo)
   foreach ($l in $linhasCaixa) {
-    $pad = [math]::Max(0, $largura - 2 - (& $sem $l))
-    Write-Host ((Cinza '│') + ' ' + $l + (' ' * $pad) + (Cinza '│'))
+    $pad = [math]::Max(0, $largura - 4 - (& $sem $l))
+    Write-Host ((Cinza '│') + ' ' + $l + (' ' * $pad) + ' ' + (Cinza '│'))
   }
   Write-Host (Cinza ('╰' + ('─' * ($largura - 2)) + '╯'))
 }
@@ -121,7 +121,12 @@ function Executa($descricao, [scriptblock]$bloco) {
   }
   $saida = Receive-Job $job -ErrorAction SilentlyContinue 2>&1
   $saida | Out-File -Append -Encoding utf8 $Log
-  $erro = $job.State -eq 'Failed' -or ($job.ChildJobs[0].Error.Count -gt 0)
+  # composer/git escrevem avisos no stderr: só conta como falha se o bloco lançar exceção (throw)
+  $erro = $job.State -eq 'Failed'
+  if ($erro) {
+    $motivo = @($job.ChildJobs[0].JobStateInfo.Reason | Where-Object { $_ } | ForEach-Object { $_.Message })
+    ($motivo -join "`n") | Out-File -Append -Encoding utf8 $Log
+  }
   Remove-Job $job -Force
   Write-Host -NoNewline "`r$(' ' * 100)`r"
   if ($erro) {
@@ -210,7 +215,11 @@ function Instala-Composer($php) {
   $dest = Join-Path $Dados 'composer.phar'
   if (-not (Test-Path $dest)) {
     Executa 'Baixando o Composer' {
-      Invoke-WebRequest 'https://getcomposer.org/download/latest-stable/composer.phar' -OutFile $using:dest
+      $ok = $false
+      foreach ($u in 'https://getcomposer.org/download/latest-stable/composer.phar', 'https://github.com/composer/composer/releases/latest/download/composer.phar') {
+        try { Invoke-WebRequest $u -OutFile $using:dest; if ((Get-Item $using:dest).Length -gt 1MB) { $ok = $true; break } } catch { "Falha em $u : $($_.Exception.Message)" }
+      }
+      if (-not $ok) { throw 'Não consegui baixar o Composer (verifique a internet ou o antivírus/firewall).' }
     }
   } else { Ok 'Composer já baixado' }
   return $dest

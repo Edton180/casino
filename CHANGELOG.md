@@ -10,6 +10,10 @@
 - Windows: `install-windows.ps1` baixa PHP 8.3 e Composer sozinho, ativa as extensões, usa o MySQL do XAMPP/Laragon ou instala o MariaDB via winget.
 - Docker com a mesma identidade visual; erros mostram dica específica e o caminho do log.
 
+### Validação e correções (localhost e produção)
+- Windows: composer/git escrevem avisos no stderr — isso não derruba mais a instalação; fluxo completo (dependências → banco → site → health check → desligar) validado com PowerShell 7; alinhamento dos quadros; Composer com endereço alternativo; ligar o site informa a porta mesmo se já estiver ligado.
+- Servidor: domínio que ainda não resolve não aborta mais o assistente; se o SSL falhar, `APP_URL` e o resumo passam a mostrar o endereço HTTP real; novos ajustes de produção (PHP-FPM, swap, ufw, logrotate, teste final via `--resolve`).
+
 ### Documentação
 - Guia de instalação reorganizado (como obter o código com repositório privado, VPS, localhost por sistema); tabela de problemas do assistente.
 

@@ -733,10 +733,11 @@ local_url() { if [[ ${LAN} -eq 1 && -n "$(lan_ip)" ]]; then echo "http://$(lan_i
 local_pidfile() { echo "${APP_DIR}/storage/local-server.pid"; }
 local_running() { local pf; pf="$(local_pidfile)"; [[ -f "${pf}" ]] && kill -0 "$(cat "${pf}")" 2>/dev/null; }
 
-health_check() {   # health_check URL [log] → confirma que o site responde (HTTP 2xx/3xx)
-  local url="$1" logf="${2:-}" code="" i
+health_check() {   # health_check URL [log] [host:porta:ip] → confirma que o site responde (HTTP 2xx/3xx)
+  local url="$1" logf="${2:-}" resolve="${3:-}" code="" i
+  local ra=(); [[ -n "${resolve}" ]] && ra=(--resolve "${resolve}")
   for i in 1 2 3 4 5 6; do
-    code="$(curl -s -m 15 -o /dev/null -w '%{http_code}' "${url}" 2>/dev/null || true)"
+    code="$(curl -s -m 15 "${ra[@]}" -o /dev/null -w '%{http_code}' "${url}" 2>/dev/null || true)"
     [[ "${code}" =~ ^[23][0-9][0-9]$ ]] && { ok "O site respondeu corretamente (HTTP ${code})"; return 0; }
     sleep 1
   done
@@ -885,7 +886,7 @@ public_ip() { curl -fsS -m 6 https://api.ipify.org 2>/dev/null || curl -fsS -m 6
 check_dns() {
   [[ "${DOMAIN}" == "localhost" || "${DOMAIN}" =~ ^[0-9.]+$ ]] && return 0
   local ip dns
-  ip="$(public_ip)"; dns="$(getent hosts "${DOMAIN}" 2>/dev/null | awk '{print $1; exit}')"
+  ip="$(public_ip)"; dns="$(getent hosts "${DOMAIN}" 2>/dev/null | awk '{print $1; exit}' || true)"
   if [[ -z "${dns}" ]]; then
     row warn "DNS de ${DOMAIN}" "ainda não resolve — crie um registro A para ${ip:-o IP deste servidor}"
     [[ ${ENABLE_SSL} -eq 1 ]] && info "Sem DNS apontado o SSL falha agora (dá para emitir depois; o assistente mostra o comando)."
@@ -993,8 +994,70 @@ configure_ssl() {
   if certbot --nginx -d "${DOMAIN}" -m "${ADMIN_EMAIL}" --agree-tos --non-interactive --redirect >>"${LOG}" 2>&1; then ok "SSL ativo (https://${DOMAIN})"
   else
     warn "Não foi possível emitir o SSL agora. Confira se o DNS de ${DOMAIN} aponta para este servidor e rode depois:"
-    info "certbot --nginx -d ${DOMAIN} -m ${ADMIN_EMAIL} --agree-tos --redirect"
+    info "certbot --nginx -d ${DOMAIN} -m ${ADMIN_EMAIL} --agree-tos --redirect  (depois troque APP_URL no .env para https)"
+    ENABLE_SSL=0; APP_URL="$(server_url)"; set_env_value APP_URL "${APP_URL}"
+    (cd "${APP_DIR}" && as_www php artisan config:clear >>"${LOG}" 2>&1) || true
   fi
+}
+
+# --- ajustes de produção -----------------------------------------------------
+tune_php_fpm() {   # limites de upload (banners/logos), memória e opcache
+  local v; v="$(php_ver)"
+  local dir="/etc/php/${v}/fpm/conf.d"
+  [[ -d "${dir}" ]] || return 0
+  cat > "${dir}/99-casino.ini" <<INI
+; Casino Platform — ajustes de produção
+upload_max_filesize = 64M
+post_max_size = 64M
+memory_limit = 512M
+max_execution_time = 300
+expose_php = Off
+opcache.enable = 1
+opcache.memory_consumption = 192
+opcache.max_accelerated_files = 20000
+opcache.validate_timestamps = 1
+opcache.revalidate_freq = 10
+INI
+  svc reload "php${v}-fpm" >>"${LOG}" 2>&1 || svc restart "php${v}-fpm" >>"${LOG}" 2>&1 || true
+  ok "PHP ajustado para produção (uploads de 64 MB, 512 MB de memória, opcache)"
+}
+
+ensure_swap() {   # servidor com pouca memória: cria 2 GB de swap (o Composer precisa)
+  have free || return 0
+  local mb swap; mb="$(free -m | awk '/Mem:/{print $2}')"; swap="$(free -m | awk '/Swap:/{print $2}')"
+  [[ -n "${mb}" && "${mb}" -lt 1600 && "${swap:-0}" -lt 512 ]] || return 0
+  [[ -d /run/systemd/system || -f /proc/swaps ]] || return 0
+  warn "Pouca memória (${mb} MB) e sem swap: o Composer pode falhar."
+  confirm "Criar 2 GB de swap em /swapfile?" s || return 0
+  if [[ ! -f /swapfile ]]; then
+    run "Criando o swap de 2 GB" bash -c "fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048; chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile; grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab"
+  else
+    swapon /swapfile >>"${LOG}" 2>&1 || true
+  fi
+}
+
+configure_firewall() {   # se o ufw estiver ativo, libera SSH, HTTP e HTTPS
+  have ufw || return 0
+  ufw status 2>/dev/null | grep -q "Status: active" || return 0
+  ufw allow OpenSSH >>"${LOG}" 2>&1 || ufw allow 22/tcp >>"${LOG}" 2>&1 || true
+  ufw allow 80/tcp >>"${LOG}" 2>&1 || true
+  ufw allow 443/tcp >>"${LOG}" 2>&1 || true
+  [[ "${HTTP_PORT}" != "80" ]] && { ufw allow "${HTTP_PORT}/tcp" >>"${LOG}" 2>&1 || true; }
+  ok "Firewall (ufw): portas 22, 80 e 443 liberadas"
+  return 0
+}
+
+configure_logrotate() {
+  cat > /etc/logrotate.d/casino <<ROT
+${APP_DIR}/storage/logs/*.log {
+    daily
+    rotate 14
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+ROT
 }
 
 configure_cron() {
@@ -1031,7 +1094,9 @@ do_server_install() {
   legal_notice
 
   step "Instalando Nginx, PHP ${PHP_VERSION} e MariaDB"
+  ensure_swap
   server_packages
+  tune_php_fpm
   ensure_composer
 
   step "Obtendo o código"
@@ -1049,8 +1114,10 @@ do_server_install() {
 
   step "Servidor web, SSL e tarefas agendadas"
   configure_nginx; ok "Nginx configurado (${DOMAIN} → ${APP_DIR}/public)"
-  configure_ssl; configure_cron; ok "Agendador (cron) configurado"
-  health_check "$(server_url)/" || warn "O site não respondeu no teste final; confira  journalctl -u nginx  e ${APP_DIR}/storage/logs/laravel.log"
+  configure_firewall; configure_logrotate
+  configure_ssl; configure_cron; ok "Agendador (cron) e rotação de logs configurados"
+  # testa direto neste servidor (funciona mesmo antes do DNS propagar; 301 para https conta como ok)
+  health_check "http://${DOMAIN}:${HTTP_PORT}/" "" "${DOMAIN}:${HTTP_PORT}:127.0.0.1" || warn "O site não respondeu no teste final; confira  journalctl -u nginx  e ${APP_DIR}/storage/logs/laravel.log"
 
   umask 077
   cat > "${CRED_FILE}" <<EOF
