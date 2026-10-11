@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------------------
+# Hospedagem compartilhada (cPanel, Hostinger, HostGator, Locaweb...)
+#
+# Quando os arquivos ficam direto em public_html, este arquivo envia todos os
+# acessos para a pasta public/ e bloqueia o acesso aos arquivos internos
+# (.env, storage, vendor...). Em VPS o servidor aponta direto para public/
+# e este arquivo não é usado.
+# ---------------------------------------------------------------------------
+
+Options -Indexes
+
+# /app é uma página do site (não a pasta interna app/): não acrescentar "/"
+<If "%{REQUEST_URI} =~ m#^/app$#i">
+    DirectorySlash Off
+</If>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Repassa o cabeçalho Authorization (login do app/API)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Bloqueia pastas e arquivos internos
+    RewriteRule ^(app/.*|bootstrap|config|database|lang|resources|routes|tests|vendor|node_modules|stubs|docs|scripts|docker|dist)(/.*)?$ - [F,L,NC]
+    RewriteRule ^(\.env.*|\.git.*|\.docker.*|artisan|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|vite\.config\.js|docker-compose\.yml|.*\.(sql|log|md|zip|py|sh|bat|yml))$ - [F,L,NC]
+
+    # Tudo o mais vai para public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>

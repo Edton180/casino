@@ -42,7 +42,7 @@ services:
       DB_USERNAME: casino
       DB_PASSWORD: casino123
     volumes:
-      - "./extraia para public_html/public_html:/var/www/html"
+      - ".:/var/www/html"
 
 volumes:
   db_data:

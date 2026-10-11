@@ -1,5 +1,26 @@
 # CHANGELOG.md
 
+## v9.2.0
+
+### Plataforma
+- **Laravel 12** (antes 10, sem correções de segurança desde fev/2025) com **PHP 8.2, 8.3 ou 8.4**; Filament 3.3, Livewire 3.8, Sanctum 4, JWT com lcobucci/jwt 5.
+- Funções e Permissões reescritas como telas próprias do painel (o pacote antigo não tem versão para Laravel 12 + Filament 3).
+- Removidas dependências sem uso (módulos nwidart, editor de .env de terceiros) e 35 cópias desatualizadas de telas do Filament.
+
+### Repositório
+- A aplicação saiu de `extraia para public_html/public_html` para a **raiz do repositório**; documentação em `docs/`.
+- Pacote para hospedagem: o GitHub Actions falhava ao gerar o zip (caminho relativo) e nunca publicou o arquivo — corrigido.
+- `auto-install.sh --update` aceita a estrutura nova e a antiga.
+
+### Segurança
+- Removida a pasta `public/gambiarra` (scripts de teste que enviavam usuário e saldo dos callbacks de provedores para um site externo).
+- Removida cópia antiga do JavaScript do Livewire em `public/livewire` (sobrepunha a versão instalada).
+- Removido arquivo de validação SSL (`.well-known`) de outro servidor.
+
+### Painel
+- **Rodapé configurável**: direitos autorais, crédito do desenvolvedor (com link e opção de ocultar), texto "Sobre" e e-mails de contato.
+
+
 ## v9.1.0
 
 ### Instalação

@@ -27,7 +27,7 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_DIR="${ROOT_DIR}/extraia para public_html/public_html"
+APP_DIR="${ROOT_DIR}"
 
 PORT=8000
 DB_HOST=127.0.0.1

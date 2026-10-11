@@ -17,12 +17,11 @@
 # =============================================================================
 set -Eeuo pipefail
 
-SCRIPT_VERSION="9.1.0"
+SCRIPT_VERSION="9.2.0"
 REPO_URL="${REPO_URL:-https://github.com/Edton180/casino.git}"
 BRANCH="${BRANCH:-main}"
 APP_DIR="${APP_DIR:-/var/www/casino}"
 SRC_DIR="/opt/casino-src"
-APP_SUBDIR="extraia para public_html/public_html"
 PHP_VERSION="${PHP_VERSION:-8.3}"
 CRED_FILE="/root/casino-credenciais.txt"
 
@@ -206,14 +205,19 @@ fetch_code() {
     rm -rf "${SRC_DIR}"
     git clone -q --depth 1 --branch "${BRANCH}" "${REPO_URL}" "${SRC_DIR}"
   fi
-  [[ -f "${SRC_DIR}/${APP_SUBDIR}/artisan" ]] || die "Aplicação não encontrada em ${SRC_DIR}/${APP_SUBDIR}"
+  # a aplicação fica na raiz do repositório (versões antigas: "extraia para public_html/public_html")
+  local src="${SRC_DIR}"
+  [[ -f "${src}/artisan" ]] || src="${SRC_DIR}/extraia para public_html/public_html"
+  [[ -f "${src}/artisan" ]] || die "Aplicação não encontrada em ${SRC_DIR}"
 
   mkdir -p "${APP_DIR}"
   # preserva .env, uploads e trava de instalação em atualizações
   rsync -a --delete \
-    --exclude '.env' --exclude 'storage/app/' --exclude 'storage/logs/' --exclude 'storage/installed.lock' \
-    --exclude 'public/storage/' --exclude 'vendor/' --exclude 'node_modules/' \
-    "${SRC_DIR}/${APP_SUBDIR}/" "${APP_DIR}/"
+    --exclude '.git' --exclude '/.github' --exclude '/docs' --exclude '/scripts' --exclude '/docker' \
+    --exclude '/docker-compose.yml' --exclude '/.dockerignore' --exclude '/tests' --exclude '/dist' \
+    --exclude '/.env' --exclude '/storage/app/' --exclude '/storage/logs/' --exclude '/storage/installed.lock' \
+    --exclude '/public/storage/' --exclude '/vendor/' --exclude '/node_modules/' \
+    "${src}/" "${APP_DIR}/"
   mkdir -p "${APP_DIR}/storage/"{app/public,logs,framework/{cache/data,sessions,views}} "${APP_DIR}/bootstrap/cache"
   ok "Código copiado para ${APP_DIR}"
 }

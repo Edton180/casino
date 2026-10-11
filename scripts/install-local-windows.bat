@@ -14,7 +14,7 @@ rem ===========================================================================
 chcp 65001 >nul
 setlocal EnableExtensions
 
-cd /d "%~dp0..\extraia para public_html\public_html" || goto :fail
+cd /d "%~dp0.." || goto :fail
 
 set "PHP_BIN=php"
 where php >nul 2>nul
