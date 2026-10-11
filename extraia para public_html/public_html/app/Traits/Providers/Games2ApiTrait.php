@@ -79,7 +79,7 @@ trait Games2ApiTrait
                 return response()->json(['status' => false, 'errors' => ['Erro ao carregar os jogos']]);
             }
         }else{
-            dd('NÂO AUTENTICADO');
+            return response()->json(['status' => false, 'errors' => ['Credenciais da Games2Api não configuradas']]);
         }
     }
 
@@ -256,7 +256,7 @@ trait Games2ApiTrait
             if($response->successful()) {
                 $data = $response->json();
 
-                dd($data);
+                return $data;
             }else{
                 return false;
             }

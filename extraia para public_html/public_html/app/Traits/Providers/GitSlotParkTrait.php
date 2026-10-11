@@ -102,7 +102,7 @@ trait GitSlotParkTrait
             if ($response->successful()) {
                 $games = $response->json();
 
-                dd($games);
+                return $games;
             }
         }
     }
@@ -214,7 +214,7 @@ trait GitSlotParkTrait
                 'provider'      => $game->provider->code,
                 'credentials'   => $withCredentials
             ], JSON_PRETTY_PRINT));
-            dd('no credentials');
+            return false;
         }
     }
 
@@ -237,7 +237,7 @@ trait GitSlotParkTrait
             if ($response->successful()) {
                 $data = $response->json();
 
-                dd($data);
+                return $data;
             } else {
                 return false;
             }
@@ -483,7 +483,8 @@ trait GitSlotParkTrait
             return self::GitSlotProcessPlay($data, $user, $game);
         } catch (\Exception $e) {
             Log::info($e->getMessage());
-            dd($e->getMessage());
+            \Log::error('[gitslotpark] ' . $e->getMessage());
+            return response()->json(['status' => 0, 'msg' => 'INTERNAL_ERROR'], 500);
         }
     }
 
@@ -723,7 +724,7 @@ trait GitSlotParkTrait
             }
         } else {
 
-            dd('no credentials');
+            return false;
         }
     }
 
@@ -787,7 +788,7 @@ trait GitSlotParkTrait
             }
         } else {
 
-            dd('no credentials');}
+            return false;}
     }
 
     /**

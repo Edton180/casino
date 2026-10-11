@@ -4,10 +4,10 @@
             <div class="flex text-gray-700 w-full h-auto cursor-pointer relative" @mouseover="showGameInfo = true" @mouseleave="showGameInfo = false">
                 <div>
                     <RouterLink v-if="game.distribution === 'kagaming'" :to="{ name: 'casinoPlayPage', params: { id: game.id, slug: game.game_code }}">
-                        <img :src="game.cover" alt="" class="rounded-lg game-card" :style="{ opacity: showGameInfo ? '0.5' : '1' }">
+                        <img :src="coverUrl" alt="" class="rounded-lg game-card" :style="{ opacity: showGameInfo ? '0.5' : '1' }">
                     </RouterLink>
                     <RouterLink v-else :to="{ name: 'casinoPlayPage', params: { id: game.id, slug: game.game_code }}">
-                        <img :src="'/storage/' + game.cover" alt="" class="rounded-lg game-card" :style="{ opacity: showGameInfo ? '0.5' : '1' }">
+                        <img :src="coverUrl" alt="" class="rounded-lg game-card" :style="{ opacity: showGameInfo ? '0.5' : '1' }">
                     </RouterLink>
                     <div v-if="showGameInfo" class="absolute inset-0 flex justify-center items-center bg-opacity-10 px-3 py-2">
                         <div class="text-center text-white max-w-[90%]">
@@ -33,6 +33,15 @@ export default {
     data() {
         return {
             showGameInfo: false // Adicionando a variável showGameInfo
+        }
+    },
+    computed: {
+        // aceita URL completa, caminho absoluto (/originals/...) ou arquivo enviado pelo painel (storage)
+        coverUrl() {
+            const cover = this.game?.cover || '';
+            if (!cover) return '/assets/images/game-placeholder.svg';
+            if (/^(https?:)?\/\//.test(cover) || cover.startsWith('/') || this.game.distribution === 'kagaming') return cover;
+            return '/storage/' + cover;
         }
     },
     methods: {

@@ -38,4 +38,25 @@ class PaymentWebhookController extends Controller
         // Sempre 200 para eventos ignorados, evitando reenvios infinitos
         return response()->json(['status' => true]);
     }
+
+    /**
+     * O PayPal redireciona o cliente para cá com ?token={ID do pedido}.
+     */
+    public function paypalReturn(Request $request, DepositService $deposits)
+    {
+        $transaction = \App\Models\Transaction::where('gateway', 'paypal')
+            ->where('gateway_payment_id', (string) $request->query('token'))
+            ->first();
+
+        $status = 'pending';
+        if ($transaction) {
+            try {
+                $status = $deposits->confirm($transaction->payment_id);
+            } catch (\Throwable $e) {
+                Log::error('[paypal] Erro no retorno do checkout', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return redirect('/?deposit=' . ($status === 'paid' ? 'success' : 'pending'));
+    }
 }

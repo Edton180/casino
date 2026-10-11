@@ -1,0 +1,55 @@
+name: Pacote pronto para hospedagem
+
+# Gera "casino-pronto-para-hospedagem.zip" (com vendor e frontend compilado)
+# e publica em Releases → "Pacote para hospedagem". É o arquivo indicado para
+# hospedagem compartilhada (cPanel, Hostinger, HostGator...) sem SSH.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-package
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, zip, gd, bcmath, pdo_mysql, curl
+          tools: composer:v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Gerar pacote
+        run: |
+          sudo apt-get install -y -qq zip rsync >/dev/null
+          bash scripts/build-release.sh dist
+
+      - name: Publicar em Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pacote-hospedagem
+          name: Pacote para hospedagem (sempre a versão mais recente)
+          body: |
+            **Hospedagem compartilhada (cPanel, Hostinger, HostGator...)**
+            1. Baixe `casino-pronto-para-hospedagem.zip` abaixo.
+            2. Envie para a pasta `public_html` e extraia.
+            3. Crie um banco MySQL vazio e acesse `https://seu-dominio/install/`.
+
+            Guia completo: [INSTALACAO.md](https://github.com/${{ github.repository }}/blob/main/INSTALACAO.md)
+
+            Gerado a partir do commit ${{ github.sha }}.
+          files: dist/casino-pronto-para-hospedagem.zip
+          make_latest: true

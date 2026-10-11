@@ -104,6 +104,16 @@ class GatewayPage extends Page
                         TextInput::make('stripe_secret_key')->label('Secret Key')->placeholder('sk_...')->password()->revealable()->maxLength(255),
                         TextInput::make('stripe_webhook_key')->label('Webhook Signing Secret')->placeholder('whsec_...')->password()->revealable()->maxLength(255),
                     ])->columns(3),
+
+                Section::make('PayPal')
+                    ->description(new HtmlString('Checkout PayPal (saldo PayPal ou cartão). Crie um app REST em <a class="underline" href="https://developer.paypal.com/dashboard/applications" target="_blank">PayPal Developer</a>.<br>Webhook: <b>' . url('/webhooks/paypal', [], true) . '</b> (eventos CHECKOUT.ORDER.APPROVED e PAYMENT.CAPTURE.COMPLETED). Informe abaixo o <b>Webhook ID</b> gerado pelo PayPal.'))
+                    ->schema([
+                        Toggle::make('paypal_is_enable')->label('Ativar PayPal')->inline(false),
+                        Toggle::make('paypal_sandbox')->label('Modo sandbox')->default(true)->inline(false),
+                        TextInput::make('paypal_client_id')->label('Client ID')->maxLength(255)->columnSpanFull(),
+                        TextInput::make('paypal_client_secret')->label('Secret')->password()->revealable()->maxLength(255),
+                        TextInput::make('paypal_webhook_key')->label('Webhook ID')->maxLength(255),
+                    ])->columns(2),
             ])
             ->statePath('data');
     }

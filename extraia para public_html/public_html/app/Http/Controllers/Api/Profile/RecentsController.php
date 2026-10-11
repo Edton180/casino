@@ -14,13 +14,10 @@ class RecentsController extends Controller
      */
     public function index()
     {
-        $gamesPlayed = Order::where('user_id', auth('api')->id())->groupBy('game_uuid')->pluck('game_uuid');
-        $games = Game::whereIn('game_id', $gamesPlayed)->get();
-        if(count($games) > 0) {
-            return response()->json(['games' => $games]);
-        }
+        $gamesPlayed = Order::where('user_id', auth('api')->id())->distinct()->pluck('game_uuid');
+        $games = Game::whereIn('game_id', $gamesPlayed)->with(['provider'])->get();
 
-        return response()->json([], 400);
+        return response()->json(['games' => $games]);
     }
 
     /**

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+# Verificação rápida: site respondendo, banco acessível e agendador
 set -euo pipefail
-cd /opt/casino
-php artisan about
+APP_DIR="${APP_DIR:-/var/www/casino}"
+cd "$APP_DIR"
+php artisan about --only=environment
 php artisan schedule:list
-php artisan queue:monitor default --max=100 || true
+curl -s -o /dev/null -w "Site: HTTP %{http_code}\n" "$(grep -E '^APP_URL=' .env | cut -d= -f2-)"

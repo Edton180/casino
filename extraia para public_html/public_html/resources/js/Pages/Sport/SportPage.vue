@@ -204,7 +204,7 @@ export default {
             const _this = this;
             const _toast = useToast();
 
-            HttpApi.get('sports/football/leagues/')
+            HttpApi.get('sports/football/leagues')
                 .then(response => {
                     _this.leagues = response.data.leagues;
                     _this.isLoadingCategories = false;

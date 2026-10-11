@@ -1,11 +1,3 @@
 #!/usr/bin/env bash
 set -euo pipefail
-echo "== Casino Diagnose =="
-php -v | head -n 1
-composer --version
-node -v
-npm -v
-mysql --version || true
-nginx -v 2>&1 || true
-systemctl is-active php8.2-fpm || true
-systemctl is-active nginx || true
+exec bash "$(dirname "$(readlink -f "$0")")/auto-install.sh" --diagnose "$@"

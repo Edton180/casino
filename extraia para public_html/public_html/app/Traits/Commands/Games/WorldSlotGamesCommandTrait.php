@@ -51,10 +51,8 @@ trait WorldSlotGamesCommandTrait
 
             if($response->successful()) {
                 $data = $response->json();
-                dd($data);
                 if($data['status'] == 1) {
                     foreach ($data['providers'] as $provider) {
-                        dd($provider);
                         $checkProvider = Provider::where('code', $provider['code'])->where('distribution', 'worldslot')->first();
                         if(empty($checkProvider)) {
 

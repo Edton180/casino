@@ -1,0 +1,110 @@
+{
+  "assets/images/cassino-small.png": {
+    "file": "assets/cassino-small-3b2680a4.png",
+    "src": "assets/images/cassino-small.png"
+  },
+  "assets/images/cassino.png": {
+    "file": "assets/cassino-527189c0.png",
+    "src": "assets/images/cassino.png"
+  },
+  "assets/images/pix.png": {
+    "file": "assets/pix-543a8cab.png",
+    "src": "assets/images/pix.png"
+  },
+  "assets/images/sport-small.png": {
+    "file": "assets/sport-small-5e566ee2.png",
+    "src": "assets/images/sport-small.png"
+  },
+  "assets/images/sport.png": {
+    "file": "assets/sport-a0e04fbf.png",
+    "src": "assets/images/sport.png"
+  },
+  "lang/en.json": {
+    "file": "assets/en-689817bf.js",
+    "isDynamicEntry": true,
+    "src": "lang/en.json"
+  },
+  "lang/es.json": {
+    "file": "assets/es-716700b2.js",
+    "isDynamicEntry": true,
+    "src": "lang/es.json"
+  },
+  "lang/php_en.json": {
+    "file": "assets/php_en-e372bb40.js",
+    "isDynamicEntry": true,
+    "src": "lang/php_en.json"
+  },
+  "lang/php_es.json": {
+    "file": "assets/php_es-047a2e64.js",
+    "isDynamicEntry": true,
+    "src": "lang/php_es.json"
+  },
+  "lang/php_pt_BR.json": {
+    "file": "assets/php_pt_BR-7b39052f.js",
+    "isDynamicEntry": true,
+    "src": "lang/php_pt_BR.json"
+  },
+  "lang/php_vendor.json": {
+    "file": "assets/php_vendor-92955918.js",
+    "isDynamicEntry": true,
+    "src": "lang/php_vendor.json"
+  },
+  "lang/pt_BR.json": {
+    "file": "assets/pt_BR-06953e2c.js",
+    "isDynamicEntry": true,
+    "src": "lang/pt_BR.json"
+  },
+  "public/+18.png": {
+    "file": "assets/_18-3c7aa802.png",
+    "src": "public/+18.png"
+  },
+  "public/hexagon.svg": {
+    "file": "assets/hexagon-e442c253.svg",
+    "src": "public/hexagon.svg"
+  },
+  "public/ssl.svg": {
+    "file": "assets/ssl-4b80f3fa.svg",
+    "src": "public/ssl.svg"
+  },
+  "public/trofeu.webp": {
+    "file": "assets/trofeu-7af8cf64.webp",
+    "src": "public/trofeu.webp"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-4ed993c7.js",
+    "isEntry": true,
+    "src": "resources/css/app.css"
+  },
+  "resources/js/app.css": {
+    "file": "assets/app-73aea65d.css",
+    "src": "resources/js/app.css"
+  },
+  "resources/js/app.js": {
+    "assets": [
+      "assets/trofeu-7af8cf64.webp",
+      "assets/pix-543a8cab.png",
+      "assets/ssl-4b80f3fa.svg",
+      "assets/_18-3c7aa802.png",
+      "assets/cassino-527189c0.png",
+      "assets/cassino-small-3b2680a4.png",
+      "assets/sport-a0e04fbf.png",
+      "assets/sport-small-5e566ee2.png",
+      "assets/hexagon-e442c253.svg"
+    ],
+    "css": [
+      "assets/app-73aea65d.css"
+    ],
+    "dynamicImports": [
+      "lang/en.json",
+      "lang/es.json",
+      "lang/php_en.json",
+      "lang/php_es.json",
+      "lang/php_pt_BR.json",
+      "lang/php_vendor.json",
+      "lang/pt_BR.json"
+    ],
+    "file": "assets/app-8a1b0647.js",
+    "isEntry": true,
+    "src": "resources/js/app.js"
+  }
+}

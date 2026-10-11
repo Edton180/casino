@@ -166,6 +166,19 @@ class GameController extends Controller
      * @dev victormsalatiel
      * Display the specified resource.
      */
+    /**
+     * Resposta padrão quando o provedor não abriu o jogo (credenciais ausentes,
+     * provedor fora do ar...). Antes a API devolvia corpo vazio e o jogador
+     * ficava numa tela de carregamento infinita.
+     */
+    private function launchUnavailable(Game $game)
+    {
+        return response()->json([
+            'error'  => 'Este jogo está indisponível no momento. Tente outro jogo ou volte mais tarde.',
+            'status' => false,
+        ], 503);
+    }
+
     public function show(string $id)
     {
         $game = Game::with(['categories', 'provider'])->whereStatus(1)->find($id);
@@ -180,164 +193,178 @@ class GameController extends Controller
                         'game' => $game->game_code
                     ]);
 
-                    switch ($game->distribution) {
-                         case 'apipg12':
-                            $apipg12Launch = self::GameLaunchApiPg12($game->provider->code, $game->game_id, 'pt', auth('api')->user()->email);
-                            if(isset($apipg12Launch['launchUrl'])){
+                    try {
+                        switch ($game->distribution) {
+                             case 'apipg12':
+                                $apipg12Launch = self::GameLaunchApiPg12($game->provider->code, $game->game_id, 'pt', auth('api')->user()->email);
+                                if(isset($apipg12Launch['launchUrl'])){
+                                    return response()->json([
+                                        'game'=> $game,
+                                        'gameUrl'=> $apipg12Launch['launchUrl']
+                                    ]);
+                                } else {
+                                    return response()->json(['error' => $apipg12Launch, 'status' => false], 400);
+                                }
+                            case 'apipragmatic40':
+                            $apiPragmatic40Launch = self::ApiPragmaticGameLaunch($game->provider->code, $game->game_id, 'pt', auth('api')->user()->email);
+                            if(isset($apiPragmatic40Launch['launch_url'])) {
                                 return response()->json([
-                                    'game'=> $game,
-                                    'gameUrl'=> $apipg12Launch['launchUrl']
+                                    'game' => $game,
+                                    'gameUrl' => $apiPragmatic40Launch['launch_url'],
+                                    'token' => $token
                                 ]);
-                            } else {
-                                return response()->json(['error' => $apipg12Launch, 'status' => false], 400);
                             }
-                        case 'apipragmatic40':
-                        $apiPragmatic40Launch = self::ApiPragmaticGameLaunch($game->provider->code, $game->game_id, 'pt', auth('api')->user()->email);
-                        if(isset($apiPragmatic40Launch['launch_url'])) {
-                            return response()->json([
-                                'game' => $game,
-                                'gameUrl' => $apiPragmatic40Launch['launch_url'],
-                                'token' => $token
-                            ]);
-                        }
                     
-                        return response()->json(['error' => $apiPragmatic40Launch, 'status' => false ], 400);
-                        case 'source':
-                            return response()->json([
-                                'game' => $game,
-                                'gameUrl' => url('/originals/'.$game->game_code.'/index.html?token='.$token),
-                                'token' => $token
-                            ]);
+                            return response()->json(['error' => $apiPragmatic40Launch, 'status' => false ], 400);
+                            case 'source':
+                                return response()->json([
+                                    'game' => $game,
+                                    'gameUrl' => url('/originals/'.$game->game_code.'/index.html?token='.$token),
+                                    'token' => $token
+                                ]);
                             
-                                    // Adicione essa linha  
-                        case 'play_fiver':
-                            $playfiver = self::playFiverLaunch($game->game_id, $game->only_demo);
-                            return response()->json([
-                                'game' => $game,
-                                'gameUrl' => $playfiver['launch_url'],
-                                'token' => $token
-                            ]);
-                       case 'playconnect':
-                              $gameLauncher = self::GameLaunchPlayConnect($game);
+                                        // Adicione essa linha  
+                            case 'play_fiver':
+                                $playfiver = self::playFiverLaunch($game->game_id, $game->only_demo);
+                                if (empty($playfiver['launch_url'])) {
+                                    return $this->launchUnavailable($game);
+                                }
+                                return response()->json([
+                                    'game' => $game,
+                                    'gameUrl' => $playfiver['launch_url'],
+                                    'token' => $token
+                                ]);
+                           case 'playconnect':
+                                  $gameLauncher = self::GameLaunchPlayConnect($game);
                         
-                              if($gameLauncher) {
-                                return response()->json([
-                                  'game' => $game,
-                                  'gameUrl' => $gameLauncher,
-                                  'token' => $token
-                                ]);
-                              }else{
-                                return response()->json();
-                              }
-                        case 'venix':
-                            $gameLauncher = self::GameLaunchVeniX($game);
+                                  if($gameLauncher) {
+                                    return response()->json([
+                                      'game' => $game,
+                                      'gameUrl' => $gameLauncher,
+                                      'token' => $token
+                                    ]);
+                                  }else{
+                                    return $this->launchUnavailable($game);
+                                  }
+                            case 'venix':
+                                $gameLauncher = self::GameLaunchVeniX($game);
 
-                            if($gameLauncher) {
+                                if($gameLauncher) {
+                                    return response()->json([
+                                        'game' => $game,
+                                        'gameUrl' => $gameLauncher,
+                                        'token' => $token
+                                    ]);
+                                }else{
+                                    return $this->launchUnavailable($game);
+                                }
+                            case 'playigaming':
+                                $gameLauncher = self::GameLaunchPIG($game);
+
+                                if($gameLauncher) {
+                                    return response()->json([
+                                        'game' => $game,
+                                        'gameUrl' => $gameLauncher,
+                                        'token' => $token
+                                    ]);
+                                }else{
+                                    return $this->launchUnavailable($game);
+                                }
+                            case 'playgaming':
+                                $gameLauncher = self::LaunchGamePlayGaming($game->game_id);
+
+                                if($gameLauncher) {
+                                    return response()->json([
+                                        'game' => $game,
+                                        'gameUrl' => $gameLauncher,
+                                        'token' => $token
+                                    ]);
+                                }else{
+                                    return $this->launchUnavailable($game);
+                                }
+                            case 'salsa':
                                 return response()->json([
                                     'game' => $game,
-                                    'gameUrl' => $gameLauncher,
+                                    'gameUrl' => self::playGameSalsa('CHARGED', 'BRL', 'pt', $game->game_id),
                                     'token' => $token
                                 ]);
-                            }else{
-                                return response()->json();
-                            }
-                        case 'playigaming':
-                            $gameLauncher = self::GameLaunchPIG($game);
-
-                            if($gameLauncher) {
+                            case 'kagaming':
                                 return response()->json([
                                     'game' => $game,
-                                    'gameUrl' => $gameLauncher,
+                                    'gameUrl' => self::GameLaunchKaGaming($game->game_server_url, $game->game_code),
                                     'token' => $token
                                 ]);
-                            }else{
-                                return response()->json();
-                            }
-                        case 'playgaming':
-                            $gameLauncher = self::LaunchGamePlayGaming($game->game_id);
+                            case 'evergame':
+                                $evergameLaunch = self::GameLaunchEvergame($game->provider->code, $game->game_id, 'pt', auth('api')->id());
 
-                            if($gameLauncher) {
+                                if(isset($evergameLaunch['launchUrl'])) {
+                                    return response()->json([
+                                        'game' => $game,
+                                        'gameUrl' => $evergameLaunch['launchUrl'],
+                                    ]);
+                                }else{
+                                    return response()->json($evergameLaunch);
+                                }
+                            case 'vibra_gaming':
                                 return response()->json([
                                     'game' => $game,
-                                    'gameUrl' => $gameLauncher,
+                                    'gameUrl' => self::GenerateGameLaunch($game),
                                     'token' => $token
                                 ]);
-                            }else{
-                                return response()->json();
-                            }
-                        case 'salsa':
-                            return response()->json([
-                                'game' => $game,
-                                'gameUrl' => self::playGameSalsa('CHARGED', 'BRL', 'pt', $game->game_id),
-                                'token' => $token
-                            ]);
-                        case 'kagaming':
-                            return response()->json([
-                                'game' => $game,
-                                'gameUrl' => self::GameLaunchKaGaming($game->game_server_url, $game->game_code),
-                                'token' => $token
-                            ]);
-                        case 'evergame':
-                            $evergameLaunch = self::GameLaunchEvergame($game->provider->code, $game->game_id, 'pt', auth('api')->id());
+                            case 'fivers':
+                                $fiversLaunch = self::GameLaunchFivers($game->provider->code, $game->game_id, 'pt', auth('api')->id());
 
-                            if(isset($evergameLaunch['launchUrl'])) {
+                                if(isset($fiversLaunch['launch_url'])) {
+                                    return response()->json([
+                                        'game' => $game,
+                                        'gameUrl' => $fiversLaunch['launch_url'],
+                                        'token' => $token
+                                    ]);
+                                }
+
+                                return response()->json(['error' => $fiversLaunch, 'status' => false ], 400);
+                            case 'games2_api':
+                                $games2ApiLaunch = self::GameLaunchGames2($game->provider->code, $game->game_id, 'pt', auth('api')->id());
+
+                                if(isset($games2ApiLaunch['launch_url'])) {
+                                    return response()->json([
+                                        'game' => $game,
+                                        'gameUrl' => $games2ApiLaunch['launch_url'],
+                                        'token' => $token
+                                    ]);
+                                }
+
+                                return response()->json(['error' => $games2ApiLaunch, 'status' => false ], 400);
+                            case 'worldslot':
+                                $worldslotLaunch = self::GameLaunchWorldSlot($game->provider->code, $game->game_id, 'pt', auth('api')->id());
+
+                                if(isset($worldslotLaunch['launch_url'])) {
+                                    return response()->json([
+                                        'game' => $game,
+                                        'gameUrl' => $worldslotLaunch['launch_url'],
+                                        'token' => $token
+                                    ]);
+                                }
+
+                                return response()->json(['error' => $worldslotLaunch, 'status' => false ], 400);
+                            case 'systemserver':
+                                $playfiver = self::SystemServerLaunch($game->game_id, $game->only_demo);
+                                if (empty($playfiver['launch_url'])) {
+                                    return $this->launchUnavailable($game);
+                                }
                                 return response()->json([
                                     'game' => $game,
-                                    'gameUrl' => $evergameLaunch['launchUrl'],
-                                ]);
-                            }else{
-                                return response()->json($evergameLaunch);
-                            }
-                        case 'vibra_gaming':
-                            return response()->json([
-                                'game' => $game,
-                                'gameUrl' => self::GenerateGameLaunch($game),
-                                'token' => $token
-                            ]);
-                        case 'fivers':
-                            $fiversLaunch = self::GameLaunchFivers($game->provider->code, $game->game_id, 'pt', auth('api')->id());
-
-                            if(isset($fiversLaunch['launch_url'])) {
-                                return response()->json([
-                                    'game' => $game,
-                                    'gameUrl' => $fiversLaunch['launch_url'],
+                                    'gameUrl' => $playfiver['launch_url'],
                                     'token' => $token
                                 ]);
-                            }
-
-                            return response()->json(['error' => $fiversLaunch, 'status' => false ], 400);
-                        case 'games2_api':
-                            $games2ApiLaunch = self::GameLaunchGames2($game->provider->code, $game->game_id, 'pt', auth('api')->id());
-
-                            if(isset($games2ApiLaunch['launch_url'])) {
-                                return response()->json([
-                                    'game' => $game,
-                                    'gameUrl' => $games2ApiLaunch['launch_url'],
-                                    'token' => $token
-                                ]);
-                            }
-
-                            return response()->json(['error' => $games2ApiLaunch, 'status' => false ], 400);
-                        case 'worldslot':
-                            $worldslotLaunch = self::GameLaunchWorldSlot($game->provider->code, $game->game_id, 'pt', auth('api')->id());
-
-                            if(isset($worldslotLaunch['launch_url'])) {
-                                return response()->json([
-                                    'game' => $game,
-                                    'gameUrl' => $worldslotLaunch['launch_url'],
-                                    'token' => $token
-                                ]);
-                            }
-
-                            return response()->json(['error' => $worldslotLaunch, 'status' => false ], 400);
-                        case 'systemserver':
-                            $playfiver = self::SystemServerLaunch($game->game_id, $game->only_demo);
-                            return response()->json([
-                                'game' => $game,
-                                'gameUrl' => $playfiver['launch_url'],
-                                'token' => $token
-                            ]);
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::error('[games] Falha ao abrir jogo', ['game' => $game->game_code, 'distribution' => $game->distribution, 'error' => $e->getMessage()]);
+                        return $this->launchUnavailable($game);
                     }
+
+                    // distribuição sem integração (ex.: provedor removido)
+                    return $this->launchUnavailable($game);
                 }
                 return response()->json(['error' => 'Você precisa ter saldo para jogar', 'status' => false, 'action' => 'deposit' ], 200);
             }
@@ -391,6 +418,16 @@ class GameController extends Controller
      * @dev victormsalatiel
      * Update the specified resource in storage.
      */
+    public function webhookWorldSlotMethod(Request $request)
+    {
+        return self::WebhooksWorldSlot($request);
+    }
+
+    public function webhookGames2Method(Request $request)
+    {
+        return self::WebhooksGames2($request);
+    }
+
     public function webhookUserBalanceMethod(Request $request)
     {
         return self::GetUserBalanceWorldSlot($request);

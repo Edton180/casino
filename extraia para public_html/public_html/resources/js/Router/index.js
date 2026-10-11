@@ -19,7 +19,6 @@ import WelcomeBonus from "@/Pages/Terms/WelcomeBonus.vue";
 import SupportPage from "@/Pages/Home/SupportPage.vue";
 import PromotionPage from "@/Pages/Home/PromotionPage.vue";
 import SupportCenterPage from "@/Pages/Home/SupportCenterPage.vue";
-import DataPage from "@/Pages/ApiData/DataPage.vue";
 import StripeSuccess from "@/Pages/Gateway/StripeSuccess.vue";
 import StripeCancel from "@/Pages/Gateway/StripeCancel.vue";
 import FavoritePage from "@/Pages/Profile/FavoritePage.vue";
@@ -263,11 +262,6 @@ export const routes = [
         component: WelcomeBonus
     },
     {
-        name: 'dataPage',
-        path: '/datapage',
-        component: DataPage
-    },
-    {
         name: 'recordPage',
         path: '/records',
         component: RecordPage,
@@ -296,6 +290,9 @@ export const routes = [
         name: 'vipPage',
         path: '/vip',
         component: VipPage,
+        meta: {
+            auth: true
+        }
     },
     {
         name: 'bonusPage',

@@ -174,7 +174,7 @@
 </div>
 
 
-                        <div class="mt-5" v-if="showCPFInput">
+                        <div class="mt-5" v-if="showCPFInput && !['stripe', 'paypal'].includes(paymentGateway)">
                             <p class="text-gray-500" style="color: #01ec01">CPF/CNPJ</p>
                             <input type="text" 
                                    style="color: #01ec01"
@@ -398,7 +398,7 @@
                     return;
                 }
 
-                if (_this.paymentGateway !== 'stripe' && !_this.deposit.cpf) {
+                if (!['stripe', 'paypal'].includes(_this.paymentGateway) && !_this.deposit.cpf) {
                     _toast.error(_this.$t('Do you need to enter your CPF or CNPJ'));
                     return;
                 }
@@ -421,7 +421,7 @@
                     const data = response.data || {};
 
                     if (data.redirect_url) {
-                        // Cartão (e PIX do Stripe): checkout seguro hospedado pelo gateway
+                        // Cartão, PayPal e PIX do Stripe: checkout seguro hospedado pelo gateway
                         window.location.href = data.redirect_url;
                         return;
                     }

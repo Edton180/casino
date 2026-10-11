@@ -43,7 +43,7 @@ class DepositController extends Controller
             'gateway'        => ['required', Rule::in(array_keys(PaymentManager::GATEWAYS))],
             'payment_method' => ['required', Rule::in(['pix', 'credit_card'])],
             'amount'         => ['required', 'numeric', 'min:' . (float) $setting->min_deposit, 'max:' . (float) $setting->max_deposit],
-            'cpf'            => [Rule::requiredIf($request->input('gateway') !== 'stripe'), 'nullable', 'cpf_ou_cnpj'],
+            'cpf'            => [Rule::requiredIf(!in_array($request->input('gateway'), ['stripe', 'paypal'], true)), 'nullable', 'cpf_ou_cnpj'],
             'accept_bonus'   => ['nullable', 'boolean'],
         ], [
             'cpf.required'    => 'Informe seu CPF ou CNPJ.',

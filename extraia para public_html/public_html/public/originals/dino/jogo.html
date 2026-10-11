@@ -1,16 +1,19 @@
 <html><head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6PQVNVMJP6"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-6PQVNVMJP6');
-</script>
+    
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dino</title>
-    <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script><script src="https://game-cdn.poki.com/scripts/a7c3d8457e9d001550c049f821d50d7c386f7a05/poki-sdk-hoist-a7c3d8457e9d001550c049f821d50d7c386f7a05.js" type="text/javascript" crossorigin="anonymous"></script>
+    <script>
+    /* Substitui o SDK da Poki (anúncios de terceiros): mesmas funções, sem anúncios */
+    window.PokiSDK = {
+        init: function () { return Promise.resolve(); },
+        gameLoadingStart: function () {}, gameLoadingFinished: function () {},
+        gameplayStart: function () {}, gameplayStop: function () {},
+        commercialBreak: function () { return Promise.resolve(); },
+        rewardedBreak: function () { return Promise.resolve(false); },
+        setDebug: function () {}, happyTime: function () {}
+    };
+    </script>
     <style>
     body {
       background-color: #f7f7f7;
@@ -1557,8 +1560,8 @@ document.addEventListener('DOMContentLoaded', function() {
         <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
          button{

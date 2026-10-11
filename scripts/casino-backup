@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+# Backup do banco e dos uploads. Uso: sudo casino-backup  (mantém 7 dias)
 set -euo pipefail
+APP_DIR="${APP_DIR:-/var/www/casino}"
+DEST="${DEST:-/var/backups/casino}"
 STAMP=$(date +%F_%H%M%S)
-DEST=/opt/casino-backups
 mkdir -p "$DEST"
-tar -czf "$DEST/casino_${STAMP}.tar.gz" /opt/casino
-find "$DEST" -type f -name 'casino_*.tar.gz' -mtime +7 -delete
+env_get() { grep -E "^$1=" "${APP_DIR}/.env" | head -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'; }
+mysqldump --single-transaction -h"$(env_get DB_HOST)" -u"$(env_get DB_USERNAME)" -p"$(env_get DB_PASSWORD)" "$(env_get DB_DATABASE)" | gzip > "$DEST/db_${STAMP}.sql.gz"
+tar -czf "$DEST/files_${STAMP}.tar.gz" -C "$APP_DIR" .env public/storage storage/app
+find "$DEST" -type f -mtime +7 -delete
+echo "Backup salvo em $DEST"

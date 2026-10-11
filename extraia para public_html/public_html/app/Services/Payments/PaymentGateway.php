@@ -30,6 +30,11 @@ abstract class PaymentGateway
 
     abstract public function supportsCreditCard(): bool;
 
+    public function supportsPix(): bool
+    {
+        return true;
+    }
+
     /**
      * Gera uma cobrança PIX.
      * @return array{gateway_payment_id: string, qrcode: string, qrcode_image?: ?string}
@@ -65,7 +70,7 @@ abstract class PaymentGateway
 
     public function returnUrl(string $status = 'success'): string
     {
-        return url('/?deposit=' . $status, [], true);
+        return rtrim(url('/', [], true), '/') . '/?deposit=' . $status;
     }
 
     protected function http(): PendingRequest

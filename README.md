@@ -1,70 +1,51 @@
-# 🎰 Casino Platform — Premium Documentation
+# 🎰 Casino Platform
 
-![version](https://img.shields.io/badge/version-8.0.0-blue)
-![status](https://img.shields.io/badge/status-production_ready-brightgreen)
-![license](https://img.shields.io/badge/license-Commercial-important)
+![versão](https://img.shields.io/badge/versão-9.0.0-blue)
+![php](https://img.shields.io/badge/PHP-8.1%E2%80%938.3-777bb4)
+![laravel](https://img.shields.io/badge/Laravel-10-ff2d20)
 
-Casino Platform é uma solução profissional para operação de cassino online com foco em performance, automação de instalação e prontidão comercial.
+Plataforma de cassino online com programa de indicação (afiliados com revshare, CPA e sub-afiliados),
+jogos originais, jogos locais, integração com provedores e seis gateways de pagamento.
 
-## Demonstração
-- Instalador web: `https://seu-dominio/install`
-- CLI inteligente: `php artisan system:install`
+## ⚡ Instalação rápida
 
-## Recursos principais
-- Lobby de jogos e apostas com integração de provedores.
-- Relatórios operacionais e gestão administrativa.
-- Pagamentos via Mercado Pago, PagSeguro, Pagar.me, Asaas e Stripe (PIX e cartão) — veja `PAGAMENTOS.md`.
-- Fluxos com RNG/rotação de jogos e experiência responsiva.
-- Instalador multi-modo (VPS, cPanel, localhost, docker, diagnose).
+| Onde | Como |
+|---|---|
+| **Hospedagem compartilhada** (cPanel, Hostinger, HostGator...) | Baixe `casino-pronto-para-hospedagem.zip` em **[Releases](../../releases)**, extraia no `public_html`, crie um banco MySQL e abra `https://seu-dominio/install/` |
+| **VPS** (Ubuntu/Debian) | `sudo bash auto-install.sh --domain meusite.com --email voce@meusite.com --ssl` |
 
-## Stack tecnológica
-- **Backend:** Laravel 10 / PHP 8.2+
-- **Frontend:** Vue 3 + Vite + TailwindCSS
-- **Banco:** MySQL 8+
-- **Infra:** Nginx, Supervisor (queue workers), cron scheduler
+👉 Passo a passo completo, com capturas de tela de cada etapa: **[INSTALACAO.md](INSTALACAO.md)**
 
-## Arquitetura (visão geral)
-- Código Laravel em `extraia para public_html/public_html`
-- Instalador web em `/install`
-- Instalador CLI em `php artisan system:install`
-- Auto instalador shell em `scripts/auto-install.sh`
+## 📚 Documentação
 
-## Instalação rápida
-```bash
-cd "extraia para public_html/public_html"
-composer install
-npm install
-php artisan system:install
-```
+| Documento | Conteúdo |
+|---|---|
+| [INSTALACAO.md](INSTALACAO.md) | Instalação (compartilhada, VPS, manual), pós-instalação e checklist de produção |
+| [PAGAMENTOS.md](PAGAMENTOS.md) | Mercado Pago, PagSeguro, Pagar.me, Asaas, Stripe e PayPal; webhooks e saques |
+| [JOGOS.md](JOGOS.md) | Jogos originais, jogos locais e provedores (chaves e webhooks) |
+| [SOLUCAO-DE-PROBLEMAS.md](SOLUCAO-DE-PROBLEMAS.md) | Erros comuns e como resolver |
+| [SECURITY.md](SECURITY.md) | Segurança e checklist do operador |
+| [CHANGELOG.md](CHANGELOG.md) | Histórico de versões |
 
-## Modos de instalação
-- **web**: wizard visual em `/install`
-- **cli**: `php artisan system:install`
-- **produção**: `--mode=vps` ou `--mode=cpanel`
-- **localhost**: `--mode=localhost`
-- **docker**: `--mode=docker`
-- **diagnose/help**: diagnóstico e ajuda rápida
+## ✨ Recursos
 
-## Deploy simplificado
-Consulte guias dedicados:
-- `INSTALLATION.md`
-- `DEPLOY.md`
-- `AUTO_INSTALLER_GUIDE.md`
-- `CLI_USAGE.md`
-- `TROUBLESHOOTING.md`
-- `SECURITY.md`
-- `PAGAMENTOS.md`
+- **Jogos originais** (código próprio, provably fair): Mines, Crash, Dice, Plinko e Double.
+- **Jogos locais** e de habilidade (Jack Frost, Treasures of Aztec, Dino, Subway, Fruit Ninja...).
+- **Provedores**: PlayFiver, Fivers, WorldSlot, Games2Api, Slotegrator, Salsa, EverGame, KaGaming e outros.
+- **Pagamentos**: PIX e cartão via Mercado Pago, PagSeguro, Pagar.me, Asaas, Stripe e PayPal; saque automático por PIX (Asaas).
+- **Indicação**: revshare, CPA, sub-afiliados em 3 níveis, painel do afiliado.
+- **Carteira**: bônus de primeiro depósito, rollover, cashback, VIP e missões.
+- **Painel administrativo** (Filament): usuários, jogos, provedores, depósitos, saques, relatórios e customização visual.
 
-## Segurança
-- HTTPS obrigatório em produção.
-- Uso de `storage/installed.lock` para bloquear reinstalação via web.
-- Ajuste de permissões em `storage` e `bootstrap/cache`.
+## 🧱 Tecnologia
 
-## Suporte técnico
-Para suporte comercial, inclua:
-- Versão do projeto
-- Modo de instalação usado
-- Trechos de `storage/logs/laravel.log`
+Laravel 10 · PHP 8.1–8.3 · MySQL/MariaDB · Vue 3 + Vite + TailwindCSS · Filament 3 · JWT
 
-## Aviso legal
-Este software deve ser usado conforme a legislação local aplicável para operações de jogos e apostas online.
+O código da aplicação fica em `extraia para public_html/public_html` (é o conteúdo que vai para o `public_html` da hospedagem).
+
+## ⚖️ Aviso legal
+
+Operar jogos de azar e apostas online exige licença na maioria dos países (no Brasil, autorização da
+Secretaria de Prêmios e Apostas — Lei 14.790/2023). O operador é responsável pelas licenças, KYC/PLD,
+jogo responsável, LGPD e pelo direito de uso de todos os jogos, marcas e provedores que ativar.
+Alguns jogos locais incluídos reproduzem títulos de terceiros (ex.: PG Soft) — veja [JOGOS.md](JOGOS.md).

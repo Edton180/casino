@@ -508,7 +508,7 @@ export default {
             const _this = this;
             _this.isLoadingProfile = true;
 
-            await HttpApi.get('/profile/')
+            await HttpApi.get('profile')
                 .then(response => {
                     _this.sumBets = response.data.sumBets;
                     _this.totalBets = response.data.totalBets;

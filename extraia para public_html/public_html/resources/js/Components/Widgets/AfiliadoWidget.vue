@@ -429,7 +429,7 @@ submitQRCode: function(event) {
             const _toast = useToast();
             _this.isLoadingGenerate = true;
 
-            HttpApi.get('profile/affiliates/')
+            HttpApi.get('profile/affiliates')
                 .then(response => {
                     if( response.data.code !== '' && response.data.code !== undefined && response.data.code !== null) {
                         _this.isShowForm = true;

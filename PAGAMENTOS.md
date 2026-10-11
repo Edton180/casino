@@ -1,6 +1,6 @@
 # 💳 Pagamentos
 
-A plataforma trabalha com cinco gateways atuais. Todos usam o mesmo fluxo de
+A plataforma trabalha com seis gateways. Todos usam o mesmo fluxo de
 depósito (bônus de primeiro depósito, rollover, VIP e CPA de indicação).
 
 | Gateway | PIX | Cartão de crédito | Saque automático |
@@ -10,8 +10,9 @@ depósito (bônus de primeiro depósito, rollover, VIP e CPA de indicação).
 | Pagar.me (API v5) | ✅ Pedidos | ✅ Checkout Pagar.me | — |
 | Asaas | ✅ Cobrança PIX | ✅ Fatura Asaas | ✅ Transferência PIX |
 | Stripe | ✅ (contas BR, opcional) | ✅ Stripe Checkout | — |
+| PayPal | — | ✅ Checkout PayPal (saldo ou cartão) | — |
 
-SuitPay, BsPay/PixUp, DigitoPay, SharkPay, Ezzepay e PayPal foram removidos.
+SuitPay, BsPay/PixUp, DigitoPay, SharkPay e Ezzepay foram removidos.
 
 ## Configuração
 
@@ -27,8 +28,11 @@ SuitPay, BsPay/PixUp, DigitoPay, SharkPay, Ezzepay e PayPal foram removidos.
 | Pagar.me | `https://SEU-DOMINIO/webhooks/pagarme` | `order.paid`, `charge.paid` |
 | Asaas | `https://SEU-DOMINIO/webhooks/asaas` | `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED` |
 | Stripe | `https://SEU-DOMINIO/webhooks/stripe` | `checkout.session.completed`, `checkout.session.async_payment_succeeded` |
+| PayPal | `https://SEU-DOMINIO/webhooks/paypal` | `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED` |
 
 As URLs antigas `/mercadopago/callback` e `/asaas/callback` continuam funcionando.
+
+> **PayPal:** crie um app REST em developer.paypal.com, copie *Client ID* e *Secret*, cadastre o webhook e informe o **Webhook ID** no painel. Ao voltar do PayPal o cliente é levado para `/paypal/return`, onde o pagamento é capturado e creditado na hora.
 
 > **Stripe:** o *Signing secret* do webhook (`whsec_...`) é obrigatório. Sem ele
 > os depósitos via webhook não são creditados (o polling da tela continua funcionando).

@@ -70,7 +70,7 @@ trait WorldSlotTrait
             if($response->successful()) {
                 $games = $response->json();
 
-                dd($games);
+                return $games;
             }
         }
     }
@@ -191,7 +191,7 @@ trait WorldSlotTrait
             if($response->successful()) {
                 $data = $response->json();
 
-                dd($data);
+                return $data;
             }else{
                 return false;
             }
@@ -344,7 +344,8 @@ trait WorldSlotTrait
                 'msg' => 'INVALID_USER	'
             ]);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            \Log::error('[worldslot] ' . $e->getMessage());
+            return response()->json(['status' => 0, 'msg' => 'INTERNAL_ERROR'], 500);
         }
     }
 

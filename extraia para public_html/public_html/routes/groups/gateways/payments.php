@@ -9,8 +9,11 @@ use Illuminate\Support\Facades\Route;
  * Configure no painel de cada gateway: https://seu-dominio/webhooks/{gateway}
  */
 Route::post('webhooks/{gateway}', PaymentWebhookController::class)
-    ->whereIn('gateway', ['mercadopago', 'pagseguro', 'pagarme', 'asaas', 'stripe'])
+    ->whereIn('gateway', ['mercadopago', 'pagseguro', 'pagarme', 'asaas', 'stripe', 'paypal'])
     ->name('payments.webhook');
+
+// Retorno do checkout PayPal: captura o pagamento e volta para o site
+Route::get('paypal/return', [PaymentWebhookController::class, 'paypalReturn'])->name('payments.paypal.return');
 
 // URLs antigas mantidas para quem já configurou o webhook no gateway
 Route::post('mercadopago/callback', PaymentWebhookController::class)->defaults('gateway', 'mercadopago');

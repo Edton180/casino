@@ -9,10 +9,9 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+    # (O redirecionamento de barra final foi removido: o roteador do Laravel
+    # já ignora a barra, e o 301 quebrava POSTs e gerava URLs /public/...
+    # quando o site roda direto em public_html.)
 
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
