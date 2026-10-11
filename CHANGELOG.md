@@ -14,6 +14,8 @@
 - Windows: composer/git escrevem avisos no stderr — isso não derruba mais a instalação; fluxo completo (dependências → banco → site → health check → desligar) validado com PowerShell 7; alinhamento dos quadros; Composer com endereço alternativo; ligar o site informa a porta mesmo se já estiver ligado.
 - Servidor: domínio que ainda não resolve não aborta mais o assistente; se o SSL falhar, `APP_URL` e o resumo passam a mostrar o endereço HTTP real; novos ajustes de produção (PHP-FPM, swap, ufw, logrotate, teste final via `--resolve`).
 
+- Ubuntu 26.04 ("resolute") e outros sistemas novos: o PPA ondrej/php não tem pacotes para eles e derrubava o `apt update`. O assistente agora checa se o repositório de PHP existe para o codinome do sistema (PPA ou sury.org), remove repositórios quebrados e, se o PHP pedido não existir, usa o melhor disponível (8.4, 8.3, 8.2 ou 8.5 do próprio sistema).
+
 ### Documentação
 - Guia de instalação reorganizado (como obter o código com repositório privado, VPS, localhost por sistema); tabela de problemas do assistente.
 
