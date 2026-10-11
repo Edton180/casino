@@ -33,7 +33,7 @@ echo Baixando o Composer e as dependencias (alguns minutos)...
 "%PHP_BIN%" -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
 "%PHP_BIN%" composer-setup.php --quiet
 del composer-setup.php
-"%PHP_BIN%" composer.phar install --no-interaction --no-progress --optimize-autoloader
+"%PHP_BIN%" composer.phar install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 if errorlevel 1 goto :fail
 del composer.phar
 

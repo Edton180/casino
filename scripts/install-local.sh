@@ -90,7 +90,7 @@ if [[ ${DO_INSTALL} -eq 1 ]]; then
       php composer-setup.php --quiet && rm -f composer-setup.php
       COMPOSER=(php composer.phar)
     fi
-    "${COMPOSER[@]}" install --no-interaction --no-progress --optimize-autoloader
+    "${COMPOSER[@]}" install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
     rm -f composer.phar
   fi
   ok "Dependências PHP prontas"
