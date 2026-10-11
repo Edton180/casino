@@ -597,21 +597,62 @@ apt_install() {   # apt_install "descrição" pacotes...
   run "${desc}" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@"
 }
 
-apt_php_repo() {   # garante que o apt conhece o pacote do PHP desejado
-  apt-cache show "php${PHP_VERSION}-cli" >/dev/null 2>&1 && return 0
-  run "Preparando repositórios" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl gnupg lsb-release software-properties-common
-  if [[ "${OS_ID}" == "debian" ]]; then
-    run "Adicionando o repositório do PHP (sury.org)" bash -c "curl -fsSL https://packages.sury.org/php/apt.gpg | ${SUDO} gpg --dearmor --yes -o /usr/share/keyrings/sury-php.gpg && echo 'deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main' | ${SUDO} tee /etc/apt/sources.list.d/sury-php.list >/dev/null"
-  else
-    run "Adicionando o repositório do PHP (ondrej/php)" ${SUDO} add-apt-repository -y ppa:ondrej/php
+# Repositório de PHP (PPA ondrej / sury) que não tem pacotes para esta versão do sistema derruba o "apt update":
+# remove só quando o servidor responde 404 para o codinome desta versão (ex.: Ubuntu 26.04 "resolute").
+drop_broken_php_repos() {
+  local f url code="${CODENAME}" http
+  for f in /etc/apt/sources.list.d/*ondrej* /etc/apt/sources.list.d/*sury*; do
+    [ -f "$f" ] || continue
+    case "$f" in
+      *sury*) url="https://packages.sury.org/php/dists/${code}/Release" ;;
+      *) url="https://ppa.launchpadcontent.net/ondrej/php/ubuntu/dists/${code}/Release" ;;
+    esac
+    http="$(curl -s -o /dev/null -m 20 -w '%{http_code}' "$url" || true)"
+    if [ "${http}" = "404" ]; then rm -f "$f"; echo "removido repositório sem suporte para ${code}: $f"; fi
+  done
+}
+apt_refresh() {
+  if apt-get update -qq; then return 0; fi
+  drop_broken_php_repos
+  apt-get update -qq
+}
+apt_update() {
+  run "Atualizando a lista de pacotes" ${SUDO} bash -c "CODENAME='${OS_CODENAME}'; $(declare -f drop_broken_php_repos apt_refresh); apt_refresh"
+}
+
+http_code() { curl -s -o /dev/null -m 20 -w '%{http_code}' "$1" || true; }
+
+apt_php_repo() {   # garante que o apt conhece o PHP desejado; se o sistema for novo demais, usa a melhor versão disponível
+  if ! apt-cache show "php${PHP_VERSION}-cli" >/dev/null 2>&1; then
+    run "Preparando repositórios" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl gnupg lsb-release software-properties-common
+    local code="${OS_CODENAME:-$(lsb_release -sc 2>/dev/null)}"
+    local sury="https://packages.sury.org/php/dists/${code}/Release" ppa="https://ppa.launchpadcontent.net/ondrej/php/ubuntu/dists/${code}/Release"
+    local add_sury="curl -fsSL https://packages.sury.org/php/apt.gpg | ${SUDO} gpg --dearmor --yes -o /usr/share/keyrings/sury-php.gpg && echo 'deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ ${code} main' | ${SUDO} tee /etc/apt/sources.list.d/sury-php.list >/dev/null"
+    if [[ "${OS_ID}" == "ubuntu" && "$(http_code "${ppa}")" == "200" ]]; then
+      run "Adicionando o repositório do PHP (ondrej/php)" ${SUDO} add-apt-repository -y ppa:ondrej/php
+    elif [[ "$(http_code "${sury}")" == "200" ]]; then
+      run "Adicionando o repositório do PHP (sury.org)" bash -c "${add_sury}"
+    else
+      info "Não há repositório extra de PHP para ${code}; usando o PHP do próprio sistema."
+    fi
+    apt_update
+    if ! apt-cache show "php${PHP_VERSION}-cli" >/dev/null 2>&1; then
+      local v
+      for v in 8.4 8.3 8.2 8.5; do
+        if apt-cache show "php${v}-cli" >/dev/null 2>&1; then
+          warn "PHP ${PHP_VERSION} não existe para ${OS_NAME}; usando o PHP ${v} (compatível)."
+          PHP_VERSION="${v}"; return 0
+        fi
+      done
+      die "Nenhum PHP 8.2+ disponível nos repositórios do ${OS_NAME}. Instale o PHP manualmente e rode de novo."
+    fi
   fi
-  run "Atualizando a lista de pacotes" ${SUDO} apt-get update -qq
 }
 
 PHP_PKGS=(cli mysql mbstring xml curl zip intl gd bcmath)
 install_php() {   # PHP (+ extensões) via apt; mantém a versão instalada se já for >= 8.2
   local v="${PHP_VERSION}"
-  if php_ok; then v="$(php_ver)"; else apt_php_repo; fi
+  if php_ok; then v="$(php_ver)"; else apt_php_repo; v="${PHP_VERSION}"; fi
   local pk=() p; for p in "${PHP_PKGS[@]}"; do pk+=("php${v}-${p}"); done
   apt_install "Instalando PHP ${v} e extensões" "${pk[@]}"
   have php || die "O PHP não ficou disponível no PATH."
@@ -792,7 +833,7 @@ local_status() {
 
 install_missing() {
   setup_sudo
-  run "Atualizando a lista de pacotes" ${SUDO} apt-get update -qq
+  apt_update
   system_upgrade
   [[ ${NEED_TOOLS} -eq 1 ]] && apt_install "Instalando git, curl, unzip e rsync" git curl unzip rsync ca-certificates openssl
   [[ ${NEED_PHP} -eq 1 ]] && install_php
@@ -878,7 +919,7 @@ EOF
   return 0
 }
 
-system_upgrade_if_asked() { if [[ ${SYS_UPGRADE} -eq 1 && ${IS_APT} -eq 1 ]]; then setup_sudo; run "Atualizando a lista de pacotes" ${SUDO} apt-get update -qq; system_upgrade; fi; return 0; }
+system_upgrade_if_asked() { if [[ ${SYS_UPGRADE} -eq 1 && ${IS_APT} -eq 1 ]]; then setup_sudo; apt_update; system_upgrade; fi; return 0; }
 
 # =============================================================================
 #  MODO SERVIDOR (VPS)
@@ -927,7 +968,7 @@ svc() {   # systemctl quando disponível; "service" em containers/VMs sem system
 
 server_packages() {
   export DEBIAN_FRONTEND=noninteractive
-  run "Atualizando a lista de pacotes" apt-get update -qq
+  apt_update
   system_upgrade
   apt_install "Ferramentas básicas (git, curl, unzip, rsync, cron)" ca-certificates curl gnupg lsb-release unzip git rsync cron software-properties-common openssl
   apt_php_repo
@@ -1180,7 +1221,7 @@ do_update() {
   if [[ "${TARGET}" == "server" ]]; then resolve_source
   elif [[ -n "${SOURCE}" || -z "${CHECKOUT}" || "${CHECKOUT}" != "${APP_DIR}" ]]; then resolve_source
   else SRC="${CHECKOUT}"; ok "Usando o código desta pasta"; fi
-  if [[ "${TARGET}" == "server" ]]; then setup_sudo; run "Atualizando a lista de pacotes" apt-get update -qq; system_upgrade
+  if [[ "${TARGET}" == "server" ]]; then setup_sudo; apt_update; system_upgrade
   else system_upgrade_if_asked; fi
 
   step "Colocando o site em manutenção"
