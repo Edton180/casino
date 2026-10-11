@@ -9,6 +9,11 @@
 
 Options -Indexes
 
+# /app é uma página do site (não a pasta interna app/): não acrescentar "/"
+<If "%{REQUEST_URI} =~ m#^/app$#i">
+    DirectorySlash Off
+</If>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
@@ -17,7 +22,7 @@ Options -Indexes
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
     # Bloqueia pastas e arquivos internos
-    RewriteRule ^(app|bootstrap|config|database|lang|resources|routes|tests|vendor|node_modules|stubs|INSTALL\ CASSINO)(/.*)?$ - [F,L,NC]
+    RewriteRule ^(app/.*|bootstrap|config|database|lang|resources|routes|tests|vendor|node_modules|stubs|INSTALL\ CASSINO)(/.*)?$ - [F,L,NC]
     RewriteRule ^(\.env.*|\.git.*|artisan|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|vite\.config\.js|.*\.(sql|log|md|zip|py|sh))$ - [F,L,NC]
 
     # Tudo o mais vai para public/

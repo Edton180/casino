@@ -3,4 +3,4 @@
 use App\Http\Controllers\Api\Missions\MissionController;
 use Illuminate\Support\Facades\Route;
 
-Route::apiResource('missions', MissionController::class);
+Route::apiResource('missions', MissionController::class)->only(['index']);

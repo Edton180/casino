@@ -76,7 +76,7 @@
     "src": "resources/css/app.css"
   },
   "resources/js/app.css": {
-    "file": "assets/app-0c48face.css",
+    "file": "assets/app-73aea65d.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.js": {
@@ -92,7 +92,7 @@
       "assets/hexagon-e442c253.svg"
     ],
     "css": [
-      "assets/app-0c48face.css"
+      "assets/app-73aea65d.css"
     ],
     "dynamicImports": [
       "lang/en.json",
@@ -103,7 +103,7 @@
       "lang/php_vendor.json",
       "lang/pt_BR.json"
     ],
-    "file": "assets/app-627be22a.js",
+    "file": "assets/app-8a1b0647.js",
     "isEntry": true,
     "src": "resources/js/app.js"
   }

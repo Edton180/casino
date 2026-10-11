@@ -234,7 +234,7 @@ export default {
         },
         getVips: async function () {
             const _this = this;
-            await HttpApi.get(`/profile/vip/`)
+            await HttpApi.get('profile/vip')
                 .then(response => {
 
                     _this.vipPoints = response.data.vipPoints;

@@ -1578,6 +1578,9 @@ class Core
 
         if(!$cached) {
             $c = SpinConfigs::latest()->first();
+            if (!$c || empty($c->prizes)) {
+                return [];
+            }
             $str = $c->prizes;
             Cache::set($key, $str);
             $config = json_decode($str);

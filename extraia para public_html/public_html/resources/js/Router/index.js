@@ -290,6 +290,9 @@ export const routes = [
         name: 'vipPage',
         path: '/vip',
         component: VipPage,
+        meta: {
+            auth: true
+        }
     },
     {
         name: 'bonusPage',

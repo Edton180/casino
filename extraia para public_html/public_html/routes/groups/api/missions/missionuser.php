@@ -3,4 +3,4 @@
 use App\Http\Controllers\Api\Missions\MissionUserController;
 use Illuminate\Support\Facades\Route;
 
-Route::apiResource('missionsusers', MissionUserController::class);
+Route::apiResource('missionsusers', MissionUserController::class)->only(['store']);

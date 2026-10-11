@@ -31,7 +31,7 @@ class MissionUserController extends Controller
     public function store(Request $request)
     {
         $rules = [
-            'mission_id' => 'required',
+            'mission_id' => 'required|integer|exists:missions,id',
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -39,7 +39,7 @@ class MissionUserController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
-        $createData = MissionUser::create([
+        $createData = MissionUser::firstOrCreate([
             'user_id' => auth('api')->id(),
             'mission_id' => $request->mission_id
         ]);

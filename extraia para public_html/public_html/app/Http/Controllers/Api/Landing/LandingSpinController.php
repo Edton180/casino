@@ -24,8 +24,6 @@ namespace App\Http\Controllers\Api\Landing {
          */
         public function Index()
         {
-            $faker = \Faker\Factory::create();
-
             $currencies = [
                 'BRL'
             ];
@@ -37,9 +35,9 @@ namespace App\Http\Controllers\Api\Landing {
 
             for ($i = 0; $i < 200; $i++) {
                 $winners[] = [
-                    'name' => $faker->name(),
+                    'name' => $this->randomName(),
                     'nivel' => $levels[rand(0, count($levels) - 1)],
-                    'prize' => $this->prizes[$faker->numberBetween(0, count($this->prizes) - 1)]->value,
+                    'prize' => $this->prizes[array_rand($this->prizes)]->value,
                     'currency' => $currencies[0]
                 ];
             }
@@ -57,10 +55,14 @@ namespace App\Http\Controllers\Api\Landing {
          */
         public function Spin()
         {
-            $indexPrize = rand(0, count($this->prizes));
+            if (empty($this->prizes)) {
+                return response()->json(['status' => false, 'error' => 'Roleta não configurada.'], 400);
+            }
+
+            $indexPrize = array_rand($this->prizes);
             $data = [
                 'index'	=> $indexPrize,
-                'prize'		=> $this->prizes[$indexPrize < 16 ? $indexPrize : 0]
+                'prize'		=> $this->prizes[$indexPrize]
             ];
             $nonce = Str::uuid()->toString();
             $str = json_encode($data);
@@ -83,7 +85,10 @@ namespace App\Http\Controllers\Api\Landing {
         }
 
         public function Winners() {
-            $faker = \Faker\Factory::create();
+            if (empty($this->prizes)) {
+                return response()->json([[], 0]);
+            }
+
             $levels = ['SUPER SPIN', 'LUCKY SPIN'];
             $currencies = [
                 'BRL'
@@ -93,14 +98,26 @@ namespace App\Http\Controllers\Api\Landing {
 
             for ($i = 0; $i < 200; $i++) {
                 array_push($winners, [
-                    'name'	=> $faker->name(),
+                    'name'	=> $this->randomName(),
                     'nivel'	=> $levels[rand(0, count($levels) - 1)],
-                    'prize'	=> $this->prizes[$faker->numberBetween(0, count($this->prizes) - 1)]->value,
+                    'prize'	=> $this->prizes[array_rand($this->prizes)]->value,
                     'currency'	=> $currencies[0]
                 ]);
             }
 
             return response()->json([$winners, $totalBonus]);
+        }
+
+        /**
+         * Nome fictício para a lista de ganhadores (o Faker não é instalado em produção).
+         */
+        private function randomName(): string
+        {
+            $first = ['Ana', 'Bruno', 'Carla', 'Diego', 'Eduarda', 'Felipe', 'Gabriela', 'Henrique', 'Isabela', 'João',
+                'Larissa', 'Lucas', 'Mariana', 'Mateus', 'Natália', 'Pedro', 'Rafaela', 'Rodrigo', 'Sofia', 'Thiago'];
+            $last  = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Lima', 'Pereira', 'Costa', 'Ferreira', 'Almeida', 'Ribeiro'];
+
+            return $first[array_rand($first)] . ' ' . $last[array_rand($last)];
         }
 
         public function Prizes() {
