@@ -19,6 +19,10 @@
 - Novo `php artisan system:admin` (cria/redefine o administrador e confere o login); o instalador roda a conferência no final e recria o usuário se ela falhar.
 - Menu lateral do site: entre 640 e 768 px de largura (ou zoom alto do navegador) ele ocupava a tela inteira por cima dos jogos; agora só ocupa a largura toda em telas de celular (< 640 px).
 - Servidor local: reinstalar/atualizar não deixa mais o servidor antigo rodando (o `rsync` apagava o arquivo de PID); `--stop` encerra também servidores sem registro; o processo do servidor não prende mais o terminal.
+- Banco de dados no Ubuntu/Debian sem perguntar a "senha do root do MySQL": o assistente só tentava `sudo mysql` quando já tinha pedido o sudo para instalar pacotes; com tudo já instalado, caía direto na senha do root (que não existe, o root entra pelo socket). Agora tenta root sem senha → `sudo mysql` (pede a senha do seu usuário) → conta de manutenção do Debian → senha do root (3 tentativas) e, se nada funcionar, mostra os comandos para resolver.
+- `php artisan system:install`: explica o erro de acesso (1045/1698/2002/1049) e oferece criar o banco e o usuário (root sem senha, `sudo mysql` ou conta administradora informada); gera senha forte se ficar em branco; não deixa o site usar o `root`; novas opções `--create-db`, `--db-root-user`, `--db-root-pass`.
+- Windows: confere o acesso ao MySQL antes de instalar e pede a senha do root quando ela existe; confere o login do administrador no final.
+- Modo servidor reabre com `sudo env ...` em vez de `sudo -E` (o sudo-rs, padrão do Ubuntu 26.04, não aceita `-E`); quadro final alinhado com caminhos longos e com `~` no lugar da pasta pessoal.
 
 ### Documentação
 - Guia de instalação reorganizado (como obter o código com repositório privado, VPS, localhost por sistema); tabela de problemas do assistente.
