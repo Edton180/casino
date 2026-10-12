@@ -17,7 +17,7 @@
 # =============================================================================
 set -Eeuo pipefail
 
-SCRIPT_VERSION="9.3.0"
+SCRIPT_VERSION="9.4.0"   # trocado pelo arquivo VERSION quando o assistente roda de dentro do projeto
 REPO_SLUG="${REPO_SLUG:-Edton180/casino}"
 REPO_URL="${REPO_URL:-https://github.com/${REPO_SLUG}.git}"
 BRANCH="${BRANCH:-main}"
@@ -534,6 +534,7 @@ preflight() {   # preflight local|server
   else row warn "MySQL/MariaDB" "não instalado"; NEED_DB=1; fi
   if have composer && php_ok; then row ok "Composer" "$(composer --version 2>/dev/null | head -1 | cut -d' ' -f3 || true)"
   elif have composer; then row info "Composer" "instalado (vai funcionar depois do PHP)"
+  elif [[ -x "${HOME}/.local/bin/composer" ]] && php_ok; then row ok "Composer" "$(php "${HOME}/.local/bin/composer" --version 2>/dev/null | head -1 | cut -d' ' -f3 || true) (~/.local/bin)"
   else row info "Composer" "será baixado (não precisa de administrador)"; fi
   if [[ "${mode}" == "server" ]]; then
     have nginx && row ok "Nginx" "instalado" || row info "Nginx" "será instalado"
@@ -1822,6 +1823,9 @@ uninstall_one() {   # uninstall_one PASTA
   if [[ ${delete_dir} -eq 1 ]]; then
     if safe_to_delete "${dir}"; then
       ${SUDO} rm -rf "${dir}" && ok "Pasta apagada"
+      # cópia extraída dentro de outra pasta (casino-main/casino-main): a de fora ficou vazia
+      local parent; parent="$(dirname "${dir}")"
+      if [[ "$(basename "${parent}")" == casino* ]]; then ${SUDO} rmdir "${parent}" 2>/dev/null || true; fi
     else
       warn "Por segurança, não apago ${dir} automaticamente; apague à mão se quiser."
     fi

@@ -10,11 +10,17 @@
   Uso (dê dois cliques em instalar-windows.bat, ou no PowerShell):
      powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1
      ... -Porta 8000 -Nome "Meu Cassino" -Email admin@casino.local -Senha admin12345
-     ... -Acao Ligar | Desligar | Atualizar | Diagnostico
+     ... -Acao Ligar | Desligar | Atualizar | Backup | Restaurar | Desinstalar | Diagnostico
+
+  Atualizar   baixa a versão nova (git), faz backup e atualiza o banco sem perder dados
+  Backup      banco, .env e arquivos enviados num .zip em %USERPROFILE%\casino-backups
+  Restaurar   volta um backup (-Arquivo caminho.zip, ou escolhe na lista)
+  Desinstalar remove esta e outras instalações encontradas (banco, pasta, PHP/Composer baixados);
+              -Tudo apaga sem perguntar, -ManterBanco não apaga o banco, -SemBackup pula o backup final
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('Instalar', 'Ligar', 'Desligar', 'Atualizar', 'Diagnostico')]
+  [ValidateSet('Instalar', 'Ligar', 'Desligar', 'Atualizar', 'Backup', 'Restaurar', 'Desinstalar', 'Diagnostico')]
   [string]$Acao = 'Instalar',
   [int]$Porta = 0,
   [string]$Nome = 'Meu Cassino',
@@ -26,7 +32,11 @@ param(
   [string]$DbUsuario = '',
   [string]$DbSenha = '',
   [switch]$SemAbrirNavegador,
-  [switch]$Sim
+  [switch]$Sim,
+  [string]$Arquivo = '',
+  [switch]$Tudo,
+  [switch]$ManterBanco,
+  [switch]$SemBackup
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,7 +44,7 @@ $ProgressPreference = 'SilentlyContinue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
-$Versao = '9.3.0'
+$Versao = '9.4.0'
 
 # ---- Executado sem o projeto ao lado (ex.: irm .../install-windows.ps1 | iex): baixa o código e continua ----
 $Aqui = $PSScriptRoot
@@ -62,9 +72,13 @@ if (-not $Aqui -or -not (Test-Path (Join-Path $Aqui '..\artisan'))) {
 }
 
 $Raiz = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$ArqVersao = Join-Path $Raiz 'VERSION'
+if (Test-Path $ArqVersao) { $Versao = ((Get-Content $ArqVersao -TotalCount 1) -as [string]).Trim() }
 $Dados = Join-Path $env:LOCALAPPDATA 'CasinoPlatform'
 $PhpDir = Join-Path $Dados 'php'
 $Log = Join-Path $env:TEMP ("casino-install-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$PastaBackups = Join-Path $env:USERPROFILE 'casino-backups'
+$Registro = Join-Path $Dados 'instalacoes.json'   # o que o assistente instalou (para desinstalar sem deixar rastros)
 New-Item -ItemType Directory -Force -Path $Dados | Out-Null
 
 # ----------------------------------------------------------------- interface
@@ -112,8 +126,12 @@ function Linha($estado, $rotulo, $valor) {
   Write-Host ("  $icone {0,-24} {1}" -f $rotulo, $valor)
 }
 function Caixa($titulo, $linhasCaixa) {
-  $largura = 74
   $sem = { param($s) ($s -replace "$Esc\[[0-9;]*m", '').Length }
+  # alarga para a maior linha (até a largura da janela)
+  $largura = 74
+  foreach ($l in $linhasCaixa) { $largura = [math]::Max($largura, (& $sem $l) + 4) }
+  try { $janela = $Host.UI.RawUI.WindowSize.Width; if ($janela -gt 20) { $largura = [math]::Min($largura, $janela - 1) } } catch {}
+  $largura = [math]::Max($largura, 40)
   $topo = '╭─ ' + $titulo + ' ' + ('─' * [math]::Max(0, $largura - 5 - $titulo.Length)) + '╮'
   Write-Host (Cinza $topo)
   foreach ($l in $linhasCaixa) {
@@ -211,6 +229,7 @@ function Instala-Php {
   }
   $conteudo = $conteudo -replace '(?m)^;\s*curl\.cainfo\s*=.*$', ''
   Set-Content $ini $conteudo -Encoding ascii
+  Registra 'PhpBaixado' $true
   Ok "PHP instalado em $PhpDir"
 }
 
@@ -269,6 +288,7 @@ function Instala-Composer($php) {
       }
       if (-not $ok) { throw 'Não consegui baixar o Composer (verifique a internet ou o antivírus/firewall).' }
     }
+    Registra 'ComposerBaixado' $true
   } else { Ok 'Composer já baixado' }
   return $dest
 }
@@ -337,10 +357,310 @@ function Diagnostico {
   Write-Host ''
 }
 
+# ------------------------------------------- registro, backup, restauração e desinstalação
+function Le-Registro {
+  $r = $null
+  if (Test-Path $Registro) { try { $r = Get-Content $Registro -Raw | ConvertFrom-Json } catch { $r = $null } }
+  if (-not $r) { $r = [pscustomobject]@{} }
+  foreach ($k in 'Instalacoes', 'PhpBaixado', 'ComposerBaixado', 'MariaDbWinget') {
+    if ($r.PSObject.Properties.Name -notcontains $k) {
+      $r | Add-Member -NotePropertyName $k -NotePropertyValue $(if ($k -eq 'Instalacoes') { @() } else { $false })
+    }
+  }
+  $r.Instalacoes = @($r.Instalacoes | Where-Object { $_ -and $_.Pasta })
+  return $r
+}
+function Grava-Registro($r) { ConvertTo-Json -InputObject $r -Depth 4 | Set-Content -Path $Registro -Encoding utf8 }
+function Registra($chave, $valor) { $r = Le-Registro; $r.$chave = $valor; Grava-Registro $r }
+function Registra-Instalacao($pasta, $banco) {
+  $r = Le-Registro
+  $r.Instalacoes = @(@($r.Instalacoes | Where-Object { $_.Pasta -ne $pasta }) + [pscustomobject]@{ Pasta = $pasta; Banco = $banco; Data = (Get-Date).ToString('s'); Versao = $Versao })
+  Grava-Registro $r
+}
+function Tira-Do-Registro($pasta) { $r = Le-Registro; $r.Instalacoes = @($r.Instalacoes | Where-Object { $_.Pasta -ne $pasta }); Grava-Registro $r }
+
+function Valor-Env($pasta, $chave) {
+  $f = Join-Path $pasta '.env'
+  if (-not (Test-Path $f)) { return '' }
+  $m = Select-String -Path $f -Pattern ('^' + [regex]::Escape($chave) + '=(.*)$') | Select-Object -Last 1
+  if (-not $m) { return '' }
+  return $m.Matches[0].Groups[1].Value.Trim().Trim('"').Trim("'")
+}
+function Artisan-Tem($php, $pasta, $comando) {
+  if (-not $php -or -not (Test-Path (Join-Path $pasta 'vendor\autoload.php'))) { return $false }
+  Push-Location $pasta
+  try { $lista = @(& $php artisan list --raw 2>$null) } catch { $lista = @() } finally { Pop-Location }
+  return [bool]($lista | Where-Object { $_ -match ('^' + [regex]::Escape($comando) + '\s') })
+}
+function Versao-Instalada($pasta) {
+  $lock = Join-Path $pasta 'storage\installed.lock'
+  if (-not (Test-Path $lock)) { return '' }
+  try { return [string](Get-Content $lock -Raw | ConvertFrom-Json).version } catch { return '' }
+}
+function Faz-Backup($php) {
+  New-Item -ItemType Directory -Force -Path $PastaBackups | Out-Null
+  Executa 'Backup do banco, do .env e dos arquivos enviados' {
+    Set-Location $using:Raiz
+    & $using:php artisan system:backup "--output=$using:PastaBackups"
+    if ($LASTEXITCODE -ne 0) { throw 'system:backup falhou' }
+  }
+  $ultimo = Get-ChildItem $PastaBackups -Filter 'casino-backup-*.zip' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if ($ultimo) { return $ultimo.FullName }
+  return ''
+}
+function Lista-Backups {
+  $pastas = @($PastaBackups, (Join-Path $Raiz 'storage\app\backups') | Where-Object { Test-Path $_ })
+  if ($pastas.Count -eq 0) { return ,@() }
+  return ,@(Get-ChildItem $pastas -Filter 'casino-backup-*.zip' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 8)
+}
+function Restaura($php) {
+  $arq = $Arquivo
+  if (-not $arq) {
+    $lista = Lista-Backups
+    if ($lista.Count -eq 0) { throw "Nenhum backup encontrado em $PastaBackups. Informe o arquivo: -Arquivo C:\caminho\casino-backup.zip" }
+    Write-Host ''
+    for ($i = 0; $i -lt $lista.Count; $i++) {
+      Write-Host ("   {0}) {1}  {2}" -f ($i + 1), $lista[$i].Name, (Cinza ('{0:N1} MB  ·  {1:dd/MM/yyyy HH:mm}' -f ($lista[$i].Length / 1MB), $lista[$i].LastWriteTime)))
+    }
+    Write-Host ''
+    $n = 0
+    if (-not [int]::TryParse([string](Pergunta 'Qual backup restaurar? (1 = o mais novo)' 1), [ref]$n) -or $n -lt 1 -or $n -gt $lista.Count) { throw 'Opção inválida.' }
+    $arq = $lista[$n - 1].FullName
+  }
+  if (-not (Test-Path $arq)) { throw "Backup não encontrado: $arq" }
+  $arq = (Resolve-Path $arq).Path
+  Ok "Backup: $arq"
+  Aviso 'Os dados atuais do banco serão substituídos pelos do backup (antes, faço um backup do estado atual).'
+  if (-not $Sim -and -not (Confirma 'Restaurar agora?' $false)) { throw 'Cancelado.' }
+  Executa 'Restaurando banco e arquivos (e aplicando migrações novas)' {
+    Set-Location $using:Raiz
+    & $using:php artisan system:restore $using:arq --force
+    if ($LASTEXITCODE -ne 0) { throw 'system:restore falhou' }
+  }
+  return $arq
+}
+
+function E-Casino($p) { return [bool]($p -and (Test-Path (Join-Path $p 'artisan')) -and (Test-Path (Join-Path $p 'app\Install\CasinoInstaller.php'))) }
+function Acha-Instalacoes {
+  $achadas = New-Object System.Collections.Generic.List[string]
+  $candidatos = @($Raiz) + @((Le-Registro).Instalacoes | ForEach-Object { $_.Pasta })
+  $bases = @($env:USERPROFILE, (Join-Path $env:USERPROFILE 'Downloads'), (Join-Path $env:USERPROFILE 'Desktop'), (Join-Path $env:USERPROFILE 'Documents'),
+    'C:\xampp\htdocs', 'C:\laragon\www', 'C:\wamp64\www')
+  foreach ($base in $bases) {
+    if (-not $base -or -not (Test-Path $base)) { continue }
+    foreach ($d in @(Get-ChildItem $base -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'casino*' })) {
+      $candidatos += $d.FullName
+      # ZIP extraído dentro de outra pasta (ex.: casino-main\casino-main)
+      $candidatos += @(Get-ChildItem $d.FullName -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'casino*' } | ForEach-Object { $_.FullName })
+    }
+  }
+  foreach ($c in $candidatos) {
+    if (E-Casino $c) {
+      $r = (Resolve-Path $c).Path.TrimEnd('\', '/')
+      if (-not $achadas.Contains($r)) { $achadas.Add($r) }
+    }
+  }
+  return ,$achadas.ToArray()
+}
+function Estado-Instalacao($p) {
+  if (Test-Path (Join-Path $p 'storage\installed.lock')) { return 'instalado' }
+  if ((Test-Path (Join-Path $p '.env')) -or (Test-Path (Join-Path $p 'vendor'))) { return 'parcial' }
+  return 'só o código'
+}
+function Para-Servidor($pasta) {
+  $pf = Join-Path $pasta 'storage\local-server.pid'
+  if (-not (Test-Path $pf)) { return }
+  $id = 0
+  if ([int]::TryParse([string](Get-Content $pf -TotalCount 1), [ref]$id) -and $id -gt 0 -and (Get-Process -Id $id -ErrorAction SilentlyContinue)) {
+    Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+    Ok 'Servidor local desligado'
+  }
+  Remove-Item $pf -Force -ErrorAction SilentlyContinue
+}
+function Apaga-Pasta($pasta) {
+  # esta pasta pode estar em uso (este assistente, a janela do instalador): o que sobrar é apagado logo depois
+  Set-Location $env:USERPROFILE
+  [Environment]::CurrentDirectory = $env:USERPROFILE
+  try {
+    Remove-Item -LiteralPath $pasta -Recurse -Force -ErrorAction Stop
+    Ok 'Pasta apagada'
+    # ZIP extraído dentro de outra pasta (casino-main\casino-main): a de fora ficou vazia
+    $mae = Split-Path $pasta -Parent
+    if ($mae -and (Split-Path $mae -Leaf) -like 'casino*' -and (Test-Path $mae) -and -not (Get-ChildItem -LiteralPath $mae -Force -ErrorAction SilentlyContinue)) {
+      Remove-Item -LiteralPath $mae -Force -ErrorAction SilentlyContinue
+    }
+  } catch {
+    if ($env:OS -eq 'Windows_NT') {
+      $cmd = 'for /l %i in (1,1,30) do @(if exist "' + $pasta + '" (rmdir /s /q "' + $pasta + '" 2>nul & ping -n 3 127.0.0.1 >nul))'
+      Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', $cmd -WindowStyle Hidden -WorkingDirectory $env:TEMP | Out-Null
+      Ok 'Pasta será apagada assim que esta janela fechar'
+    } else {
+      Aviso "Não consegui apagar $pasta ($($_.Exception.Message)). Apague-a manualmente."
+    }
+  }
+}
+function Desinstala-Uma($pasta, $php) {
+  Write-Host ''
+  Write-Host ('  ' + (Negrito $pasta))
+  Para-Servidor $pasta
+  $banco = Valor-Env $pasta 'DB_DATABASE'
+  $temEnv = Test-Path (Join-Path $pasta '.env')
+  if ($temEnv -and (Artisan-Tem $php $pasta 'system:uninstall')) {
+    $argumentos = @('artisan', 'system:uninstall', '--force')
+    if ($SemBackup) { $argumentos += '--no-backup' } else { New-Item -ItemType Directory -Force -Path $PastaBackups | Out-Null; $argumentos += "--backup-dir=$PastaBackups" }
+    if ($ManterBanco) { $argumentos += '--keep-database' } else { $argumentos += '--drop-database' }
+    # no Windows o site costuma usar o root do MySQL (XAMPP/Laragon): a mesma conta apaga o banco
+    $usuarioBanco = Valor-Env $pasta 'DB_USERNAME'
+    if ($usuarioBanco -eq 'root') { $env:CASINO_DB_ROOT_USER = 'root'; $env:CASINO_DB_ROOT_PASS = (Valor-Env $pasta 'DB_PASSWORD') }
+    try {
+      Executa 'Backup final e remoção (banco, .env, arquivos enviados, logs e caches)' {
+        Set-Location $using:pasta
+        $a = $using:argumentos
+        & $using:php @a
+        if ($LASTEXITCODE -ne 0) { throw 'system:uninstall falhou' }
+      }
+    } finally {
+      Remove-Item Env:CASINO_DB_ROOT_USER, Env:CASINO_DB_ROOT_PASS -ErrorAction SilentlyContinue
+    }
+  } elseif ($temEnv) {
+    foreach ($f in '.env', 'storage\installed.lock', 'storage\install.token', 'storage\local-server.pid') { Remove-Item (Join-Path $pasta $f) -Force -ErrorAction SilentlyContinue }
+    Remove-Item (Join-Path $pasta 'public\storage') -Recurse -Force -ErrorAction SilentlyContinue
+    Ok 'Arquivos de configuração removidos'
+    if ($banco -and -not $ManterBanco) { Aviso "Esta cópia não tem as dependências instaladas: apague o banco '$banco' pelo HeidiSQL/phpMyAdmin, se quiser." }
+  }
+  if ($Tudo -or (Confirma "Apagar a pasta $pasta inteira?" $true)) { Apaga-Pasta $pasta }
+  elseif (Test-Path (Join-Path $pasta 'vendor')) {
+    Remove-Item (Join-Path $pasta 'vendor') -Recurse -Force -ErrorAction SilentlyContinue
+    Ok "Dependências (vendor) removidas; o código ficou em $pasta"
+  }
+  Tira-Do-Registro $pasta
+}
+function Remove-Programas {
+  # só o que o PRÓPRIO assistente baixou (PHP e Composer em %LOCALAPPDATA%\CasinoPlatform, cache do Composer, MariaDB do winget)
+  $reg = Le-Registro
+  if ($reg.Instalacoes.Count -gt 0) { Aviso 'Ainda há instalações registradas: PHP e Composer do assistente foram mantidos.'; return }
+  $baixados = @(Get-ChildItem $Dados -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'instalacoes.json' })
+  if ($baixados.Count -gt 0) {
+    $mb = [math]::Round(((Get-ChildItem $Dados -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum) / 1MB)
+    if ($Tudo -or (Confirma "Apagar o PHP e o Composer que o assistente baixou ($Dados, $mb MB)?" $true)) {
+      Remove-Item -LiteralPath $Dados -Recurse -Force -ErrorAction SilentlyContinue
+      Ok 'PHP e Composer do assistente apagados'
+      $script:RegistroApagado = $true
+    }
+  }
+  $cache = @((Join-Path $env:LOCALAPPDATA 'Composer'), (Join-Path $env:APPDATA 'Composer')) | Where-Object { $_ -and (Test-Path $_) }
+  if ($cache.Count -gt 0 -and ($Tudo -or (Confirma 'Apagar o cache do Composer? (outros projetos PHP só baixam de novo o que precisarem)' $true))) {
+    $cache | ForEach-Object { Remove-Item -LiteralPath $_ -Recurse -Force -ErrorAction SilentlyContinue }
+    Ok 'Cache do Composer apagado'
+  }
+  if ($reg.MariaDbWinget -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+    if (Confirma 'Desinstalar também o MariaDB que o assistente instalou? (apaga TODOS os bancos dele)' $false) {
+      Executa 'Desinstalando o MariaDB' { winget uninstall --id MariaDB.Server -e --silent --accept-source-agreements }
+    } else { Aviso 'MariaDB mantido. Para remover depois: Configurações → Aplicativos → MariaDB.' }
+  }
+}
+
 # -------------------------------------------------------------------- fluxo
+# instalação existente: usa o servidor de banco do .env (a não ser que outro tenha sido informado)
+if (Test-Path (Join-Path $Raiz '.env')) {
+  if (-not $PSBoundParameters.ContainsKey('DbHost')) { $h = Valor-Env $Raiz 'DB_HOST'; if ($h) { $DbHost = $h } }
+  if (-not $PSBoundParameters.ContainsKey('DbPorta')) { $pt = Valor-Env $Raiz 'DB_PORT'; if ($pt -match '^\d+$') { $DbPorta = [int]$pt } }
+}
+
 if ($Acao -eq 'Diagnostico') { Diagnostico; exit 0 }
 
 if ($Acao -eq 'Desligar') { Banner; Desliga-Site; exit 0 }
+
+if ($Acao -in 'Backup', 'Restaurar') {
+  try {
+    Banner
+    $php = Encontra-Php
+    if (-not (Test-Path (Join-Path $Raiz '.env'))) { throw "Não há instalação em $Raiz (sem .env)." }
+    if (-not (Artisan-Tem $php $Raiz 'system:backup')) { throw 'Esta instalação é anterior à 9.4 ou está incompleta: rode antes a opção Atualizar.' }
+    $script:Etapas = 1
+    if ($Acao -eq 'Backup') {
+      Etapa "Backup de $Raiz"
+      $b = Faz-Backup $php
+      Write-Host ''
+      Caixa 'Backup concluído' @('', "  Arquivo   $(Verde $b)", '', (Cinza '  Restaurar: instalar-windows.bat → Restaurar backup'), (Cinza '  Guarde uma cópia fora deste computador (pendrive, nuvem...).'), '')
+    } else {
+      Etapa 'Restaurando um backup'
+      $ligado = Servidor-Ligado
+      $b = Restaura $php
+      if ($ligado) { Push-Location $Raiz; Desliga-Site; $null = Liga-Site $php; Pop-Location }
+      Write-Host ''
+      Caixa 'Backup restaurado' @('', "  $b", '')
+    }
+    exit 0
+  } catch {
+    Falha $_.Exception.Message
+    Write-Host "Registro completo: $Log"
+    exit 1
+  }
+}
+
+if ($Acao -eq 'Desinstalar') {
+  try {
+    Banner
+    $php = Encontra-Php
+    $script:Etapas = 3
+    Etapa 'Procurando instalações'
+    $todas = Acha-Instalacoes
+    if ($todas.Count -eq 0) { Ok 'Nenhuma instalação do Casino Platform encontrada.'; Remove-Programas; exit 0 }
+    Write-Host ''
+    for ($i = 0; $i -lt $todas.Count; $i++) {
+      $extra = ''
+      $b = Valor-Env $todas[$i] 'DB_DATABASE'; if ($b) { $extra += "  ·  banco $b" }
+      if ($todas[$i] -eq $Raiz) { $extra += '  ·  (esta pasta)' }
+      Write-Host ("   {0}) {1}  {2}{3}" -f ($i + 1), $todas[$i], (Cinza (Estado-Instalacao $todas[$i])), (Cinza $extra))
+    }
+    Write-Host ''
+    $escolhidas = @()
+    if ($Sim -or $todas.Count -eq 1) { $escolhidas = $todas }
+    else {
+      $r = (Read-Host '  ? Quais remover? Números separados por espaço, T = todas, ENTER = cancelar').Trim().ToUpper()
+      if (-not $r) { throw 'Cancelado.' }
+      if ($r -match 'T') { $escolhidas = $todas }
+      else {
+        foreach ($n in ($r -split '[\s,]+' | Where-Object { $_ })) {
+          $k = 0
+          if (-not [int]::TryParse($n, [ref]$k) -or $k -lt 1 -or $k -gt $todas.Count) { throw "Opção inválida: $n" }
+          $escolhidas += $todas[$k - 1]
+        }
+      }
+    }
+
+    Etapa 'O que será feito'
+    $linhas = @($escolhidas | ForEach-Object { '  ' + (Vermelho '✖') + " $_" })
+    $linhas += ''
+    $linhas += '  Para cada uma: ' + $(if ($SemBackup) { 'sem backup final' } else { 'backup final' }) + ', desligar o site, apagar o banco'
+    $linhas += '  ' + $(if ($ManterBanco) { '(mantido: -ManterBanco)' } else { 'e o usuário do MySQL do site' }) + ', .env, uploads, logs e a pasta.'
+    if (-not $SemBackup) { $linhas += "  Backups ficam em $PastaBackups" }
+    Caixa 'Desinstalar' $linhas
+    if (-not $Sim) {
+      $conf = Read-Host '  ? Para confirmar, digite DESINSTALAR'
+      if ($conf.Trim().ToUpper() -ne 'DESINSTALAR') { throw 'Cancelado.' }
+    }
+
+    Etapa 'Removendo'
+    foreach ($p in $escolhidas) { Desinstala-Uma $p $php }
+    Remove-Programas
+    $ultimo = Get-ChildItem $PastaBackups -Filter 'casino-backup-*.zip' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    Write-Host ''
+    $resumo = @('', "  Removidas: $($escolhidas.Count) instalação(ões).")
+    if ($ultimo -and -not $SemBackup) {
+      $resumo += "  Último backup: $(Verde $ultimo.FullName)"
+      $resumo += (Cinza '  Os backups ficam guardados de propósito; apague a pasta se não precisar mais.')
+    }
+    $resumo += ''
+    Caixa 'Desinstalação concluída' $resumo
+    exit 0
+  } catch {
+    Falha $_.Exception.Message
+    Write-Host "Registro completo: $Log"
+    exit 1
+  }
+}
 
 try {
   Banner
@@ -354,7 +674,7 @@ try {
     exit 0
   }
 
-  if ($Acao -eq 'Atualizar') { $script:Etapas = 4 }
+  if ($Acao -eq 'Atualizar') { $script:Etapas = 6 }
 
   Etapa 'Diagnóstico do ambiente'
   Caixa 'Seu computador' @(
@@ -392,6 +712,7 @@ try {
     if (Get-Command winget -ErrorAction SilentlyContinue) {
       if (Confirma 'Instalar o MariaDB com o winget (pede permissão de administrador)?') {
         Executa 'Instalando o MariaDB' { winget install --id MariaDB.Server -e --silent --accept-package-agreements --accept-source-agreements }
+        Registra 'MariaDbWinget' $true
         Aviso 'MariaDB instalado. Na primeira vez, abra "HeidiSQL/MariaDB" e defina a senha do root, ou rode o assistente com -DbUsuario root -DbSenha SUA_SENHA.'
         Start-Sleep -Seconds 5
         $temBanco = Banco-Responde
@@ -406,6 +727,26 @@ try {
   }
   $composer = Instala-Composer $php
 
+  $backupAtualizacao = ''
+  $versaoAntes = Versao-Instalada $Raiz
+  if ($Acao -eq 'Atualizar') {
+    if (-not (Test-Path (Join-Path $Raiz '.env'))) { throw 'Não há instalação nesta pasta para atualizar. Use a opção Instalar.' }
+    Etapa 'Backup e versão nova do código'
+    if ($SemBackup) { Aviso 'Backup pulado (-SemBackup).' }
+    elseif (Artisan-Tem $php $Raiz 'system:backup') { $backupAtualizacao = Faz-Backup $php }
+    if (Test-Path (Join-Path $Raiz '.git')) {
+      if (Get-Command git -ErrorAction SilentlyContinue) {
+        Executa 'Baixando a versão nova (git pull)' {
+          Set-Location $using:Raiz
+          & git pull --ff-only
+          if ($LASTEXITCODE -ne 0) { throw 'git pull falhou (há arquivos alterados à mão nesta pasta?)' }
+        }
+      } else { Aviso 'O git não está instalado: atualizando com o código que já está na pasta.' }
+    } else {
+      Aviso 'Esta pasta não é uma cópia git. Para pegar a versão nova, baixe o ZIP do projeto e extraia por cima desta pasta (o ZIP não traz o .env nem public\storage), depois rode Atualizar.'
+    }
+  }
+
   Etapa 'Preparando o site'
   Push-Location $Raiz
   $env:COMPOSER_ALLOW_SUPERUSER = '1'
@@ -417,14 +758,34 @@ try {
   if (-not (Test-Path (Join-Path $Raiz 'public\build\manifest.json'))) { throw 'O frontend não está compilado nesta cópia (public\build). Baixe o pacote completo ou rode npm ci && npm run build.' }
 
   if ($Acao -eq 'Atualizar') {
+    # instalações anteriores à 9.4 não tinham o comando de backup: faz agora, com o código novo
+    if (-not $backupAtualizacao -and -not $SemBackup -and (Artisan-Tem $php $Raiz 'system:backup')) { $backupAtualizacao = Faz-Backup $php }
     Etapa 'Atualizando o banco de dados'
-    Executa 'Rodando as migrações' { Set-Location $using:Raiz; & $using:php artisan migrate --force; if ($LASTEXITCODE -ne 0) { throw 'migrate falhou' } }
-    Executa 'Limpando o cache' { Set-Location $using:Raiz; & $using:php artisan optimize:clear }
+    try {
+      if (Artisan-Tem $php $Raiz 'system:update') {
+        Executa 'Migrações, arquivos padrão, caches e versão' {
+          Set-Location $using:Raiz
+          & $using:php artisan system:update --force --no-backup
+          if ($LASTEXITCODE -ne 0) { throw 'system:update falhou' }
+        }
+      } else {
+        Executa 'Rodando as migrações' { Set-Location $using:Raiz; & $using:php artisan migrate --force; if ($LASTEXITCODE -ne 0) { throw 'migrate falhou' } }
+        Executa 'Limpando o cache' { Set-Location $using:Raiz; & $using:php artisan optimize:clear }
+      }
+    } catch {
+      if ($backupAtualizacao) { Write-Host ("  Para voltar ao estado anterior: instalar-windows.bat → Restaurar backup  (" + $backupAtualizacao + ')') }
+      throw
+    }
     Etapa 'Reiniciando o site'
     if (Servidor-Ligado) { Desliga-Site }
     $p = Liga-Site $php
     Pop-Location
-    Caixa 'Atualização concluída' @('', '  Código atualizado, banco migrado e cache limpo.', '')
+    $depois = Versao-Instalada $Raiz
+    $linhas = @('', ('  Versão: ' + $(if ($versaoAntes) { $versaoAntes } else { 'anterior' }) + ' → ' + (Verde $(if ($depois) { $depois } else { $Versao }))),
+      '  Banco atualizado e caches limpos; dados, .env e arquivos enviados mantidos.')
+    if ($backupAtualizacao) { $linhas += (Cinza "  Backup feito antes: $backupAtualizacao") }
+    $linhas += ''
+    Caixa 'Atualização concluída' $linhas
     exit 0
   }
 
@@ -473,6 +834,7 @@ try {
   Etapa 'Ligando o site'
   $p = Liga-Site $php
   Pop-Location
+  Registra-Instalacao $Raiz $DbNome
 
   $tempo = [int]((Get-Date) - $Inicio).TotalSeconds
   Write-Host ''
@@ -483,8 +845,7 @@ try {
     "  Login      $Email",
     "  Senha      $Senha",
     '',
-    (Cinza '  Desligar:   instalar-windows.bat  → opção Desligar'),
-    (Cinza '  Ligar:      instalar-windows.bat  → opção Ligar'))
+    (Cinza '  instalar-windows.bat: Ligar, Desligar, Atualizar, Backup, Restaurar e Desinstalar'))
   Write-Host ''
   if (-not $SemAbrirNavegador) { Start-Process "http://127.0.0.1:$p" }
 }

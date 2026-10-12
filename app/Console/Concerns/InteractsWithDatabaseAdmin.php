@@ -7,7 +7,8 @@ use Illuminate\Support\Str;
 
 /**
  * Executa SQL com uma conta administradora do MySQL/MariaDB, do jeito mais simples que funcionar:
- *  1. conta informada em --db-root-user/--db-root-pass;
+ *  1. conta informada em --db-root-user/--db-root-pass (ou nas variáveis CASINO_DB_ROOT_USER/CASINO_DB_ROOT_PASS,
+ *     usadas pelo assistente do Windows para não passar a senha na linha de comando);
  *  2. root sem senha (XAMPP, Laragon, Windows; ou o comando rodando como root no Linux, pelo socket);
  *  3. "sudo mysql" (Ubuntu/Debian: o root do banco não tem senha própria) — pede a senha do usuário do computador;
  *  4. uma conta digitada agora (modo interativo).
@@ -25,6 +26,10 @@ trait InteractsWithDatabaseAdmin
         $admins = [];
         if ($this->option('db-root-user') !== null || $this->option('db-root-pass') !== null) {
             $admins[] = ['username' => $this->option('db-root-user') ?: 'root', 'password' => (string) $this->option('db-root-pass')];
+        }
+        $envUser = getenv('CASINO_DB_ROOT_USER');
+        if (is_string($envUser) && $envUser !== '') {
+            $admins[] = ['username' => $envUser, 'password' => (string) getenv('CASINO_DB_ROOT_PASS')];
         }
         $admins[] = ['username' => 'root', 'password' => ''];
         foreach ($admins as $admin) {
