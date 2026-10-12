@@ -833,7 +833,7 @@ DB_ADMIN=()
 db_admin_ok() {   # db_admin_ok comando... → conectou E tem cara de administrador (lê mysql.user)
   "$@" -N -e 'SELECT COUNT(*) FROM mysql.user' >/dev/null 2>&1
 }
-db_admin_detect() {   # descobre como falar com o MySQL como administrador, do jeito mais simples que funcionar
+db_admin_detect() {   # db_admin_detect [motivo] → descobre como falar com o MySQL como administrador, do jeito mais simples que funcionar
   [[ ${#DB_ADMIN[@]} -gt 0 ]] && return 0
   # 1) root sem senha, ou já somos root no Linux (o root do MariaDB entra pelo socket): XAMPP, contêineres, sudo bash
   if db_admin_ok mysql -uroot; then DB_ADMIN=(mysql -uroot); return 0; fi
@@ -842,7 +842,7 @@ db_admin_detect() {   # descobre como falar com o MySQL como administrador, do j
   # 3) Ubuntu/Debian: o root do MariaDB/MySQL não tem senha própria; entra pelo socket com sudo
   if [[ ${EUID} -ne 0 ]] && have sudo; then
     if [[ -n "${SUDO}" ]] || sudo -n true 2>/dev/null || has_tty; then
-      if setup_sudo "criar o banco de dados (o administrador do MySQL entra pelo sudo)" soft \
+      if setup_sudo "${1:-criar o banco de dados} (o administrador do MySQL entra pelo sudo)" soft \
          && db_admin_ok sudo mysql; then DB_ADMIN=(sudo mysql); return 0; fi
     fi
   fi
@@ -1686,7 +1686,7 @@ drop_db_leftovers() {   # drop_db_leftovers BANCO USUARIO [PASTA] [criado-pelo-a
   local db="$1" user="$2" dir="${3:-}" created="${4:-0}" line t type ours="" mine=() views=() foreign=()
   [[ "${db}" =~ ^[A-Za-z0-9_-]+$ ]] || return 0
   case "${db}" in mysql|information_schema|performance_schema|sys) return 0 ;; esac
-  db_admin_detect || { warn "Sem acesso de administrador ao MySQL: o banco '${db}' e o usuário '${user}' ficaram (apague pelo painel do MySQL)."; return 0; }
+  db_admin_detect "apagar o banco de dados" || { warn "Sem acesso de administrador ao MySQL: o banco '${db}' e o usuário '${user}' ficaram (apague pelo painel do MySQL)."; return 0; }
   if db_exists "${db}"; then
     [[ -n "${dir}" ]] && ours="$(app_tables "${dir}")"
     while IFS=$'\t' read -r t type; do
@@ -1779,6 +1779,10 @@ uninstall_one() {   # uninstall_one PASTA
   local dir="$1" db host user reg is_server=0 delete_dir=0 out
   db="$(env_value "${dir}" DB_DATABASE)"; host="$(env_value "${dir}" DB_HOST)"; user="$(env_value "${dir}" DB_USERNAME)"
   reg="$(registry_file_for "${dir}")"
+  # sem .env (ex.: já desinstalado pelo painel): o banco e o usuário anotados na instalação
+  if [[ -z "${db}" && -n "${reg}" && "$(registry_get "${reg}" DB_CREATED)" == "1" ]]; then
+    db="$(registry_get "${reg}" DB_NAME)"; user="$(registry_get "${reg}" DB_USER)"; host="127.0.0.1"
+  fi
   if [[ -n "$(server_site_for "${dir}")" || "${dir}" == /var/www/* || "$(registry_get "${reg:-/dev/null}" TYPE)" == "server" ]]; then is_server=1; fi
   echo; echo -e "  ${c_bold}${dir}${c_off}"
 
@@ -1910,12 +1914,47 @@ do_uninstall() {
 }
 
 have_local_db_installs() {
-  local d h
+  local d h reg
   for d in "${UN_SELECTED[@]}"; do
     h="$(env_value "${d}" DB_HOST)"
     if [[ -n "$(env_value "${d}" DB_DATABASE)" ]] && [[ -z "${h}" || "${h}" == "localhost" || "${h}" == "127.0.0.1" ]]; then return 0; fi
+    reg="$(registry_file_for "${d}")"
+    if [[ -n "${reg}" && "$(registry_get "${reg}" DB_CREATED)" == "1" ]]; then return 0; fi
   done
   return 1
+}
+
+remaining_databases() {   # bancos de instalações que continuam no computador (nunca entram na limpeza de restos)
+  ( APP_DIR=""; find_installs >/dev/null 2>&1 || exit 0
+    local d f
+    for d in ${UN_DIRS[@]+"${UN_DIRS[@]}"}; do env_value "${d}" DB_DATABASE; echo; done
+    while IFS= read -r f; do registry_get "${f}" DB_NAME; echo; done < <(registry_files) ) | awk 'NF' | sort -u
+}
+
+cleanup_orphan_databases() {   # bancos "casino*" que sobraram de instalações apagadas à mão (sempre pergunta)
+  [[ ${KEEP_DB} -eq 0 ]] || return 0
+  have mysql || return 0
+  db_admin_detect "procurar bancos de instalações antigas" || return 0
+  local keep db n sig found=() user
+  keep="$(remaining_databases)"
+  while IFS= read -r db; do
+    [[ -n "${db}" && "${db}" =~ ^[A-Za-z0-9_-]+$ ]] || continue
+    if grep -qxF -- "${db}" <<<"${keep}"; then continue; fi
+    n="$("${DB_ADMIN[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${db}'" 2>/dev/null || echo x)"
+    sig="$("${DB_ADMIN[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${db}' AND table_name IN ('settings','games','wallets','users','migrations','gateways')" 2>/dev/null || echo 0)"
+    # só bancos vazios ou com a cara do cassino (as tabelas principais dele)
+    if [[ "${n}" == "0" ]] || [[ "${n}" =~ ^[0-9]+$ && "${sig}" =~ ^[0-9]+$ && ${sig} -ge 5 ]]; then found+=("${db}"); fi
+  done < <("${DB_ADMIN[@]}" -N -e "SHOW DATABASES LIKE 'casino%'" 2>/dev/null || true)
+  [[ ${#found[@]} -gt 0 ]] || return 0
+  info "Bancos que parecem restos de instalações antigas: ${found[*]}"
+  confirm "Apagar esses bancos (e os usuários do MySQL que só acessam eles)? Antes, uma cópia de cada um é salva" n || return 0
+  for db in "${found[@]}"; do
+    local users=()
+    while IFS= read -r user; do [[ -n "${user}" ]] && users+=("${user}"); done < <("${DB_ADMIN[@]}" -N -e "SELECT DISTINCT User FROM mysql.db WHERE REPLACE(Db,'\\_','_')='${db}'" 2>/dev/null || true)
+    drop_db_leftovers "${db}" "${users[0]:-}" "" 1
+    for user in ${users[@]+"${users[@]:1}"}; do drop_db_leftovers "${db}" "${user}" "" 1; done
+  done
+  return 0
 }
 
 cleanup_leftovers() {   # restos que não pertencem a uma pasta: credenciais, registros órfãos, código-fonte, programas
@@ -1948,6 +1987,7 @@ cleanup_leftovers() {   # restos que não pertencem a uma pasta: credenciais, re
       rmdir /etc/casino-platform/installs /etc/casino-platform 2>/dev/null || true
     fi
     rmdir "${XDG_CONFIG_HOME:-${HOME}/.config}/casino-platform/installs" "${XDG_CONFIG_HOME:-${HOME}/.config}/casino-platform" 2>/dev/null || true
+    cleanup_orphan_databases
     purge_programs
   fi
   return 0
