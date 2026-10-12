@@ -98,6 +98,7 @@
 </template>
 
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
 import { initFlowbite, Tabs, Modal } from 'flowbite';
 import { onMounted } from "vue";
 
@@ -156,7 +157,7 @@ export default {
     mounted() {
 
         /// MISSION MODAL
-        const $targetEl = document.getElementById('modalMissionEl');
+        const $targetEl = 'modalMissionEl';
         const options = {
             placement: 'bottom-right',
             backdrop: 'dynamic',
@@ -178,7 +179,7 @@ export default {
             override: true
         };
 
-        this.modalMission = new Modal($targetEl, options, instanceOptions);
+        this.modalMission = lazyModal($targetEl, options, instanceOptions);
 
 
         /// MISSION TAB

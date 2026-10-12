@@ -16,7 +16,7 @@
         </div>
 
         @if($output)
-            <pre class="mt-4 overflow-x-auto rounded-lg bg-gray-950 p-4 text-xs text-gray-100">{{ $output }}</pre>
+            <pre style="margin-top:16px;overflow-x:auto;white-space:pre-wrap;border-radius:10px;background:#0b1120;color:#e5e7eb;padding:14px;font-size:12px;line-height:1.5">{{ $output }}</pre>
         @endif
     </x-filament::section>
 

@@ -64,6 +64,51 @@ class GameController extends Controller
      * @dev victormsalatiel
      * @return \Illuminate\Http\JsonResponse
      */
+    /**
+     * Ganhos reais mais recentes (para o carrossel "Top ganhos" da página inicial).
+     * Nome do jogador mascarado; só ganhos com dinheiro real (o modo demonstração não gera ordens).
+     */
+    public function recentWins()
+    {
+        $wins = \Illuminate\Support\Facades\Cache::remember('games:recent-wins', 30, function () {
+            $orders = \App\Models\Order::query()
+                ->where('type', 'win')->where('status', 1)->where('amount', '>', 0)
+                ->latest('id')->limit(40)
+                ->get(['user_id', 'game', 'amount', 'created_at']);
+            if ($orders->isEmpty()) {
+                return [];
+            }
+
+            $names = \App\Models\User::whereIn('id', $orders->pluck('user_id')->unique())->pluck('name', 'id');
+            $games = Game::where('status', 1)
+                ->where(fn ($q) => $q->whereIn('game_code', $orders->pluck('game')->unique())->orWhereIn('game_id', $orders->pluck('game')->unique()))
+                ->get(['id', 'game_code', 'game_id', 'game_name', 'cover', 'distribution']);
+
+            return $orders->map(function ($order) use ($names, $games) {
+                $game = $games->first(fn ($g) => $g->game_code === $order->game || $g->game_id === $order->game);
+                if (!$game) {
+                    return null;
+                }
+                $name = trim((string) ($names[$order->user_id] ?? ''));
+
+                return [
+                    'player' => $name !== '' ? mb_substr($name, 0, 2) . str_repeat('*', 4) : 'Jogador',
+                    'amount' => (float) $order->amount,
+                    'game'   => [
+                        'id'           => $game->id,
+                        'game_code'    => $game->game_code,
+                        'game_name'    => $game->game_name,
+                        'cover'        => $game->cover,
+                        'distribution' => $game->distribution,
+                    ],
+                    'at'     => optional($order->created_at)->toIso8601String(),
+                ];
+            })->filter()->values()->take(15)->all();
+        });
+
+        return response()->json(['wins' => $wins]);
+    }
+
     public function featured()
     {
         $featured_games = Game::with(['provider'])

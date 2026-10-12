@@ -17,7 +17,7 @@
 # =============================================================================
 set -Eeuo pipefail
 
-SCRIPT_VERSION="9.3.0"
+SCRIPT_VERSION="9.4.0"   # trocado pelo arquivo VERSION quando o assistente roda de dentro do projeto
 REPO_SLUG="${REPO_SLUG:-Edton180/casino}"
 REPO_URL="${REPO_URL:-https://github.com/${REPO_SLUG}.git}"
 BRANCH="${BRANCH:-main}"
@@ -36,6 +36,7 @@ if [[ -n "${SELF}" && -f "${SELF}" ]]; then
   if [[ -f "${SCRIPT_DIR}/../artisan" && -f "${SCRIPT_DIR}/../composer.json" ]]; then
     CHECKOUT="$(cd "${SCRIPT_DIR}/.." && pwd)"
   fi
+  if [[ -f "${SCRIPT_DIR}/../VERSION" ]]; then SCRIPT_VERSION="$(tr -d ' \r\n' < "${SCRIPT_DIR}/../VERSION")"; fi
 fi
 
 # ---- opções ----
@@ -46,7 +47,7 @@ SOURCE=""
 SRC_DIR="/opt/casino-src"
 PHP_VERSION="${PHP_VERSION:-8.3}"
 DOMAIN=""; ADMIN_EMAIL=""; ADMIN_PASS=""; SITE_NAME=""
-AUTO=0; ENABLE_SSL=0; STACK=0; LAN=0; NO_SERVE=0; REINSTALL=0; ASSUME_YES=0; SYS_UPGRADE=0; NO_COLOR_OPT=0
+AUTO=0; UN_ALL=0; PURGE=0; PURGE_PACKAGES=0; NO_BACKUP=0; KEEP_DB=0; RESTORE_FILE=""; ENABLE_SSL=0; STACK=0; LAN=0; NO_SERVE=0; REINSTALL=0; ASSUME_YES=0; SYS_UPGRADE=0; NO_COLOR_OPT=0
 HTTP_PORT=""
 DB_HOST=""; DB_PORT="3306"; DB_NAME=""; DB_USER=""; DB_PASS=""
 CRED_FILE=""
@@ -54,6 +55,9 @@ INTERACTIVE=0
 LOG="${TMPDIR:-/tmp}/casino-install-$(date +%Y%m%d-%H%M%S).log"
 STEP=0; STEPS=0
 SUDO=""; SUDO_KEEPALIVE_PID=""
+# o que esta execução instalou/criou (anotado no registro para a desinstalação não deixar rastros)
+INSTALLED_PKGS=""; COMPOSER_DOWNLOADED=""; SWAP_CREATED=""; DB_CREATED=0
+BACKUP_DIR="${HOME:-/root}/casino-backups"
 
 # =============================================================================
 #  Interface (cores, ícones, caixas, barra de progresso, animação)
@@ -130,12 +134,37 @@ box() {   # box "Título" "linha 1" "linha 2" ...
   [[ ${tcols} -gt 0 && ${inner} -gt $((tcols - 4)) ]] && inner=$((tcols - 4))
   [[ ${inner} -lt $((COLS - 4)) ]] && inner=$((COLS - 4))
   printf "%s%s%s%s %s%s%s %s%s%s\n" "${c_line}" "${B_TL}" "$(rep "${B_H}" 1)" "${c_off}" "${c_bold}" "${title}" "${c_off}" "${c_line}" "$(rep "${B_H}" $((inner - $(vlen "${title}") - 1)))" "${B_TR}${c_off}"
+  local part
   for l in "$@"; do
-    pad=$((inner - $(vlen "${l}")))
-    [[ ${pad} -lt 0 ]] && pad=0
-    printf "%s%s%s %s%*s %s%s%s\n" "${c_line}" "${B_V}" "${c_off}" "${l}" "${pad}" "" "${c_line}" "${B_V}" "${c_off}"
+    if [[ $(vlen "${l}") -le ${inner} ]]; then
+      pad=$((inner - $(vlen "${l}")))
+      printf "%s%s%s %s%*s %s%s%s\n" "${c_line}" "${B_V}" "${c_off}" "${l}" "${pad}" "" "${c_line}" "${B_V}" "${c_off}"
+      continue
+    fi
+    # linha maior que a tela: quebra nos espaços (caminhos longos são cortados), sem as cores
+    while IFS= read -r part; do
+      pad=$((inner - $(vlen "${part}"))); [[ ${pad} -lt 0 ]] && pad=0
+      printf "%s%s%s %s%*s %s%s%s\n" "${c_line}" "${B_V}" "${c_off}" "${part}" "${pad}" "" "${c_line}" "${B_V}" "${c_off}"
+    done < <(wrap_text "${inner}" "$(printf '%s' "${l}" | sed 's/\x1b\[[0-9;]*m//g')")
   done
   printf "%s%s%s%s\n" "${c_line}" "${B_BL}" "$(rep "${B_H}" $((inner + 2)))" "${B_BR}${c_off}"
+}
+wrap_text() {   # wrap_text LARGURA "texto" → linhas de até LARGURA caracteres; continuações recuadas como a 1ª linha (+2)
+  local LC_ALL=C.UTF-8
+  local width="$1" text="$2" indent next cur="" word words=()
+  indent="${text%%[! ]*}"; text="${text#"${indent}"}"; next="${indent}  "
+  read -ra words <<<"${text}"
+  for word in ${words[@]+"${words[@]}"}; do
+    while [[ $(( ${#indent} + ${#word} )) -gt ${width} ]]; do   # palavra maior que a linha (ex.: um caminho)
+      if [[ -n "${cur}" ]]; then printf '%s%s\n' "${indent}" "${cur}"; cur=""; indent="${next}"; fi
+      printf '%s%s\n' "${indent}" "${word:0:$((width - ${#indent}))}"; word="${word:$((width - ${#indent}))}"; indent="${next}"
+    done
+    if [[ -z "${cur}" ]]; then cur="${word}"
+    elif [[ $(( ${#indent} + ${#cur} + 1 + ${#word} )) -le ${width} ]]; then cur+=" ${word}"
+    else printf '%s%s\n' "${indent}" "${cur}"; cur="${word}"; indent="${next}"; fi
+  done
+  if [[ -n "${cur}" ]]; then printf '%s%s\n' "${indent}" "${cur}"; fi
+  return 0
 }
 
 banner() {
@@ -189,6 +218,27 @@ run() {   # run "descrição" comando args...
   fi
 }
 
+run_try() {   # run_try "descrição" comando...  → como o run, mas uma falha só avisa (devolve o código)
+  local desc="$1"; shift
+  local start=${SECONDS} rc=0 pid i=0
+  if [[ ${COLOR} -eq 1 ]]; then
+    tput civis 2>/dev/null || true
+    "$@" >>"${LOG}" 2>&1 &
+    pid=$!
+    while kill -0 "${pid}" 2>/dev/null; do
+      printf "\r  %s%s%s %s %s%s%s\033[K" "${c_accent}" "${SPIN[$((i % ${#SPIN[@]}))]}" "${c_off}" "${desc}" "${c_dim}" "$(fmt_time $((SECONDS - start)))" "${c_off}"
+      i=$((i + 1)); sleep 0.1
+    done
+    if wait "${pid}"; then rc=0; else rc=$?; fi
+    tput cnorm 2>/dev/null || true
+  else
+    if "$@" >>"${LOG}" 2>&1; then rc=0; else rc=$?; fi
+  fi
+  if [[ ${rc} -eq 0 ]]; then printf "\r  %s%s%s %s\033[K\n" "${c_green}" "${I_OK}" "${c_off}" "${desc}"
+  else printf "\r  %s%s%s %s %s(não deu; tentando outro caminho)%s\033[K\n" "${c_yellow}" "${I_WARN}" "${c_off}" "${desc}" "${c_dim}" "${c_off}"; fi
+  return "${rc}"
+}
+
 show_failure() {
   echo
   echo -e "${c_red}Falhou. Últimas linhas do registro:${c_off}"
@@ -219,9 +269,20 @@ Sem opções, abre o assistente com menu. Opções:
  O QUE FAZER
   --local                  Instala no seu computador (http://127.0.0.1:PORTA)
   --domain <dominio>       Instala em servidor (VPS) para esse domínio
-  --update                 Atualiza uma instalação existente
+  --update                 Atualiza sem perder dados (backup automático antes)
+  --backup                 Faz um backup completo (banco, .env e arquivos enviados)
+  --restore [arquivo.zip]  Restaura um backup (sem arquivo: escolhe entre os existentes)
+  --uninstall              Desinstala: mostra as instalações encontradas (inclusive restos
+                           de instalações antigas) e remove as escolhidas, com backup final
   --diagnose               Mostra o diagnóstico do ambiente e da instalação
   --start | --stop | --status   Liga, desliga ou consulta o site local
+
+ DESINSTALAR (com --uninstall)
+  --dir <pasta>            Só esta instalação          --all   Todas as encontradas
+  --purge                  Apaga também as pastas do código, sem perguntar
+  --purge-packages         Remove também os programas que o assistente instalou (PHP, MariaDB...)
+  --keep-database          Não apaga o banco de dados
+  --no-backup              Não faz o backup final (cuidado)
 
  DADOS DO SITE
   --name <nome>            Nome do site            (padrão: Meu Cassino)
@@ -286,6 +347,14 @@ while [[ $# -gt 0 ]]; do
     --reinstall) REINSTALL=1; shift ;;
     --no-color) COLOR=0; shift ;;
     --update) MODE="update"; shift ;;
+    --backup) MODE="backup"; shift ;;
+    --restore) MODE="restore"; if [[ $# -ge 2 && "$2" != --* ]]; then RESTORE_FILE="$2"; shift; fi; shift ;;
+    --uninstall|--desinstalar) MODE="uninstall"; shift ;;
+    --all) UN_ALL=1; shift ;;
+    --purge) PURGE=1; shift ;;
+    --purge-packages) PURGE_PACKAGES=1; shift ;;
+    --no-backup) NO_BACKUP=1; shift ;;
+    --keep-database) KEEP_DB=1; shift ;;
     --diagnose) MODE="diagnose"; shift ;;
     --start|--serve) MODE="start"; TARGET="${TARGET:-local}"; shift ;;
     --stop) MODE="stop"; TARGET="${TARGET:-local}"; shift ;;
@@ -438,7 +507,7 @@ NEED_PHP=0; NEED_DB=0; NEED_TOOLS=0
 preflight() {   # preflight local|server
   local mode="$1" v e
   box "Diagnóstico do ambiente" \
-      "$(printf '%-12s %s' 'Sistema' "${OS_NAME}$([[ ${IS_WSL} -eq 1 ]] && echo ' (WSL)')  ${DOT}  ${ARCH}")" \
+      "$(printf '%-12s %s' 'Sistema' "${OS_NAME}$([[ ${IS_WSL} -eq 1 ]] && echo ' (WSL)' || true)  ${DOT}  ${ARCH}")" \
       "$(printf '%-12s %s' 'Tipo' "$([[ ${IS_DESKTOP} -eq 1 ]] && echo 'computador com interface gráfica' || echo 'servidor / terminal')  ${DOT}  usuário $(id -un)")"
   echo
   [[ ${IS_APT} -eq 1 ]] && row ok "Gerenciador de pacotes" "apt (instalação automática disponível)" \
@@ -465,6 +534,7 @@ preflight() {   # preflight local|server
   else row warn "MySQL/MariaDB" "não instalado"; NEED_DB=1; fi
   if have composer && php_ok; then row ok "Composer" "$(composer --version 2>/dev/null | head -1 | cut -d' ' -f3 || true)"
   elif have composer; then row info "Composer" "instalado (vai funcionar depois do PHP)"
+  elif [[ -x "${HOME}/.local/bin/composer" ]] && php_ok; then row ok "Composer" "$(php "${HOME}/.local/bin/composer" --version 2>/dev/null | head -1 | cut -d' ' -f3 || true) (~/.local/bin)"
   else row info "Composer" "será baixado (não precisa de administrador)"; fi
   if [[ "${mode}" == "server" ]]; then
     have nginx && row ok "Nginx" "instalado" || row info "Nginx" "será instalado"
@@ -473,10 +543,19 @@ preflight() {   # preflight local|server
   echo
 }
 
+php_plan_label() {   # que PHP vai ser instalado (a 8.3 não existe em sistemas novos, ex.: Ubuntu 26.04)
+  if [[ ${IS_APT} -eq 1 ]] && ! apt-cache show "php${PHP_VERSION}-cli" >/dev/null 2>&1; then
+    local v; for v in 8.4 8.3 8.2 8.5; do
+      if apt-cache show "php${v}-cli" >/dev/null 2>&1; then echo "PHP ${PHP_VERSION} (ou o ${v} do seu sistema)"; return 0; fi
+    done
+  fi
+  echo "PHP ${PHP_VERSION}"
+}
+
 show_plan() {   # lista o que será instalado e pede confirmação
   local items=()
   [[ ${NEED_TOOLS} -eq 1 ]] && items+=("git, curl, unzip e rsync")
-  [[ ${NEED_PHP} -eq 1 ]] && items+=("PHP ${PHP_VERSION:-8.3} + extensões")
+  [[ ${NEED_PHP} -eq 1 ]] && items+=("$(php_plan_label) + extensões")
   [[ ${NEED_DB} -eq 1 ]] && items+=("MariaDB (banco de dados)")
   if [[ ${#items[@]} -eq 0 ]]; then ok "Seu ambiente já tem tudo o que é necessário."; return 0; fi
   local l=(); local it; for it in "${items[@]}"; do l+=("  ${I_ARROW} ${it}"); done
@@ -611,9 +690,15 @@ deploy_code() {   # copia SRC → APP_DIR (se forem pastas diferentes)
 # =============================================================================
 #  PHP, Composer, banco de dados
 # =============================================================================
-apt_install() {   # apt_install "descrição" pacotes...
+pkg_installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
+
+apt_install() {   # apt_install "descrição" pacotes...  (anota os que não existiam, para a desinstalação)
   local desc="$1"; shift
+  local p new=()
+  for p in "$@"; do pkg_installed "${p}" || new+=("${p}"); done
   run "${desc}" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@"
+  if [[ ${#new[@]} -gt 0 ]]; then INSTALLED_PKGS+=" ${new[*]}"; fi
+  return 0
 }
 
 # Repositório de PHP (PPA ondrej / sury) que não tem pacotes para esta versão do sistema derruba o "apt update":
@@ -683,23 +768,47 @@ system_upgrade() {
   run "Atualizando os pacotes do sistema" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq
 }
 
-ensure_composer() {
-  if have composer; then COMPOSER="composer"; return; fi
+ensure_composer() {   # 1) o que já existe  2) getcomposer.org  3) GitHub  4) pacote do sistema (apt)
+  if have composer; then COMPOSER="composer"; return 0; fi
   COMPOSER="${HOME}/.local/bin/composer"
-  if [[ ! -x "${COMPOSER}" ]]; then
-    mkdir -p "${HOME}/.local/bin"
-    local t; t="$(mktemp -d)"
-    run "Baixando o Composer" bash -c "cd '${t}' && curl -fsSL https://getcomposer.org/installer -o setup.php && php setup.php --quiet --install-dir='${HOME}/.local/bin' --filename=composer"
+  if [[ -x "${COMPOSER}" ]] && php "${COMPOSER}" --version >/dev/null 2>&1; then return 0; fi
+  mkdir -p "${HOME}/.local/bin"
+  local t; t="$(mktemp -d)"
+  if run_try "Baixando o Composer (getcomposer.org)" bash -c "cd '${t}' && curl -fsSL --retry 2 https://getcomposer.org/installer -o setup.php && php setup.php --quiet --install-dir='${HOME}/.local/bin' --filename=composer"; then
+    COMPOSER_DOWNLOADED="${COMPOSER}"
+  elif run_try "Baixando o Composer (GitHub)" bash -c "curl -fsSL --retry 2 -o '${t}/composer.phar' https://github.com/composer/composer/releases/latest/download/composer.phar && php '${t}/composer.phar' --version && install -m 755 '${t}/composer.phar' '${COMPOSER}'"; then
+    COMPOSER_DOWNLOADED="${COMPOSER}"
+  elif [[ ${IS_APT} -eq 1 ]] && { [[ ${EUID} -eq 0 ]] || setup_sudo "instalar o Composer do sistema" soft; }; then
+    apt_install "Instalando o Composer (pacote do sistema)" composer
+    COMPOSER="composer"
+  else
+    rm -rf "${t}"
+    die "Não consegui obter o Composer (sem acesso a getcomposer.org nem ao GitHub). Instale-o e rode de novo: https://getcomposer.org/download"
   fi
+  rm -rf "${t}"
+  return 0
 }
 
 composer_install() {
-  local args=(install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress)
+  local args=(install --no-dev --optimize-autoloader --no-interaction --no-progress)
+  # token do GitHub (--token/GITHUB_TOKEN): evita o limite de downloads anônimos do GitHub
+  if [[ -n "${TOKEN}" && -z "${COMPOSER_AUTH:-}" ]]; then export COMPOSER_AUTH="{\"github-oauth\":{\"github.com\":\"${TOKEN}\"}}"; fi
   ( cd "${APP_DIR}"
     export COMPOSER_ALLOW_SUPERUSER=1
-    if ! "${COMPOSER}" "${args[@]}" --dry-run >/dev/null 2>&1 && [[ -d vendor ]]; then rm -rf vendor; fi
+    if ! "${COMPOSER}" "${args[@]}" --prefer-dist --dry-run >/dev/null 2>&1 && [[ -d vendor ]]; then rm -rf vendor; fi
   ) || true
-  run "Instalando as dependências do PHP (pode levar alguns minutos)" bash -c "cd '${APP_DIR}' && COMPOSER_ALLOW_SUPERUSER=1 '${COMPOSER}' ${args[*]} || { rm -rf vendor; COMPOSER_ALLOW_SUPERUSER=1 '${COMPOSER}' ${args[*]}; }"
+  if ! run_try "Instalando as dependências do PHP (pode levar alguns minutos)" bash -c "cd '${APP_DIR}' && COMPOSER_ALLOW_SUPERUSER=1 '${COMPOSER}' ${args[*]} --prefer-dist"; then
+    # o GitHub limita downloads anônimos (erro "Could not authenticate against github.com"): baixa pelo git
+    have git || die "Não consegui baixar as dependências e o git não está instalado. Instale o git e rode de novo."
+    if ! run_try "Baixando as dependências pelo git (alternativa)" bash -c "cd '${APP_DIR}' && rm -rf vendor && COMPOSER_ALLOW_SUPERUSER=1 '${COMPOSER}' ${args[*]} --prefer-source"; then
+      show_failure
+      if grep -q "Could not authenticate against github.com\|API rate limit" "${LOG}"; then
+        info "O GitHub limitou os downloads deste endereço de internet. Espere 1 hora ou rode com um token:"
+        info "  bash instalar.sh --token SEU_TOKEN   (GitHub → Settings → Developer settings → Personal access tokens)"
+      fi
+      die "Não consegui instalar as dependências do PHP."
+    fi
+  fi
   if [[ ! -f "${APP_DIR}/public/build/manifest.json" ]]; then
     warn "O frontend não está compilado nesta cópia."
     have npm || die "Instale o Node.js 20+ e rode: cd ${APP_DIR} && npm ci && npm run build"
@@ -724,7 +833,7 @@ DB_ADMIN=()
 db_admin_ok() {   # db_admin_ok comando... → conectou E tem cara de administrador (lê mysql.user)
   "$@" -N -e 'SELECT COUNT(*) FROM mysql.user' >/dev/null 2>&1
 }
-db_admin_detect() {   # descobre como falar com o MySQL como administrador, do jeito mais simples que funcionar
+db_admin_detect() {   # db_admin_detect [motivo] → descobre como falar com o MySQL como administrador, do jeito mais simples que funcionar
   [[ ${#DB_ADMIN[@]} -gt 0 ]] && return 0
   # 1) root sem senha, ou já somos root no Linux (o root do MariaDB entra pelo socket): XAMPP, contêineres, sudo bash
   if db_admin_ok mysql -uroot; then DB_ADMIN=(mysql -uroot); return 0; fi
@@ -733,7 +842,7 @@ db_admin_detect() {   # descobre como falar com o MySQL como administrador, do j
   # 3) Ubuntu/Debian: o root do MariaDB/MySQL não tem senha própria; entra pelo socket com sudo
   if [[ ${EUID} -ne 0 ]] && have sudo; then
     if [[ -n "${SUDO}" ]] || sudo -n true 2>/dev/null || has_tty; then
-      if setup_sudo "criar o banco de dados (o administrador do MySQL entra pelo sudo)" soft \
+      if setup_sudo "${1:-criar o banco de dados} (o administrador do MySQL entra pelo sudo)" soft \
          && db_admin_ok sudo mysql; then DB_ADMIN=(sudo mysql); return 0; fi
     fi
   fi
@@ -775,7 +884,7 @@ db_admin_help() {   # explica como resolver quando nenhuma forma de entrar como 
 }
 
 provision_db() {   # provision_db <banco> <usuario>  → define DB_NAME/DB_USER/DB_PASS
-  DB_NAME="$1"; DB_USER="$2"; DB_PASS="$(random_secret 28)"; DB_HOST="127.0.0.1"
+  DB_NAME="$1"; DB_USER="$2"; DB_PASS="$(random_secret 28)"; DB_HOST="127.0.0.1"; DB_CREATED=1
   start_db_service || die "Não consegui ligar o MySQL/MariaDB. Veja o motivo com:  sudo systemctl status mariadb"
   db_admin_detect || { db_admin_help "${DB_NAME}" "${DB_USER}"; die "Não consegui acessar o MySQL como administrador."; }
   run "Criando o banco de dados '${DB_NAME}' e o usuário '${DB_USER}'" "${DB_ADMIN[@]}" -e "
@@ -796,7 +905,7 @@ APP_USER_CMD=()
 artisan_install() {
   [[ -n "${ADMIN_PASS}" ]] || ADMIN_PASS="$(random_secret 16)"
   ( cd "${APP_DIR}"
-    run "Criando tabelas, jogos iniciais e o administrador" "${APP_USER_CMD[@]}" php artisan system:install --no-interaction --overwrite \
+    run "Criando tabelas, jogos iniciais e o administrador" ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan system:install --no-interaction --overwrite \
       --url="${APP_URL}" --name="${SITE_NAME}" \
       --db-host="${DB_HOST}" --db-port="${DB_PORT}" --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-pass="${DB_PASS}" \
       --admin-email="${ADMIN_EMAIL}" --admin-pass="${ADMIN_PASS}" )
@@ -805,11 +914,11 @@ artisan_install() {
 
 verify_admin() {   # confere o login do administrador pelo mesmo caminho do formulário; repara se preciso
   local args=(--email="${ADMIN_EMAIL}" --password="${ADMIN_PASS}")
-  if ( cd "${APP_DIR}" && "${APP_USER_CMD[@]}" php artisan system:admin "${args[@]}" --check >>"${LOG}" 2>&1 ); then
+  if ( cd "${APP_DIR}" && ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan system:admin "${args[@]}" --check >>"${LOG}" 2>&1 ); then
     ok "Login do administrador conferido (${ADMIN_EMAIL})"; return 0
   fi
   warn "O login do administrador não conferiu; recriando o usuário..."
-  if ( cd "${APP_DIR}" && "${APP_USER_CMD[@]}" php artisan system:admin "${args[@]}" >>"${LOG}" 2>&1 ); then
+  if ( cd "${APP_DIR}" && ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan system:admin "${args[@]}" >>"${LOG}" 2>&1 ); then
     ok "Administrador recriado e conferido (${ADMIN_EMAIL})"
   else
     tail -n 8 "${LOG}" | sed "s/^/    /"
@@ -985,6 +1094,7 @@ Senha:         ${ADMIN_PASS}
 Banco:         ${DB_NAME}  (usuário ${DB_USER}, senha ${DB_PASS}, host ${DB_HOST})
 Pasta:         ${APP_DIR}
 EOF
+  registry_write
   local tilde='~' rel="${APP_DIR}/scripts/"; rel="${rel/#${HOME}/${tilde}}"
   echo
   box "Instalação local concluída em $(fmt_time $((SECONDS - T0)))" \
@@ -997,7 +1107,9 @@ EOF
     "  ${c_dim}Dados salvos em ${CRED_FILE}${c_off}" \
     "  ${c_dim}Desligar:  bash ${rel}auto-install.sh --stop${c_off}" \
     "  ${c_dim}Ligar:     bash ${rel}auto-install.sh --start${c_off}" \
-    "  ${c_dim}Atualizar: bash ${rel}auto-install.sh --update${c_off}"
+    "  ${c_dim}Atualizar: bash ${rel}auto-install.sh --update${c_off}" \
+    "  ${c_dim}Backup:    bash ${rel}auto-install.sh --backup${c_off}" \
+    "  ${c_dim}Remover:   bash ${rel}auto-install.sh --uninstall${c_off}"
   echo
   info "Próximo passo: leia docs/MANUAL-DE-USO.md (gateways de pagamento, jogos e rodapé)."
   [[ ${IS_WSL} -eq 1 ]] && info "WSL: abra o endereço acima no navegador do Windows."
@@ -1160,6 +1272,7 @@ ensure_swap() {   # servidor com pouca memória: cria 2 GB de swap (o Composer p
   confirm "Criar 2 GB de swap em /swapfile?" s || return 0
   if [[ ! -f /swapfile ]]; then
     run "Criando o swap de 2 GB" bash -c "fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048; chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile; grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab"
+    SWAP_CREATED="/swapfile"
   else
     swapon /swapfile >>"${LOG}" 2>&1 || true
   fi
@@ -1222,7 +1335,8 @@ do_server_install() {
   existing_install_check || { do_update; return; }
   legal_notice
 
-  step "Instalando Nginx, PHP ${PHP_VERSION} e MariaDB"
+  local php_label; if php_ok; then php_label="PHP $(php_ver)"; else php_label="$(php_plan_label)"; fi
+  step "Instalando Nginx, ${php_label} e MariaDB"
   ensure_swap
   server_packages
   tune_php_fpm
@@ -1264,6 +1378,7 @@ Senha:         ${DB_PASS}
 Pasta:         ${APP_DIR}
 Logs:          ${APP_DIR}/storage/logs
 EOF
+  registry_write
   echo
   box "Instalação concluída em $(fmt_time $((SECONDS - T0)))" \
     "" \
@@ -1273,8 +1388,9 @@ EOF
     "  Senha      ${ADMIN_PASS}" \
     "" \
     "  ${c_dim}Dados salvos em ${CRED_FILE} (só o root lê)${c_off}" \
-    "  ${c_dim}Atualizar:  sudo bash scripts/auto-install.sh --update${c_off}" \
-    "  ${c_dim}Backup:     sudo bash scripts/casino-backup${c_off}"
+    "  ${c_dim}Atualizar:  sudo bash ${SRC}/instalar.sh --update${c_off}" \
+    "  ${c_dim}Backup:     sudo bash ${SRC}/instalar.sh --backup${c_off}" \
+    "  ${c_dim}Remover:    sudo bash ${SRC}/instalar.sh --uninstall${c_off}"
   echo
   info "Próximo passo: configure os gateways em ${APP_URL}/admin (docs/PAGAMENTOS.md)."
 }
@@ -1282,14 +1398,18 @@ EOF
 # =============================================================================
 #  Atualizar
 # =============================================================================
-update_target() {
+update_target() {   # qual instalação manter: a pasta informada (--dir) > a cópia de onde o assistente roda > o servidor
   [[ -n "${TARGET}" ]] && return 0
+  if [[ -z "${APP_DIR}" && -n "${CHECKOUT}" && -f "${CHECKOUT}/.env" ]]; then APP_DIR="${CHECKOUT}"; fi
   if [[ -n "${APP_DIR}" && -f "${APP_DIR}/.env" ]]; then
-    if [[ -f /etc/nginx/sites-available/casino ]] && grep -q "${APP_DIR}" /etc/nginx/sites-available/casino 2>/dev/null; then TARGET="server"; else TARGET="local"; fi
+    if [[ -n "$(server_site_for "${APP_DIR}")" ]]; then TARGET="server"; else TARGET="local"; fi
     return 0
   fi
-  if [[ -f /var/www/casino/.env ]]; then TARGET="server"; APP_DIR="/var/www/casino"
-  elif [[ -n "${CHECKOUT}" && -f "${CHECKOUT}/.env" ]]; then TARGET="local"; APP_DIR="${CHECKOUT}"
+  if [[ -n "${APP_DIR}" ]]; then die "Não há instalação em ${APP_DIR} (sem .env)."; fi
+  if [[ -f "${HOME}/casino/.env" ]]; then   # pasta padrão da instalação no computador (assistente via curl | bash)
+    APP_DIR="${HOME}/casino"
+    if [[ -n "$(server_site_for "${APP_DIR}")" ]]; then TARGET="server"; else TARGET="local"; fi
+  elif [[ -f /var/www/casino/.env ]]; then TARGET="server"; APP_DIR="/var/www/casino"
   else die "Não encontrei uma instalação. Use --dir para informar a pasta (ou --local / --domain para instalar)."; fi
 }
 
@@ -1300,6 +1420,11 @@ do_update() {
   if [[ "${TARGET}" == "server" ]]; then APP_DIR="${APP_DIR:-/var/www/casino}"; APP_USER_CMD=(as_www); else APP_DIR="${APP_DIR:-${CHECKOUT}}"; APP_USER_CMD=(); fi
   [[ -f "${APP_DIR}/.env" ]] || die "Instalação não encontrada em ${APP_DIR}"
   detect_env
+  local from; from="$( { grep -o '"version": *"[^"]*"' "${APP_DIR}/storage/installed.lock" 2>/dev/null || true; } | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
+
+  step "Backup antes de atualizar (nada é apagado)"
+  if [[ ${NO_BACKUP} -eq 1 ]]; then warn "Backup pulado (--no-backup)."; else make_backup "${APP_DIR}"; fi
+  [[ -n "${LAST_BACKUP}" ]] && info "Backup: ${LAST_BACKUP}"
 
   step "Obtendo a versão nova do código"
   refresh_checkout
@@ -1309,30 +1434,606 @@ do_update() {
   if [[ "${TARGET}" == "server" ]]; then setup_sudo; apt_update; system_upgrade
   else system_upgrade_if_asked; fi
 
-  step "Colocando o site em manutenção"
-  ( cd "${APP_DIR}" && "${APP_USER_CMD[@]}" php artisan down --retry=30 >>"${LOG}" 2>&1 || true )
+  step "Atualizando arquivos e dependências (site em manutenção)"
+  ( cd "${APP_DIR}" && ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan down --retry=30 >>"${LOG}" 2>&1 || true )
   ok "Site em manutenção durante a atualização"
-  trap '( cd "${APP_DIR}" && "${APP_USER_CMD[@]}" php artisan up >/dev/null 2>&1 ); cleanup; echo -e "\n${c_red}${I_FAIL} Falha na atualização (linha ${LINENO}). O site foi reativado; veja ${LOG}${c_off}" >&2' ERR
-
-  step "Atualizando arquivos e dependências"
+  trap '( cd "${APP_DIR}" && ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan up >/dev/null 2>&1 ); cleanup; echo -e "\n${c_red}${I_FAIL} A atualização falhou (linha ${LINENO}). O site foi reativado e nenhum dado foi apagado; veja ${LOG}${c_off}" >&2; [[ -n "${LAST_BACKUP}" ]] && echo "  Para voltar ao estado anterior: bash instalar.sh --restore \"${LAST_BACKUP}\"" >&2' ERR
   deploy_code; ensure_composer; composer_install
   [[ "${TARGET}" == "server" ]] && fix_permissions
 
   step "Atualizando o banco de dados"
   ( cd "${APP_DIR}"
-    run "Rodando as migrações" "${APP_USER_CMD[@]}" php artisan migrate --force
-    run "Limpando o cache" "${APP_USER_CMD[@]}" php artisan optimize:clear )
+    if artisan_has system:update "${APP_DIR}"; then
+      run "Migrações, arquivos padrão, caches e versão" ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan system:update --force --no-backup
+    else
+      run "Rodando as migrações" ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan migrate --force
+      run "Limpando o cache" ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan optimize:clear
+    fi )
   if [[ "${TARGET}" == "server" && -f /etc/nginx/sites-available/casino ]] && grep -q 'try_files \$uri =404;' /etc/nginx/sites-available/casino; then
     sed -i 's#try_files \$uri =404;#try_files $uri /index.php?$query_string;#' /etc/nginx/sites-available/casino
     nginx -t -q && svc reload nginx || true
   fi
 
   step "Reativando o site"
-  ( cd "${APP_DIR}" && "${APP_USER_CMD[@]}" php artisan up >>"${LOG}" 2>&1 )
+  ( cd "${APP_DIR}" && ${APP_USER_CMD[@]+"${APP_USER_CMD[@]}"} php artisan up >>"${LOG}" 2>&1 )
+  trap 'cleanup; echo -e "\n${c_red}${I_FAIL} Erro inesperado na linha ${LINENO}: ${BASH_COMMAND}${c_off}\n  Detalhes em ${LOG}" >&2' ERR
   if [[ "${TARGET}" == "server" ]]; then svc reload "php$(php_ver)-fpm" >/dev/null 2>&1 || true
   elif local_running; then local_stop; local_start; fi
+  local to; to="$( { grep -o '"version": *"[^"]*"' "${APP_DIR}/storage/installed.lock" 2>/dev/null || true; } | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
   echo
-  box "Atualização concluída em $(fmt_time $((SECONDS - T0)))" "" "  Versão do código atualizada, banco migrado e cache limpo." ""
+  local lines=("" "  Versão: ${from:-anterior} → ${c_accent}${to:-${SCRIPT_VERSION}}${c_off}" "  Banco migrado, caches limpos; dados, .env e arquivos enviados mantidos.")
+  [[ -n "${LAST_BACKUP}" ]] && lines+=("  ${c_dim}Backup feito antes: ${LAST_BACKUP}${c_off}")
+  lines+=("")
+  box "Atualização concluída em $(fmt_time $((SECONDS - T0)))" "${lines[@]}"
+}
+
+# =============================================================================
+#  Registro do que o assistente instalou (para desinstalar sem deixar rastros)
+# =============================================================================
+registry_dir() { if [[ ${EUID} -eq 0 ]]; then echo "/etc/casino-platform/installs"; else echo "${XDG_CONFIG_HOME:-${HOME}/.config}/casino-platform/installs"; fi; }
+registry_files() {
+  local f
+  for f in /etc/casino-platform/installs/*.conf "${XDG_CONFIG_HOME:-${HOME}/.config}"/casino-platform/installs/*.conf; do
+    if [[ -f "${f}" ]]; then echo "${f}"; fi
+  done
+  return 0
+}
+registry_id() { printf '%s' "$1" | md5sum | cut -c1-12; }
+registry_get() { ( set +u; source "$1" >/dev/null 2>&1; printf '%s' "${!2:-}" ) || true; }
+registry_file_for() {   # arquivo de registro de uma pasta (ou vazio)
+  local f
+  while IFS= read -r f; do
+    if [[ "$(registry_get "${f}" DIR)" == "$1" ]]; then echo "${f}"; return 0; fi
+  done < <(registry_files)
+  return 0
+}
+merge_words() { echo "$@" | tr ' ' '\n' | awk 'NF && !seen[$0]++' | tr '\n' ' ' | sed 's/ $//'; }
+
+registry_write() {
+  local d f old_pkgs="" old_composer="" old_swap="" old_created=0
+  d="$(registry_dir)"
+  mkdir -p "${d}" 2>/dev/null || return 0
+  f="${d}/$(registry_id "${APP_DIR}").conf"
+  if [[ -f "${f}" ]]; then   # reinstalação: não perde o que foi instalado antes
+    old_pkgs="$(registry_get "${f}" PKGS)"; old_composer="$(registry_get "${f}" COMPOSER_LOCAL)"
+    old_swap="$(registry_get "${f}" SWAPFILE)"; old_created="$(registry_get "${f}" DB_CREATED)"
+  fi
+  {
+    printf 'DIR=%q\n' "${APP_DIR}"
+    printf 'TYPE=%q\n' "${TARGET}"
+    printf 'DB_NAME=%q\n' "${DB_NAME}"
+    printf 'DB_USER=%q\n' "${DB_USER}"
+    printf 'DB_CREATED=%q\n' "$(( DB_CREATED || ${old_created:-0} ))"
+    printf 'DOMAIN=%q\n' "${DOMAIN}"
+    printf 'PORT=%q\n' "${HTTP_PORT}"
+    printf 'SRC_DIR=%q\n' "$(if [[ "${TARGET}" == "server" && "${SRC}" == "${SRC_DIR}" ]]; then echo "${SRC_DIR}"; fi)"
+    printf 'CRED_FILE=%q\n' "${CRED_FILE}"
+    printf 'PKGS=%q\n' "$(merge_words ${old_pkgs} ${INSTALLED_PKGS})"
+    printf 'COMPOSER_LOCAL=%q\n' "${COMPOSER_DOWNLOADED:-${old_composer}}"
+    printf 'SWAPFILE=%q\n' "${SWAP_CREATED:-${old_swap}}"
+    printf 'INSTALLED_AT=%q\n' "$(date -Iseconds)"
+    printf 'VERSION=%q\n' "${SCRIPT_VERSION}"
+  } > "${f}"
+  chmod 600 "${f}" 2>/dev/null || true
+  return 0
+}
+
+# =============================================================================
+#  Backup e restauração
+# =============================================================================
+is_casino_dir() { [[ -f "$1/artisan" && -f "$1/app/Install/CasinoInstaller.php" ]]; }
+env_value() {   # env_value PASTA CHAVE
+  [[ -f "$1/.env" ]] || return 0
+  { grep -E "^$2=" "$1/.env" 2>/dev/null || true; } | tail -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//"
+}
+artisan_has() { ( cd "$2" 2>/dev/null && php artisan list --raw 2>/dev/null | grep -q "^$1 " ); }
+owned_by_www() { [[ ${EUID} -eq 0 && "$(stat -c %U "$1" 2>/dev/null)" == "www-data" ]]; }
+app_cmd() { APP_CMD=(); if owned_by_www "$1"; then APP_CMD=(as_www); fi; return 0; }
+backup_dir_for() { if owned_by_www "$1"; then echo "/var/backups/casino"; else echo "${BACKUP_DIR}"; fi; }
+
+LAST_BACKUP=""
+make_backup() {   # make_backup PASTA → backup completo; define LAST_BACKUP
+  local dir="$1" out; out="$(backup_dir_for "${dir}")"
+  app_cmd "${dir}"
+  mkdir -p "${out}"
+  if [[ ${#APP_CMD[@]} -gt 0 ]]; then chown www-data:www-data "${out}"; chmod 750 "${out}"; fi
+  if artisan_has system:backup "${dir}"; then
+    run "Backup do banco, do .env e dos arquivos enviados" ${APP_CMD[@]+"${APP_CMD[@]}"} php "${dir}/artisan" system:backup --output="${out}"
+  else
+    legacy_backup "${dir}" "${out}"
+  fi
+  LAST_BACKUP="$(ls -1t "${out}"/casino-backup-* 2>/dev/null | head -1 || true)"
+  return 0
+}
+
+legacy_backup() {   # instalações anteriores à 9.4 (sem o comando system:backup): mysqldump + arquivos
+  local dir="$1" out="$2" stamp tmp port; stamp="$(date +%Y%m%d-%H%M%S)"; tmp="$(mktemp -d)"
+  port="$(env_value "${dir}" DB_PORT)"
+  if have mysqldump; then
+    MYSQL_PWD="$(env_value "${dir}" DB_PASSWORD)" mysqldump --single-transaction -h "$(env_value "${dir}" DB_HOST)" \
+      -P "${port:-3306}" -u "$(env_value "${dir}" DB_USERNAME)" "$(env_value "${dir}" DB_DATABASE)" \
+      > "${tmp}/database.sql" 2>>"${LOG}" && DUMPED_DBS+="$(env_value "${dir}" DB_DATABASE)|" \
+      || warn "O mysqldump falhou (veja ${LOG}); o backup terá só os arquivos."
+  fi
+  local args=(-czf "${out}/casino-backup-${stamp}-antigo.tar.gz" -C "${tmp}" .) i first=1
+  for i in .env public/storage storage/app; do
+    if [[ -e "${dir}/${i}" ]]; then
+      if [[ ${first} -eq 1 ]]; then args+=(-C "${dir}"); first=0; fi
+      args+=("${i}")
+    fi
+  done
+  tar "${args[@]}" 2>>"${LOG}" || true
+  chmod 600 "${out}/casino-backup-${stamp}-antigo.tar.gz" 2>/dev/null || true   # contém o .env (senhas)
+  rm -rf "${tmp}"
+  ok "Backup (formato antigo: banco em SQL + arquivos) em ${out}"
+}
+
+do_backup() {
+  update_target
+  [[ "${TARGET}" == "server" ]] && require_root
+  STEPS=1; step "Backup de ${APP_DIR}"
+  make_backup "${APP_DIR}"
+  echo
+  box "Backup concluído" "" "  Arquivo   ${c_accent}${LAST_BACKUP}${c_off}" "" \
+    "  ${c_dim}Restaurar:  bash instalar.sh --restore \"${LAST_BACKUP}\"${c_off}" \
+    "  ${c_dim}Guarde uma cópia fora deste computador/servidor.${c_off}"
+}
+
+do_restore() {
+  update_target
+  [[ "${TARGET}" == "server" ]] && require_root
+  artisan_has system:restore "${APP_DIR}" || die "Esta instalação é anterior à 9.4: atualize primeiro (bash instalar.sh --update)."
+  STEPS=2; step "Escolhendo o backup"
+  local file="${RESTORE_FILE}" out; out="$(backup_dir_for "${APP_DIR}")"
+  if [[ -z "${file}" ]]; then
+    local list=() f
+    while IFS= read -r f; do list+=("${f}"); done < <(ls -1t "${out}"/casino-backup-*.zip "${APP_DIR}"/storage/app/backups/casino-backup-*.zip 2>/dev/null | head -8 || true)
+    [[ ${#list[@]} -gt 0 ]] || die "Nenhum backup encontrado em ${out} nem em ${APP_DIR}/storage/app/backups. Informe o arquivo: --restore /caminho/backup.zip"
+    local labels=() c
+    for f in "${list[@]}"; do labels+=("$(basename "${f}")  ($(du -h "${f}" | cut -f1))"); done
+    choose c "Qual backup restaurar? (o mais novo primeiro)" "${labels[@]}"
+    file="${list[$((c - 1))]}"
+  fi
+  [[ -f "${file}" ]] || die "Backup não encontrado: ${file}"
+  ok "Backup: ${file}"
+  warn "Os dados atuais do banco serão substituídos pelos do backup (antes, um backup do estado atual é feito)."
+  [[ ${ASSUME_YES} -eq 1 ]] || confirm "Restaurar agora?" n || die "Cancelado."
+  step "Restaurando"
+  app_cmd "${APP_DIR}"
+  if [[ ${#APP_CMD[@]} -gt 0 ]]; then chmod 644 "${file}" 2>/dev/null || true; fi
+  run "Restaurando banco e arquivos (e aplicando migrações novas)" ${APP_CMD[@]+"${APP_CMD[@]}"} php "${APP_DIR}/artisan" system:restore "${file}" --force
+  if [[ "${TARGET}" == "local" ]] && local_running; then local_stop >/dev/null; local_start; fi
+  echo
+  box "Backup restaurado" "" "  ${file}" ""
+}
+
+# =============================================================================
+#  Desinstalar (uma ou várias instalações, inclusive restos de instalações antigas)
+# =============================================================================
+has_install_traces() { [[ -f "$1/.env" || -f "$1/storage/installed.lock" || -d "$1/vendor" || -f "$1/storage/local-server.pid" ]]; }
+UN_DIRS=()
+add_candidate() {
+  local d x; d="$(cd "$1" 2>/dev/null && pwd -P)" || return 0
+  for x in ${UN_DIRS[@]+"${UN_DIRS[@]}"}; do [[ "${x}" == "${d}" ]] && return 0; done
+  UN_DIRS+=("${d}")
+}
+find_installs() {
+  UN_DIRS=()
+  local f d
+  if [[ -n "${APP_DIR}" ]]; then
+    is_casino_dir "${APP_DIR}" || die "${APP_DIR} não é uma pasta do Casino Platform."
+    add_candidate "${APP_DIR}"; return 0
+  fi
+  while IFS= read -r f; do d="$(registry_get "${f}" DIR)"; if [[ -n "${d}" ]] && is_casino_dir "${d}"; then add_candidate "${d}"; fi; done < <(registry_files)
+  if [[ -n "${CHECKOUT}" ]] && is_casino_dir "${CHECKOUT}"; then add_candidate "${CHECKOUT}"; fi
+  for d in /var/www/casino* /var/www/html/casino* /opt/casino-src; do if is_casino_dir "${d}"; then add_candidate "${d}"; fi; done
+  # cópias antigas na pasta pessoal (inclusive uma dentro da outra: ~/casino/casino/casino)
+  while IFS= read -r f; do
+    d="${f%/app/Install/CasinoInstaller.php}"
+    if is_casino_dir "${d}"; then add_candidate "${d}"; fi
+  done < <(find "${HOME}" -maxdepth 7 -type f -name CasinoInstaller.php -path '*/app/Install/*' \
+             -not -path '*/node_modules/*' -not -path '*/vendor/*' -not -path '*/.cache/*' -not -path '*/.local/share/Trash/*' 2>/dev/null || true)
+  return 0
+}
+install_state() {   # instalado | parcial | só o código
+  if [[ -f "$1/storage/installed.lock" ]]; then echo "instalado"
+  elif has_install_traces "$1"; then echo "parcial"
+  else echo "só o código"; fi
+}
+server_site_for() { if [[ -f /etc/nginx/sites-available/casino ]] && grep -q "root $1/public;" /etc/nginx/sites-available/casino 2>/dev/null; then echo /etc/nginx/sites-available/casino; fi; return 0; }
+dir_running() { pgrep -f "^php -S .*$1/vendor" >/dev/null 2>&1 || { [[ -f "$1/storage/local-server.pid" ]] && kill -0 "$(cat "$1/storage/local-server.pid" 2>/dev/null)" 2>/dev/null; }; }
+safe_to_delete() {   # nunca apaga /, a pasta pessoal ou pastas de sistema
+  local d; d="$(cd "$1" 2>/dev/null && pwd -P)" || return 1
+  case "${d}" in /|/home|/root|/var|/var/www|/var/www/html|/opt|/srv|/usr|/usr/*|/etc|/etc/*|/tmp|"${HOME}") return 1 ;; esac
+  is_casino_dir "${d}"
+}
+
+db_exists() { "${DB_ADMIN[@]}" -N -e "SELECT 1 FROM information_schema.schemata WHERE schema_name='$1'" 2>/dev/null | grep -q 1; }
+db_tables() {   # db_tables BANCO → "nome<TAB>tipo" de cada tabela/view do banco
+  "${DB_ADMIN[@]}" -N -e "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema='$1'" 2>/dev/null || true
+}
+app_tables() {   # app_tables PASTA → tabelas do cassino (base.sql + migrações da própria pasta), uma por linha, em minúsculas
+  [[ -f "$1/database/install/base.sql" ]] && have php || return 0
+  php -r '$d = $argv[1]; $n = ["migrations"];
+    if (preg_match_all("/CREATE TABLE `([^`]+)`/i", (string) @file_get_contents("$d/database/install/base.sql"), $m)) { $n = array_merge($n, $m[1]); }
+    foreach (glob("$d/database/migrations/*.php") ?: [] as $f) { if (preg_match_all("/Schema::create\(\s*[\x27\"]([^\x27\"]+)[\x27\"]/", (string) file_get_contents($f), $m)) { $n = array_merge($n, $m[1]); } }
+    echo implode("\n", array_unique(array_map("strtolower", $n))), "\n";' "$1" 2>/dev/null || true
+}
+DUMPED_DBS="|"
+db_dump() {   # db_dump BANCO → cópia do banco (mysqldump com a mesma conta administradora) em BACKUP_DIR
+  local db="$1" cmd=() x swapped=0 file
+  [[ "${DUMPED_DBS}" == *"|${db}|"* ]] && return 0
+  have mysqldump || return 1
+  for x in "${DB_ADMIN[@]}"; do
+    if [[ ${swapped} -eq 0 && ( "${x}" == mysql || "${x}" == mariadb ) ]]; then cmd+=(mysqldump); swapped=1; else cmd+=("${x}"); fi
+  done
+  mkdir -p "${BACKUP_DIR}" 2>/dev/null || return 1
+  file="${BACKUP_DIR}/casino-banco-${db}-$(date +%Y%m%d-%H%M%S).sql"
+  if "${cmd[@]}" --single-transaction --routines "${db}" > "${file}" 2>>"${LOG}"; then
+    chmod 600 "${file}" 2>/dev/null || true
+    if have gzip && gzip -f "${file}" 2>>"${LOG}"; then file="${file}.gz"; fi
+    DUMPED_DBS+="${db}|"; ok "Cópia do banco '${db}' salva em ${file}"; return 0
+  fi
+  rm -f "${file}"; return 1
+}
+db_user_elsewhere() {   # o usuário do MySQL tem acesso a outros bancos? (então não é apagado)
+  local n; n="$("${DB_ADMIN[@]}" -N -e "SELECT COUNT(*) FROM mysql.db WHERE User='$1' AND REPLACE(Db,'\\\\_','_') <> '$2'" 2>/dev/null || echo 0)"
+  [[ "${n}" =~ ^[0-9]+$ && "${n}" -gt 0 ]]
+}
+drop_db_leftovers() {   # drop_db_leftovers BANCO USUARIO [PASTA] [criado-pelo-assistente 0|1]
+  # Apaga o banco do site e o usuário do MySQL. Tabelas são reconhecidas pelo código da pasta (base.sql + migrações):
+  # se o banco tiver tabelas de outro sistema, só as do cassino saem e o banco fica.
+  local db="$1" user="$2" dir="${3:-}" created="${4:-0}" line t type ours="" mine=() views=() foreign=()
+  [[ "${db}" =~ ^[A-Za-z0-9_-]+$ ]] || return 0
+  case "${db}" in mysql|information_schema|performance_schema|sys) return 0 ;; esac
+  db_admin_detect "apagar o banco de dados" || { warn "Sem acesso de administrador ao MySQL: o banco '${db}' e o usuário '${user}' ficaram (apague pelo painel do MySQL)."; return 0; }
+  if db_exists "${db}"; then
+    [[ -n "${dir}" ]] && ours="$(app_tables "${dir}")"
+    while IFS=$'\t' read -r t type; do
+      [[ -n "${t}" ]] || continue
+      if { [[ -n "${ours}" ]] && grep -qxiF -- "${t}" <<<"${ours}"; } || { [[ -z "${ours}" && "${created}" == "1" ]]; }; then
+        if [[ "${type}" == "VIEW" ]]; then views+=("${t}"); else mine+=("${t}"); fi
+      else
+        foreign+=("${t}")
+      fi
+    done < <(db_tables "${db}")
+    if [[ $(( ${#mine[@]} + ${#views[@]} )) -gt 0 && ${NO_BACKUP} -eq 0 ]]; then
+      db_dump "${db}" || warn "Não consegui copiar o banco '${db}' antes de apagar (veja ${LOG})."
+    fi
+    if [[ ${#foreign[@]} -eq 0 ]]; then
+      "${DB_ADMIN[@]}" -e "DROP DATABASE IF EXISTS \`${db}\`" >>"${LOG}" 2>&1 && ok "Banco '${db}' apagado"
+    else
+      local sql="SET FOREIGN_KEY_CHECKS=0;"
+      for t in ${views[@]+"${views[@]}"}; do sql+=" DROP VIEW IF EXISTS \`${db}\`.\`${t}\`;"; done
+      for t in ${mine[@]+"${mine[@]}"}; do sql+=" DROP TABLE IF EXISTS \`${db}\`.\`${t}\`;"; done
+      if [[ $(( ${#mine[@]} + ${#views[@]} )) -gt 0 ]]; then
+        "${DB_ADMIN[@]}" -e "${sql}" >>"${LOG}" 2>&1 && ok "$(( ${#mine[@]} + ${#views[@]} )) tabela(s) do cassino apagadas do banco '${db}'"
+      fi
+      warn "O banco '${db}' tem tabelas de outro sistema (${foreign[*]:0:5}$([[ ${#foreign[@]} -gt 5 ]] && echo '...' || true)): ele foi mantido."
+      return 0
+    fi
+  fi
+  case "${user}" in ""|root|mysql|mariadb.sys|debian-sys-maint|admin|phpmyadmin) return 0 ;; esac
+  [[ "${user}" =~ ^[A-Za-z0-9_.-]+$ ]] || return 0
+  if db_user_elsewhere "${user}" "${db}"; then warn "O usuário '${user}' do MySQL tem acesso a outros bancos: ele foi mantido."; return 0; fi
+  if "${DB_ADMIN[@]}" -N -e "SELECT COUNT(*) FROM mysql.user WHERE User='${user}'" 2>/dev/null | grep -qx 0; then return 0; fi
+  "${DB_ADMIN[@]}" -e "DROP USER IF EXISTS '${user}'@'localhost'; DROP USER IF EXISTS '${user}'@'127.0.0.1'; DROP USER IF EXISTS '${user}'@'%'; FLUSH PRIVILEGES;" >>"${LOG}" 2>&1 \
+    && ok "Usuário '${user}' do MySQL apagado"
+  return 0
+}
+
+server_cleanup() {   # Nginx, SSL, agendador, logrotate, PHP-FPM e código-fonte de uma instalação de servidor
+  local dir="$1" site domain
+  site="$(server_site_for "${dir}")"
+  if [[ -n "${site}" ]]; then
+    domain="$(awk '/server_name/{print $2; exit}' "${site}" | tr -d ';')"
+    rm -f /etc/nginx/sites-enabled/casino "${site}"
+    # devolve o site padrão do Nginx, se não sobrar nenhum outro
+    if [[ -f /etc/nginx/sites-available/default && -z "$(ls -A /etc/nginx/sites-enabled 2>/dev/null)" ]]; then
+      ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+      # servidor sem IPv6: o site padrão (listen [::]:80) derrubaria o Nginx
+      if have nginx && ! nginx -t >>"${LOG}" 2>&1; then rm -f /etc/nginx/sites-enabled/default; fi
+    fi
+    if have nginx && nginx -t >>"${LOG}" 2>&1; then svc reload nginx >>"${LOG}" 2>&1 || true; fi
+    ok "Site do Nginx removido"
+    if [[ -n "${domain}" && "${domain}" != "localhost" && -d "/etc/letsencrypt/live/${domain}" ]] && have certbot; then
+      if confirm "Apagar também o certificado SSL de ${domain}?" s; then
+        certbot delete --cert-name "${domain}" --non-interactive >>"${LOG}" 2>&1 && ok "Certificado SSL de ${domain} apagado" || warn "Não consegui apagar o certificado (certbot delete --cert-name ${domain})."
+      fi
+    fi
+  fi
+  if have crontab && crontab -u www-data -l >/dev/null 2>&1; then
+    { crontab -u www-data -l 2>/dev/null | grep -Fv "cd ${dir} && php artisan schedule:run" || true; } | crontab -u www-data - && ok "Agendador (cron) removido"
+  fi
+  if [[ -f /etc/logrotate.d/casino ]] && grep -q "${dir}/storage/logs" /etc/logrotate.d/casino; then rm -f /etc/logrotate.d/casino; ok "Rotação de logs removida"; fi
+  return 0
+}
+
+pick_installs() {   # mostra as instalações encontradas e define UN_SELECTED
+  UN_SELECTED=()
+  local i d state db extra
+  echo
+  for i in "${!UN_DIRS[@]}"; do
+    d="${UN_DIRS[${i}]}"; state="$(install_state "${d}")"; db="$(env_value "${d}" DB_DATABASE)"; extra=""
+    [[ -n "${db}" ]] && extra+=" · banco ${db}"
+    dir_running "${d}" && extra+=" · ${c_green}ligado${c_off}"
+    [[ -n "$(server_site_for "${d}")" ]] && extra+=" · servidor Nginx"
+    [[ "${d}" == "${CHECKOUT}" ]] && extra+=" · ${c_dim}(esta pasta)${c_off}"
+    printf "  %s%2d)%s %s  %s%s%s%s\n" "${c_bold}" $((i + 1)) "${c_off}" "${d}" "${c_dim}" "${state}" "${c_off}" "${extra}"
+  done
+  echo
+  if [[ ${UN_ALL} -eq 1 || ${#UN_DIRS[@]} -eq 1 && -n "${APP_DIR}" ]]; then UN_SELECTED=("${UN_DIRS[@]}"); return 0; fi
+  if [[ ${INTERACTIVE} -eq 0 ]]; then die "Diga o que remover: --dir PASTA (uma) ou --all (todas as listadas)."; fi
+  local answer n
+  ask answer "Quais remover? Números separados por espaço, T = todas, ENTER = cancelar" ""
+  answer="$(echo "${answer}" | tr 'a-z,' 'A-Z ')"
+  [[ -n "${answer// /}" ]] || die "Cancelado."
+  if [[ "${answer}" == *T* ]]; then UN_SELECTED=("${UN_DIRS[@]}"); return 0; fi
+  for n in ${answer}; do
+    if [[ "${n}" =~ ^[0-9]+$ && ${n} -ge 1 && ${n} -le ${#UN_DIRS[@]} ]]; then UN_SELECTED+=("${UN_DIRS[$((n - 1))]}"); else die "Opção inválida: ${n}"; fi
+  done
+  return 0
+}
+
+uninstall_one() {   # uninstall_one PASTA
+  local dir="$1" db host user reg is_server=0 delete_dir=0 out
+  db="$(env_value "${dir}" DB_DATABASE)"; host="$(env_value "${dir}" DB_HOST)"; user="$(env_value "${dir}" DB_USERNAME)"
+  reg="$(registry_file_for "${dir}")"
+  # sem .env (ex.: já desinstalado pelo painel): o banco e o usuário anotados na instalação
+  if [[ -z "${db}" && -n "${reg}" && "$(registry_get "${reg}" DB_CREATED)" == "1" ]]; then
+    db="$(registry_get "${reg}" DB_NAME)"; user="$(registry_get "${reg}" DB_USER)"; host="127.0.0.1"
+  fi
+  if [[ -n "$(server_site_for "${dir}")" || "${dir}" == /var/www/* || "$(registry_get "${reg:-/dev/null}" TYPE)" == "server" ]]; then is_server=1; fi
+  echo; echo -e "  ${c_bold}${dir}${c_off}"
+
+  # 1. servidor local (php -S) desta pasta
+  if dir_running "${dir}"; then
+    local pf="${dir}/storage/local-server.pid"
+    if [[ -f "${pf}" ]]; then pkill -P "$(cat "${pf}")" 2>/dev/null || true; kill "$(cat "${pf}")" 2>/dev/null || true; fi
+    pkill -f "^php -S .*${dir}/vendor" 2>/dev/null || true
+    ok "Servidor local desligado"
+  fi
+  if have docker && [[ -n "$(docker ps -aq --filter "label=com.docker.compose.project.working_dir=${dir}" 2>/dev/null)" ]]; then
+    run "Removendo os contêineres Docker (e os volumes)" docker compose --project-directory "${dir}" down -v --remove-orphans
+  fi
+
+  # 2. backup final + tabelas, .env, uploads, logs e caches (pelo próprio sistema, quando possível)
+  if [[ -f "${dir}/.env" && -f "${dir}/vendor/autoload.php" ]] && artisan_has system:uninstall "${dir}"; then
+    app_cmd "${dir}"
+    out="$(backup_dir_for "${dir}")"; mkdir -p "${out}"
+    if [[ ${#APP_CMD[@]} -gt 0 ]]; then chown www-data:www-data "${out}"; chmod 750 "${out}"; fi
+    local args=(--force)
+    if [[ ${NO_BACKUP} -eq 1 ]]; then args+=(--no-backup); else args+=(--backup-dir="${out}"); fi
+    if [[ ${KEEP_DB} -eq 1 ]]; then args+=(--keep-database); fi
+    run "Backup final e limpeza do sistema (tabelas, .env, uploads, logs)" ${APP_CMD[@]+"${APP_CMD[@]}"} php "${dir}/artisan" system:uninstall "${args[@]}"
+    if [[ ${NO_BACKUP} -eq 0 ]]; then LAST_BACKUP="$(ls -1t "${out}"/casino-backup-* 2>/dev/null | head -1 || true)"; [[ -n "${LAST_BACKUP}" ]] && info "Backup final: ${LAST_BACKUP}"; fi
+  elif [[ -f "${dir}/.env" ]]; then
+    if [[ ${NO_BACKUP} -eq 0 && -n "${db}" ]]; then make_backup "${dir}"; fi
+    rm -f "${dir}/.env" "${dir}/storage/installed.lock" "${dir}/storage/install.token" "${dir}/storage/local-server.pid"
+    rm -rf "${dir}/public/storage"
+    ok "Arquivos de configuração removidos"
+  fi
+
+  # 3. banco e usuário do MySQL (só os do site; bancos com tabelas de outros sistemas ficam)
+  if [[ ${KEEP_DB} -eq 0 && -n "${db}" ]] && [[ -z "${host}" || "${host}" == "localhost" || "${host}" == "127.0.0.1" || "${host}" == "::1" ]]; then
+    drop_db_leftovers "${db}" "${user}" "${dir}" "$(registry_get "${reg:-/dev/null}" DB_CREATED)"
+  elif [[ -n "${db}" && ${KEEP_DB} -eq 0 ]]; then
+    info "Banco em outro servidor (${host}): apague '${db}' por lá, se quiser."
+  fi
+
+  # 4. servidor web, agendador etc.
+  if [[ ${is_server} -eq 1 && ${EUID} -eq 0 ]]; then server_cleanup "${dir}"; fi
+
+  # 5. a pasta
+  if [[ ${is_server} -eq 1 || ${PURGE} -eq 1 ]]; then delete_dir=1
+  elif [[ ${INTERACTIVE} -eq 1 ]]; then
+    if [[ "${dir}" == "${CHECKOUT}" ]]; then
+      confirm "Apagar também a pasta com o código (${dir})?" n && delete_dir=1
+    else
+      confirm "Apagar a pasta ${dir} inteira?" s && delete_dir=1
+    fi
+  fi
+  if [[ ${delete_dir} -eq 1 ]]; then
+    if safe_to_delete "${dir}"; then
+      ${SUDO} rm -rf "${dir}" && ok "Pasta apagada"
+      # cópia extraída dentro de outra pasta (casino-main/casino-main): a de fora ficou vazia
+      local parent; parent="$(dirname "${dir}")"
+      if [[ "$(basename "${parent}")" == casino* ]]; then ${SUDO} rmdir "${parent}" 2>/dev/null || true; fi
+    else
+      warn "Por segurança, não apago ${dir} automaticamente; apague à mão se quiser."
+    fi
+  elif [[ -d "${dir}/vendor" ]]; then
+    rm -rf "${dir}/vendor" && ok "Dependências (vendor) removidas; o código ficou em ${dir}"
+  fi
+
+  if [[ -n "${reg}" ]]; then
+    UN_PKGS="$(merge_words ${UN_PKGS} "$(registry_get "${reg}" PKGS)")"
+    UN_COMPOSER="$(registry_get "${reg}" COMPOSER_LOCAL)${UN_COMPOSER:+ ${UN_COMPOSER}}"
+    UN_SWAP="$(registry_get "${reg}" SWAPFILE)${UN_SWAP:+ ${UN_SWAP}}"
+    UN_SRC="$(registry_get "${reg}" SRC_DIR)${UN_SRC:+ ${UN_SRC}}"
+    rm -f "${reg}"
+  fi
+  return 0
+}
+
+do_uninstall() {
+  detect_env
+  STEPS=3
+  step "Procurando instalações"
+  find_installs
+  if [[ ${#UN_DIRS[@]} -eq 0 ]]; then
+    ok "Nenhuma instalação do Casino Platform encontrada${APP_DIR:+ em ${APP_DIR}}."
+    cleanup_leftovers
+    return 0
+  fi
+  info "Encontradas ${#UN_DIRS[@]} pasta(s) do Casino Platform:"
+  pick_installs
+  local d
+  if [[ ${EUID} -ne 0 ]]; then
+    for d in "${UN_SELECTED[@]}"; do
+      if [[ -n "$(server_site_for "${d}")" || "${d}" == /var/www/* || ! -w "${d}" ]]; then
+        die "Remover ${d} precisa de administrador (é uma instalação de servidor). Rode:  sudo bash ${SELF:-scripts/auto-install.sh} --uninstall --dir ${d}"
+      fi
+    done
+  fi
+
+  step "O que será feito"
+  local lines=()
+  for d in "${UN_SELECTED[@]}"; do lines+=("  ${c_red}${I_FAIL}${c_off} ${d}  (${c_dim}$(install_state "${d}")${c_off})"); done
+  lines+=("" "  Para cada uma: backup final$([[ ${NO_BACKUP} -eq 1 ]] && echo ' (desligado: --no-backup)' || true), desligar o site, apagar o banco e o usuário")
+  lines+=("  do MySQL$([[ ${KEEP_DB} -eq 1 ]] && echo ' (mantidos: --keep-database)' || true), .env, uploads, logs, e o servidor web/agendador.")
+  lines+=("  Backups ficam em ${BACKUP_DIR} (servidor: /var/backups/casino).")
+  box "Desinstalar" "${lines[@]}"
+  if [[ ${INTERACTIVE} -eq 1 ]]; then
+    local answer; ask answer "Para confirmar, digite DESINSTALAR" ""
+    [[ "$(echo "${answer}" | tr 'a-z' 'A-Z')" == "DESINSTALAR" ]] || die "Cancelado."
+  elif [[ ${ASSUME_YES} -eq 0 ]]; then
+    die "Sem terminal para confirmar: rode com -y para desinstalar sem perguntas."
+  fi
+
+  # o administrador do MySQL e o sudo são pedidos uma vez só, antes de começar
+  if [[ ${KEEP_DB} -eq 0 && ${EUID} -ne 0 ]] && have sudo && have_local_db_installs; then
+    setup_sudo "apagar os bancos de dados" soft || true
+  fi
+
+  step "Removendo"
+  UN_PKGS=""; UN_COMPOSER=""; UN_SWAP=""; UN_SRC=""
+  for d in "${UN_SELECTED[@]}"; do uninstall_one "${d}"; done
+  cleanup_leftovers
+
+  echo
+  local summary=("" "  Removidas: ${#UN_SELECTED[@]} instalação(ões).")
+  if [[ -n "${LAST_BACKUP}" ]]; then
+    summary+=("  Último backup: ${c_accent}${LAST_BACKUP}${c_off}"
+              "  ${c_dim}Para reinstalar com os dados: instale e rode  bash instalar.sh --restore ARQUIVO${c_off}"
+              "  ${c_dim}Os backups ficam guardados de propósito; se não precisar mais, apague a pasta${c_off}"
+              "  ${c_dim}$(dirname "${LAST_BACKUP}")${c_off}")
+  fi
+  summary+=("")
+  box "Desinstalação concluída" "${summary[@]}"
+}
+
+have_local_db_installs() {
+  local d h reg
+  for d in "${UN_SELECTED[@]}"; do
+    h="$(env_value "${d}" DB_HOST)"
+    if [[ -n "$(env_value "${d}" DB_DATABASE)" ]] && [[ -z "${h}" || "${h}" == "localhost" || "${h}" == "127.0.0.1" ]]; then return 0; fi
+    reg="$(registry_file_for "${d}")"
+    if [[ -n "${reg}" && "$(registry_get "${reg}" DB_CREATED)" == "1" ]]; then return 0; fi
+  done
+  return 1
+}
+
+remaining_databases() {   # bancos de instalações que continuam no computador (nunca entram na limpeza de restos)
+  ( APP_DIR=""; find_installs >/dev/null 2>&1 || exit 0
+    local d f
+    for d in ${UN_DIRS[@]+"${UN_DIRS[@]}"}; do env_value "${d}" DB_DATABASE; echo; done
+    while IFS= read -r f; do registry_get "${f}" DB_NAME; echo; done < <(registry_files) ) | awk 'NF' | sort -u
+}
+
+cleanup_orphan_databases() {   # bancos "casino*" que sobraram de instalações apagadas à mão (sempre pergunta)
+  [[ ${KEEP_DB} -eq 0 ]] || return 0
+  have mysql || return 0
+  db_admin_detect "procurar bancos de instalações antigas" || return 0
+  local keep db n sig found=() user
+  keep="$(remaining_databases)"
+  while IFS= read -r db; do
+    [[ -n "${db}" && "${db}" =~ ^[A-Za-z0-9_-]+$ ]] || continue
+    if grep -qxF -- "${db}" <<<"${keep}"; then continue; fi
+    n="$("${DB_ADMIN[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${db}'" 2>/dev/null || echo x)"
+    sig="$("${DB_ADMIN[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${db}' AND table_name IN ('settings','games','wallets','users','migrations','gateways')" 2>/dev/null || echo 0)"
+    # só bancos vazios ou com a cara do cassino (as tabelas principais dele)
+    if [[ "${n}" == "0" ]] || [[ "${n}" =~ ^[0-9]+$ && "${sig}" =~ ^[0-9]+$ && ${sig} -ge 5 ]]; then found+=("${db}"); fi
+  done < <("${DB_ADMIN[@]}" -N -e "SHOW DATABASES LIKE 'casino%'" 2>/dev/null || true)
+  [[ ${#found[@]} -gt 0 ]] || return 0
+  info "Bancos que parecem restos de instalações antigas: ${found[*]}"
+  confirm "Apagar esses bancos (e os usuários do MySQL que só acessam eles)? Antes, uma cópia de cada um é salva" n || return 0
+  for db in "${found[@]}"; do
+    local users=()
+    while IFS= read -r user; do [[ -n "${user}" ]] && users+=("${user}"); done < <("${DB_ADMIN[@]}" -N -e "SELECT DISTINCT User FROM mysql.db WHERE REPLACE(Db,'\\_','_')='${db}'" 2>/dev/null || true)
+    drop_db_leftovers "${db}" "${users[0]:-}" "" 1
+    for user in ${users[@]+"${users[@]:1}"}; do drop_db_leftovers "${db}" "${user}" "" 1; done
+  done
+  return 0
+}
+
+cleanup_leftovers() {   # restos que não pertencem a uma pasta: credenciais, registros órfãos, código-fonte, programas
+  local f d remaining=0
+  # registros de instalações cujas pastas já não existem (instalações antigas apagadas à mão)
+  while IFS= read -r f; do
+    d="$(registry_get "${f}" DIR)"
+    if [[ -n "${d}" ]] && is_casino_dir "${d}"; then remaining=$((remaining + 1)); continue; fi
+    local odb ouser; odb="$(registry_get "${f}" DB_NAME)"; ouser="$(registry_get "${f}" DB_USER)"
+    if [[ -n "${odb}" && "$(registry_get "${f}" DB_CREATED)" == "1" && ${KEEP_DB} -eq 0 ]]; then
+      info "Restos de uma instalação apagada (${d:-?}): banco '${odb}'"
+      drop_db_leftovers "${odb}" "${ouser}" "" 1
+    fi
+    UN_PKGS="$(merge_words ${UN_PKGS:-} "$(registry_get "${f}" PKGS)")"
+    UN_COMPOSER="$(registry_get "${f}" COMPOSER_LOCAL)${UN_COMPOSER:+ ${UN_COMPOSER}}"
+    UN_SRC="$(registry_get "${f}" SRC_DIR)${UN_SRC:+ ${UN_SRC}}"
+    rm -f "${f}"
+  done < <(registry_files)
+  if [[ ${remaining} -eq 0 ]]; then
+    for f in "${HOME}/casino-credenciais-local.txt" /root/casino-credenciais.txt; do
+      if [[ -f "${f}" ]] && rm -f "${f}" 2>/dev/null; then ok "Arquivo de senhas removido: ${f}"; fi
+    done
+    for d in ${UN_SRC:-} /opt/casino-src; do
+      if [[ -d "${d}" ]] && is_casino_dir "${d}" && [[ ${EUID} -eq 0 ]]; then rm -rf "${d}" && ok "Código-fonte do servidor removido: ${d}"; fi
+    done
+    if [[ ${EUID} -eq 0 ]]; then
+      for f in /etc/php/*/fpm/conf.d/99-casino.ini; do
+        if [[ -f "${f}" ]]; then rm -f "${f}"; svc reload "php$(basename "$(dirname "$(dirname "$(dirname "${f}")")")")-fpm" >>"${LOG}" 2>&1 || true; ok "Ajustes do PHP-FPM removidos (${f})"; fi
+      done
+      rmdir /etc/casino-platform/installs /etc/casino-platform 2>/dev/null || true
+    fi
+    rmdir "${XDG_CONFIG_HOME:-${HOME}/.config}/casino-platform/installs" "${XDG_CONFIG_HOME:-${HOME}/.config}/casino-platform" 2>/dev/null || true
+    cleanup_orphan_databases
+    purge_programs
+  fi
+  return 0
+}
+
+purge_programs() {   # programas que o PRÓPRIO assistente instalou (nunca os que já existiam)
+  local c s d size removed_composer=0 cache_dirs=()
+  # o assistente sempre baixa o Composer para ~/.local/bin (instalações antigas não tinham o registro)
+  if [[ -f "${HOME}/.local/bin/composer" ]]; then UN_COMPOSER="$(merge_words ${UN_COMPOSER:-} "${HOME}/.local/bin/composer")"; fi
+  for c in ${UN_COMPOSER:-}; do
+    # sem perguntas (-y) vale o padrão de cada pergunta: Composer e cache saem; pacotes e swap ficam
+    if [[ -f "${c}" ]] && { [[ ${PURGE_PACKAGES} -eq 1 ]] || confirm "Remover o Composer que o assistente baixou (${c})?" s; }; then
+      rm -f "${c}" && ok "Composer removido" && removed_composer=1
+      rmdir "$(dirname "${c}")" 2>/dev/null || true
+    fi
+  done
+  # cache do Composer (com a alternativa pelo git pode passar de 500 MB) e a configuração dele
+  for d in "${HOME}/.cache/composer" "${HOME}/.config/composer" "${HOME}/.local/share/composer"; do
+    if [[ -d "${d}" ]]; then cache_dirs+=("${d}"); fi
+  done
+  if [[ ${#cache_dirs[@]} -gt 0 ]]; then
+    size="$(du -sch "${cache_dirs[@]}" 2>/dev/null | tail -1 | cut -f1 || true)"
+    if [[ ${removed_composer} -eq 1 || ${PURGE_PACKAGES} -eq 1 ]] \
+       || confirm "Apagar o cache do Composer (${size:-?})? Outros projetos PHP só baixam de novo o que precisarem" s; then
+      rm -rf "${cache_dirs[@]}" && ok "Cache e configuração do Composer apagados (${size:-?})"
+    fi
+  fi
+  if [[ -n "${UN_PKGS:-}" ]] && have apt-get; then
+    local pk=() p; for p in ${UN_PKGS}; do pkg_installed "${p}" && pk+=("${p}"); done
+    if [[ ${#pk[@]} -gt 0 ]]; then
+      info "Programas que o assistente instalou: ${pk[*]}"
+      if [[ ${PURGE_PACKAGES} -eq 1 ]] || confirm "Remover esses programas também? (o MariaDB leva TODOS os bancos dele junto)" n; then
+        setup_sudo "remover os programas" soft || true
+        run "Removendo ${#pk[@]} pacote(s)" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq "${pk[@]}"
+        run "Limpando dependências que sobraram" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y -qq
+      else
+        info "Programas mantidos. Para remover depois:  sudo apt purge ${pk[*]} && sudo apt autoremove"
+      fi
+    fi
+  fi
+  for s in ${UN_SWAP:-}; do
+    if [[ -f "${s}" && ${EUID} -eq 0 ]] && { [[ ${PURGE_PACKAGES} -eq 1 ]] || confirm "Remover o swap ${s} criado pelo assistente?" n; }; then
+      swapoff "${s}" >>"${LOG}" 2>&1 || true; rm -f "${s}"; sed -i "\#^${s} #d" /etc/fstab; ok "Swap ${s} removido"
+    fi
+  done
+  return 0
 }
 
 # =============================================================================
@@ -1370,17 +2071,22 @@ main_menu() {
   choose c "O que você quer fazer?" \
     "Instalar no meu computador (testar ou desenvolver)" \
     "Instalar em um servidor (VPS) com domínio e HTTPS" \
-    "Atualizar uma instalação existente" \
+    "Atualizar sem perder dados (faz backup antes)" \
+    "Backup / restaurar" \
     "Ligar / desligar o site local" \
     "Diagnóstico (o que está faltando?)" \
+    "Desinstalar (remover instalações, inclusive antigas)" \
     "Sair"
   case "${c}" in
     1) TARGET="local"; MODE="install" ;;
     2) TARGET="server"; MODE="install" ;;
     3) MODE="update" ;;
-    4) TARGET="local"; local a; choose a "Site local" "Ligar" "Desligar" "Ver status"
+    4) local b; choose b "Backup" "Fazer um backup agora" "Restaurar um backup"
+       case "${b}" in 2) MODE="restore" ;; *) MODE="backup" ;; esac ;;
+    5) TARGET="local"; local a; choose a "Site local" "Ligar" "Desligar" "Ver status"
        case "${a}" in 2) MODE="stop" ;; 3) MODE="status" ;; *) MODE="start" ;; esac ;;
-    5) MODE="diagnose" ;;
+    6) MODE="diagnose" ;;
+    7) MODE="uninstall" ;;
     *) exit 0 ;;
   esac
 }
@@ -1398,6 +2104,9 @@ fi
 case "${MODE}" in
   install)  if [[ "${TARGET}" == "local" ]]; then do_local_install; else do_server_install; fi ;;
   update)   do_update ;;
+  backup)   do_backup ;;
+  restore)  do_restore ;;
+  uninstall) do_uninstall ;;
   diagnose) do_diagnose ;;
   start|stop|status)
     [[ -n "${APP_DIR}" ]] || APP_DIR="${CHECKOUT:-${HOME}/casino}"

@@ -9,9 +9,9 @@
         <div v-if="!isLoading" class="">
 
             <!-- Banners carousel -->
-            <div class="carousel-banners">
+            <div v-if="(banners && banners.length) || (bannersHome && bannersHome.length)" class="carousel-banners">
                 <div class="md:w-6/6 2xl:w-5/6 mx-auto p-4">
-                    <div class="mb-5">
+                    <div v-if="banners && banners.length" class="mb-5">
                         <Carousel v-bind="settings" :breakpoints="breakpoints" ref="carouselBanner">
                             <Slide v-for="(banner, index) in banners" :key="index">
                                 <div class="carousel__item rounded w-full">
@@ -25,7 +25,7 @@
                         </Carousel>
                     </div>
 
-                    <div class="">
+                    <div v-if="bannersHome && bannersHome.length">
                         <Carousel v-bind="settingsRecommended" :breakpoints="breakpointsRecommended" ref="carouselSubBanner">
                             <Slide v-for="(banner, index) in bannersHome" :key="index">
                                 <div class="carousel__item  min-h-[60px] md:min-h-[150px] rounded w-full mr-4">
@@ -87,11 +87,11 @@
                         <!-- Loop sobre as categorias -->
                         <template v-for="(category, index) in categories" :key="index">
                             <!-- Verifique se a categoria é a específica -->
-                            <a v-if="category.slug === 'Esportes'"
+                            <a v-if="category.slug === 'Esportes'" v-show="setting && setting.turn_on_football && setting.football_link"
            :href="setting.football_link"
                                class="flex flex-col justify-center items-center min-w-[80px] text-center">
                                 <div class="category-img">
-                                    <img :src="`/storage/` + category.image" alt="" width="27" style="border-radius: 8px !important;">
+                                    <img :src="categoryImage(category)" alt="" width="27" height="27" style="border-radius: 8px !important;">
                                 </div>
                                 <p class="mt-3">{{ $t(category.name) }}</p>
                             </a>
@@ -101,7 +101,7 @@
                                         :to="{ name: 'casinosAll', params: { provider: 'all', category: category.slug }}"
                                         class="flex flex-col justify-center items-center min-w-[80px] text-center">
                                 <div class="category-img">
-                                    <img :src="`/storage/` + category.image" alt="" width="27" style="border-radius: 8px !important;">
+                                    <img :src="categoryImage(category)" alt="" width="27" height="27" style="border-radius: 8px !important;">
                                 </div>
                                 <p class="mt-3">{{ $t(category.name) }}</p>
                             </RouterLink>
@@ -137,6 +137,7 @@ import {useAuthStore} from "@/Stores/Auth.js";
 import LanguageSelector from "@/Components/UI/LanguageSelector.vue";
 import CassinoGameCard from "@/Pages/Cassino/Components/CassinoGameCard.vue";
 import HttpApi from "@/Services/HttpApi.js";
+import { categoryImage } from "@/Services/CategoryImage.js";
 import ShowCarousel from "@/Pages/Home/Components/ShowCarousel.vue";
 import {useSettingStore} from "@/Stores/SettingStore.js";
 import LoadingComponent from "@/Components/UI/LoadingComponent.vue";
@@ -217,7 +218,7 @@ export default {
             breakpointsRecommended: {
                 700: {
                     itemsToShow: 3,
-                    snapAlign: 'center',
+                    snapAlign: 'start',
                 },
                 1024: {
                     itemsToShow: 3,
@@ -236,7 +237,7 @@ export default {
             breakpointsGames: {
                 700: {
                     itemsToShow: 3.5,
-                    snapAlign: 'center',
+                    snapAlign: 'start',
                 },
                 1024: {
                     itemsToShow: 7,
@@ -283,6 +284,7 @@ async mounted() {
 
 },
     methods: {
+        categoryImage,
     checkScreenWidth() {
       this.pc = window.innerWidth > 1024;
     },

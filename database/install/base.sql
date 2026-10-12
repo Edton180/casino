@@ -692,11 +692,11 @@ INSERT INTO `games` VALUES
 (632,9,NULL,'fortuneox','Fortune OX','fortuneox',NULL,'Fortune OX','/fortuneox.png','0','HTML5',0,0,0,0,1,2,'source',447,0,0,'2024-01-20 15:25:43','2024-08-07 10:53:29',NULL),
 (633,9,NULL,'fortunemouse','Fortune Mouse','fortunemouse',NULL,'Fortune Mouse','/fortunemouse.png','0','HTML5',0,0,0,0,1,90,'source',355,0,0,'2024-01-20 15:27:59','2024-08-07 10:53:27',NULL),
 (634,9,NULL,'fortunepanda','Fortune Panda','fortunepanda',NULL,'Fortune Panda','/fortunepanda.png','0','HTML5',0,0,0,0,1,90,'source',558,1,0,'2024-01-20 15:35:44','2024-11-17 22:29:35',NULL),
-(635,9,NULL,'phoenixrises','Phoenix Rises','phoenixrises',NULL,'Phoenix Rises','/originals/phoenixrises/icons/icon-512.png','0','HTML5',0,0,0,0,1,90,'source',789,1,0,'2024-01-20 15:36:43','2024-11-23 14:16:09',NULL),
+(635,9,NULL,'phoenixrises','Phoenix Rises','phoenixrises',NULL,'Phoenix Rises','/originals/phoenixrises/cover.jpg','0','HTML5',0,0,0,0,1,90,'source',789,1,0,'2024-01-20 15:36:43','2024-11-23 14:16:09',NULL),
 (636,9,NULL,'queenofbounty','Queen of Bounty','queenofbounty',NULL,'Queen of Bounty','/originals/queenofbounty/icons/icon-512.png','0','HTML5',0,0,0,0,1,90,'source',1000,1,0,'2024-01-20 16:07:07','2024-11-17 14:25:27',NULL),
-(637,9,NULL,'treasuresofaztec','Treasures of Aztec','treasuresofaztec',NULL,'Treasures of Aztec','/originals/treasuresofaztec/icons/icon-512.png','1','HTML5',0,0,0,0,1,90,'source',525,1,1,'2024-01-20 16:11:51','2024-11-17 14:09:40',NULL),
+(637,9,NULL,'treasuresofaztec','Treasures of Aztec','treasuresofaztec',NULL,'Treasures of Aztec','/originals/treasuresofaztec/cover.jpg','1','HTML5',0,0,0,0,1,90,'source',525,1,1,'2024-01-20 16:11:51','2024-11-17 14:09:40',NULL),
 (638,9,NULL,'bikiniparadise','Bikini Paradise','bikiniparadise',NULL,'Bikini Paradise','/originals/bikiniparadise/icons/icon-512.png','0',NULL,0,0,0,0,1,90,'source',858,0,0,'2024-01-20 16:12:37','2024-08-07 10:53:02',NULL),
-(639,9,NULL,'hoodvswoolf','Hood VS Wolf','hoodvswoolf',NULL,'Hood VS Wolf','/originals/hoodvswoolf/icons/icon-512.png','0',NULL,0,0,0,0,1,90,'source',556,0,0,'2024-01-20 16:13:32','2024-08-07 10:53:13',NULL),
+(639,9,NULL,'hoodvswoolf','Hood VS Wolf','hoodvswoolf',NULL,'Hood VS Wolf','/originals/hoodvswoolf/cover.jpg','0',NULL,0,0,0,0,1,90,'source',556,0,0,'2024-01-20 16:13:32','2024-08-07 10:53:13',NULL),
 (640,9,NULL,'jackfrost','Jack Frost´s','jackfrost',NULL,'Jack Frost´s','/jackfrost.png','1','HTML5',0,0,0,0,1,90,'source',482,1,1,'2024-01-20 16:14:13','2024-11-22 09:40:12',NULL),
 (641,9,NULL,'songkranparty','Song Kran Party','songkranparty',NULL,'Song Kran Party','/originals/songkranparty/icons/icon-512.png','0','HTML5',0,0,0,0,1,90,'source',968,0,0,'2024-01-20 16:19:13','2024-08-07 10:52:51',NULL),
 (642,9,NULL,'fortunerabbit','Fortune Rabbit','fortunerabbit',NULL,'Fortune Rabbit','/fortunerabbit.png','0','HTML5',0,0,0,0,1,10,'source',142,0,0,'2024-01-20 16:40:33','2024-08-07 10:52:50',NULL),
@@ -6012,7 +6012,7 @@ INSERT INTO `games` VALUES
 (7217,64,NULL,'5897','Camino de Chili','5897',NULL,NULL,'ever/5897.jpg','0','html5',0,0,0,0,0,80,'evergame',0,0,0,'2024-03-05 00:10:45','2024-03-05 00:10:45',NULL),
 (7218,64,NULL,'5901','Wolf Hiding','5901',NULL,NULL,'ever/5901.jpg','0','html5',0,0,0,0,0,80,'evergame',0,0,0,'2024-03-05 00:10:45','2024-03-05 00:10:45',NULL),
 (7219,66,NULL,'6','Medusa II','6',NULL,NULL,'ever/6.png','0','html5',0,0,0,0,0,80,'evergame',0,0,0,'2024-03-05 00:11:00','2024-03-05 00:11:00',NULL),
-(7220,9,NULL,'hoodvswoolf','Hood vs Wolf','hoodvswoolf','slots',NULL,'/originals/hoodvswoolf/icons/icon-512.png','0','html5',0,0,0,0,0,80,'source',2,1,0,'2024-03-05 00:11:00','2024-08-05 19:11:22',NULL),
+(7220,9,NULL,'hoodvswoolf','Hood vs Wolf','hoodvswoolf','slots',NULL,'/originals/hoodvswoolf/cover.jpg','0','html5',0,0,0,0,0,80,'source',2,1,0,'2024-03-05 00:11:00','2024-08-05 19:11:22',NULL),
 (7221,66,NULL,'25','Plushie Frenzy','25',NULL,NULL,'ever/25.png','0','html5',0,0,0,0,0,80,'evergame',0,0,0,'2024-03-05 00:11:00','2024-03-05 00:11:00',NULL),
 (7222,66,NULL,'40','Jungle Delight','40',NULL,NULL,'ever/40.png','0','html5',0,0,0,0,0,80,'evergame',0,0,0,'2024-03-05 00:11:01','2024-03-05 00:11:01',NULL),
 (7223,66,NULL,'41','Symbols of Egypt','41',NULL,NULL,'ever/41.png','0','html5',0,0,0,0,0,80,'evergame',0,0,0,'2024-03-05 00:11:01','2024-03-05 00:11:01',NULL),
@@ -9972,7 +9972,7 @@ CREATE TABLE `settings` (
 
 /*!40000 ALTER TABLE `settings` DISABLE KEYS */;
 INSERT INTO `settings` VALUES
-(1,'Casino','Cassino online','defaults/favicon.png','defaults/logo.svg','defaults/logo-dark.svg',NULL,'BRL','dot','left',20,0,30,'R$','local',1,15.00,50000.00,80.00,4999.00,45,2,0,0,1,0,0,0,1,100,1,'2024-11-18 19:31:37',0,1,'daily',0,15,8,5,0,46,30.00,15.00,0,0,'mercadopago','1','1','defaults/banner-wide.svg','1','defaults/logo.svg','defaults/banner.svg','defaults/banner.svg','defaults/banner-wide.svg',NULL,20.00,0,'Indique um amigo e ganhe bÃ´nus','',1,1,1,NULL,NULL,NULL,'Desenvolvido por Edton Braz',NULL,1,NULL,NULL,NULL,NULL);
+(1,'Casino','Cassino online','defaults/favicon.png','defaults/logo.svg','defaults/logo-dark.svg',NULL,'BRL','dot','left',20,0,30,'R$','local',1,15.00,50000.00,80.00,4999.00,45,2,0,0,1,0,0,0,1,100,1,'2024-11-18 19:31:37',0,1,'daily',0,15,8,5,0,46,30.00,15.00,0,0,'mercadopago','1','1','defaults/banner-wide.svg','1','defaults/logo.svg','defaults/banner.svg','defaults/banner.svg','defaults/banner-wide.svg',NULL,20.00,0,'Indique um amigo e ganhe bônus','',1,1,1,NULL,NULL,NULL,'Desenvolvido por Edton Braz',NULL,1,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `settings` ENABLE KEYS */;
 DROP TABLE IF EXISTS `sub_affiliates`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

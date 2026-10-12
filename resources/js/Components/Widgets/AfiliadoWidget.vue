@@ -75,6 +75,7 @@
 </template>
 
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
     import {useToast} from "vue-toastification";
     import HttpApi from "@/Services/HttpApi.js";
     import QRCodeVue3 from "qrcode-vue3";
@@ -144,7 +145,7 @@ if (userData && userData.cpf) {
     // Se o usuário não tiver CPF cadastrado, exibir o campo CPF
     this.showCPFInput = true;
 }
-            this.modalAff = new Modal(document.getElementById('modalElAFF'), {
+            this.modalAff = lazyModal('modalElAFF', {
                 placement: 'center',
                 backdrop: 'dynamic',
                 backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',
@@ -389,7 +390,7 @@ submitQRCode: function(event) {
             shareContent: function() {
       if (navigator.share) {
         navigator.share({
-          title: 'GUGABET A MELHOR!',
+          title: (JSON.parse(localStorage.getItem('setting') || '{}')?.software_name || document.title),
           text: 'Venha Retirar Suas Rodadas Grátis',
           url: this.urlCode  // Concatenação do urlCode ao URL
 

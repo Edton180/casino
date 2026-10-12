@@ -147,6 +147,7 @@
 </template>
 
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
 import { initFlowbite, Modal } from 'flowbite';
 import {onMounted} from "vue";
 import { RouterLink } from "vue-router";
@@ -187,7 +188,7 @@ export default {
             }
         };
 
-       this.modal = new Modal(document.getElementById(`sport-card-`+this.index), options);
+       this.modal = lazyModal(`sport-card-`+this.index, options);
 
     },
     methods: {

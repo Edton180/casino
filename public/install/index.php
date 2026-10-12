@@ -213,6 +213,16 @@ $suggestedUrl = detected_url();
     <div class="actions"><a href="../"><button class="primary">Abrir o site</button></a><a href="../admin"><button class="ghost">Painel administrativo</button></a></div>
   </div>
 <?php else: ?>
+  <?php if (isset($_GET['desinstalado'])): ?>
+  <div class="card" style="margin-bottom:16px;border-color:#2f855a">
+    <h2>✅ Sistema desinstalado</h2>
+    <p class="lead">As tabelas do cassino, a configuração (<code>.env</code>), os arquivos enviados, logs e caches foram apagados.
+      <?php $bkp = (string) ($_GET['backup'] ?? ''); ?>
+      O backup final<?= preg_match('/^casino-backup-[0-9]{8}-[0-9]{6}\.zip$/', $bkp) ? ' (<code>' . htmlspecialchars($bkp, ENT_QUOTES) . '</code>)' : '' ?> ficou numa pasta <code>casino-backups</code> fora do site (normalmente ao lado da pasta do site).</p>
+    <p class="lead">Para remover tudo, apague a pasta do site pelo gerenciador de arquivos da hospedagem e, se quiser, o banco e o usuário MySQL pelo painel (cPanel → Bancos de dados MySQL).
+      Para usar de novo, siga a instalação abaixo e depois restaure o backup em <b>Painel → Sistema</b>.</p>
+  </div>
+  <?php endif; ?>
   <div class="steps" id="steps">
     <span data-step="0">1. Início</span><span data-step="1">2. Requisitos</span><span data-step="2">3. Banco</span><span data-step="3">4. Site e admin</span><span data-step="4">5. Instalar</span>
   </div>

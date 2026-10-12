@@ -104,6 +104,11 @@ export default {
         }
     },
     methods: {
+        setLanguageCookie() {
+            // idioma do jogador para os jogos que leem o cookie "lang" (padrão: português)
+            const lang = String(this.userData?.language || 'pt_BR').replace('_', '-');
+            document.cookie = `lang=${lang}; path=/; max-age=31536000; SameSite=Lax`;
+        },
 
         loadingTab: function() {
             const tabsElement = document.getElementById('tabs-info');

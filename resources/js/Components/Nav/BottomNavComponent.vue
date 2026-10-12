@@ -21,7 +21,7 @@
                     <div class="tooltip-arrow" data-popper-arrow></div>
                 </div>
                 
-<a v-if="setting && setting.turn_on_football" 
+<a v-if="setting && setting.turn_on_football && setting.football_link" 
      :href="setting.football_link" 
      data-tooltip-target="tooltip-sport" 
      class="inline-flex flex-col items-center justify-center p-2 m-0 hover:bg-gray-50 dark:hover:bg-gray-800 group">                    <svg class="text-lg mb-1 w-6 h-6" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"  fill="currentColor">
@@ -137,6 +137,7 @@
 
 
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
 import { RouterLink, useRoute } from "vue-router";
 import { sidebarStore } from "@/Stores/SideBarStore.js";
 import { Modal } from 'flowbite';
@@ -240,7 +241,7 @@ export default {
         * $targetEl: required
         * options: optional
         */
-        this.modalProfile = new Modal(document.getElementById('modalProfileEl'), {
+        this.modalProfile = lazyModal('modalProfileEl', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -260,7 +261,7 @@ export default {
         * $targetEl: required
         * options: optional
         */
-        this.modalAuth = new Modal(document.getElementById('modalElAuth'), {
+        this.modalAuth = lazyModal('modalElAuth', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -280,7 +281,7 @@ export default {
        * $targetEl: required
        * options: optional
        */
-        this.modalRegister = new Modal(document.getElementById('modalElRegister'), {
+        this.modalRegister = lazyModal('modalElRegister', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -296,7 +297,7 @@ export default {
             }
         });
         
-        this.modalElpresente = new Modal(document.getElementById('modalElpresente'), {
+        this.modalElpresente = lazyModal('modalElpresente', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',

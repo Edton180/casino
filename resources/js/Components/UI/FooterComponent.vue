@@ -1,274 +1,202 @@
 <template>
-    <div class="footer pb-32 md:pb-5 mt-5 footer-color p-4 md:p-8 text-center">
-    <hr class="border-t border-gray-300 w-full"> <!-- Linha superior -->
+    <footer class="site-footer mt-5 px-4 pt-8 pb-32 md:px-8 md:pb-8">
+        <div v-if="setting" class="max-w-6xl mx-auto">
+            <!-- Marca e redes sociais -->
+            <div class="flex flex-col items-center gap-4 md:flex-row md:justify-between">
+                <RouterLink to="/" class="inline-flex items-center" active-class="" exact-active-class="">
+                    <img v-if="logo" :src="logo" :alt="setting.software_name" class="h-10 w-auto max-w-[200px] object-contain">
+                    <span v-else class="text-xl font-bold text-white">{{ setting.software_name }}</span>
+                </RouterLink>
+                <div v-if="socials.length" class="flex items-center gap-2">
+                    <a v-for="social in socials" :key="social.key" :href="social.url" target="_blank" rel="noopener"
+                       :aria-label="social.label" class="footer-social">
+                        <i :class="social.icon"></i>
+                    </a>
+                </div>
+            </div>
 
-        <!-- provedores -->
-        <div class="md:w-5/6 2xl:w-5/6 m-auto"> <!-- Adicionando a classe m-auto para centralizar horizontalmente -->
-            <div class="text-center mt-5 flex items-center justify-center flex-wrap">
-            <a v-if="setting" href="/"> <!-- Adicionando a classe items-center para centralizar verticalmente -->
-                <img :src="`/storage/` + setting.software_logo_white" alt="" class="h-10 mr-3 hidden dark:block" />
-            </a>
+            <!-- Links -->
+            <div class="grid grid-cols-1 gap-6 mt-8 text-sm text-center sm:grid-cols-3 sm:text-left">
+                <div>
+                    <h3 class="footer-title">Institucional</h3>
+                    <ul class="space-y-1">
+                        <li v-for="link in legalLinks" :key="link.to">
+                            <RouterLink :to="link.to" class="footer-link" active-class="" exact-active-class="">{{ link.label }}</RouterLink>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="footer-title">Ajuda</h3>
+                    <ul class="space-y-1">
+                        <li><RouterLink to="/support" class="footer-link" active-class="" exact-active-class="">Fale com o suporte</RouterLink></li>
+                        <li v-if="setting.support_email">
+                            <a :href="'mailto:' + setting.support_email" class="footer-link break-all">{{ setting.support_email }}</a>
+                        </li>
+                        <li v-if="setting.legal_email" class="text-gray-400">
+                            Jurídico: <a :href="'mailto:' + setting.legal_email" class="footer-link break-all">{{ setting.legal_email }}</a>
+                        </li>
+                        <li v-if="setting.partners_email" class="text-gray-400">
+                            Parceiros: <a :href="'mailto:' + setting.partners_email" class="footer-link break-all">{{ setting.partners_email }}</a>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="footer-title">Pagamento</h3>
+                    <img src="/assets/images/footer/pix.svg" alt="Pagamentos via PIX" class="h-8 w-auto mx-auto sm:mx-0" loading="lazy">
+                </div>
+            </div>
+
+            <!-- Sobre o site -->
+            <div class="mt-8 pt-6 border-t border-white/10">
+                <p class="text-sm leading-relaxed text-gray-400 whitespace-pre-line" :class="{ 'line-clamp-4': !expanded }">{{ aboutText }}</p>
+                <button v-if="aboutText.length > 280" type="button" class="mt-2 py-1 text-sm font-semibold text-white hover:underline"
+                        :aria-expanded="expanded ? 'true' : 'false'" @click="expanded = !expanded">
+                    {{ expanded ? 'Ver menos' : 'Ver mais' }}
+                </button>
+            </div>
+
+            <!-- Selos -->
+            <div class="flex flex-wrap items-center justify-center gap-4 mt-6">
+                <img v-for="seal in seals" :key="seal.src" :src="seal.src" :alt="seal.alt" :style="{ height: seal.height }" class="w-auto" loading="lazy">
+            </div>
+
+            <div class="flex justify-center mt-6">
+                <button type="button" class="footer-top" @click="scrollToTop">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l5 5a1 1 0 11-1.414 1.414L11 6.414V17a1 1 0 11-2 0V6.414L5.707 9.707a1 1 0 11-1.414-1.414l5-5A1 1 0 0110 3z" clip-rule="evenodd" />
+                    </svg>
+                    <span>De volta ao topo</span>
+                </button>
+            </div>
+
+            <div class="flex flex-col items-center gap-1 mt-6 text-xs text-center text-gray-500">
+                <span>{{ copyright }}</span>
+                <span v-if="setting.footer_show_credit && setting.footer_credit">
+                    <a v-if="setting.footer_credit_url" :href="setting.footer_credit_url" target="_blank" rel="noopener" class="hover:text-gray-300">{{ setting.footer_credit }}</a>
+                    <template v-else>{{ setting.footer_credit }}</template>
+                </span>
             </div>
         </div>
-        
-        
-<div class="md:w-5/6 2xl:w-5/6 mx-auto p-2">
-    <div class="text-center">
-        <h3 class="text-lg md:text-xl text-gray-600 dark:text-white font-bold mb-1">
-            Suporte
-        </h3>
-        <div class="flex flex-wrap justify-center mt-2">
-            <div class="flex justify-center space-x-1 w-full mb-1">
-                <a href="/terms/Antilavagem" class="text-white py-1 px-1 rounded text-center text-xs"> > AML Policy</a>
-                <a href="/terms/Regras" class="text-white py-1 px-1 rounded text-center text-xs"> > Termos de Apostas</a>
-                <a href="/terms/Responsavel" class="text-white py-1 px-1 rounded text-center text-xs"> > Jogo Responsavel</a>
-            </div>
-            <div class="flex justify-center space-x-1 w-full">
-                <a href="/terms/privacy-policy" class="text-white py-1 px-1 rounded text-center text-xs"> > Política de Privacidade</a>
-                <a href="/terms/bonus" class="text-white py-1 px-1 rounded text-center text-xs"> > Política de Bônus</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div v-if="setting" class="flex mt-2 items-start">
-    <!-- Pagamento e ícone do Pix -->
-    <div class="flex flex-col items-center">
-        <h3 class="text-base md:text-lg text-gray-600 dark:text-white font-bold mb-1">
-            Pagamento
-        </h3>
-        <img src="/public/assets/images/pix.png" alt="Pix" class="h-11" />
-    </div>
-    
-    <!-- Espaço flexível -->
-    <div class="flex-1"></div>
-    
-    <!-- Siga-Nos e ícones sociais -->
-    <div class="flex flex-col items-center">
-        <h3 class="text-base md:text-lg text-gray-600 dark:text-white font-bold mb-1">
-            Siga-Nos
-        </h3>
-        <div class="flex space-x-1">
-            <div v-if="custom.instagram" class="flex">
-                <a :href="custom.instagram" target="_blank" class="text-xl text-gray-100 p-1">
-                    <i class="fa-brands fa-instagram"></i>
-                </a>
-            </div>
-            <div v-if="custom.telegram" class="flex">
-                <a :href="custom.telegram" target="_blank" class="text-xl text-gray-100 p-1">
-                    <i class="fa-brands fa-telegram"></i>
-                </a>
-            </div>
-            <div v-if="custom.whatsapp" class="flex">
-                <a :href="custom.whatsapp" target="_blank" class="text-xl text-gray-100 p-1">
-                    <i class="fa-brands fa-whatsapp"></i>
-                </a>
-            </div>
-            <div v-if="custom.facebook" class="flex">
-                <a :href="custom.facebook" target="_blank" class="text-xl text-gray-100 p-1">
-                    <i class="fa-brands fa-facebook-f"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-    <hr class="border-t border-gray-300 w-full mt-5"> <!-- Linha inferior -->
-
-<div class="relative overflow-hidden max-h-24" id="text-container">
-        <div v-if="setting && setting.footer_about" class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm whitespace-pre-line" id="text-content">{{ setting.footer_about }}</div>
-        <div v-else class="text-gray-700 dark:text-gray-300 leading-relaxed text-sm" id="text-content">
-{{ setting.software_name }} é um cassino online que oferece aos seus usuários uma experiência única de jogos de cassino. Com uma plataforma intuitiva e fácil de usar, {{ setting.software_name }} permite que seus usuários desfrutem de uma ampla variedade de jogos, incluindo os clássicos e os mais recentes lançamentos.
-
-Com o objetivo de proporcionar a melhor experiência de jogos aos seus usuários, {{ setting.software_name }} oferece uma série de recursos e ferramentas, como estatísticas detalhadas dos jogos, histórico de resultados e análises de especialistas. Além disso, o site destaca-se por suas diversas promoções e bônus exclusivos, que aumentam as chances de lucro e tornam a experiência ainda mais emocionante.
-
-{{ setting.software_name }} é reconhecido por sua segurança e confiabilidade, oferecendo suporte ao cliente 24 horas por dia, sete dias por semana. Com uma equipe de especialistas em cassino online, a plataforma está comprometida em garantir que seus usuários tenham uma experiência positiva e segura, podendo desfrutar de toda a emoção e oportunidades oferecidas pelos jogos de cassino de forma responsável e consciente.
-        </div>
-        <div class="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white dark:from-gray-800" id="fade"></div>
-        <button class="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-white p-1" id="toggle-button"  @click.prevent="toggleText">Ver mais</button>
-    </div>
-    
-    <hr class="border-t border-gray-300 w-full"> <!-- Linha superior -->
-
-    <hr class="border-t border-gray-300 w-full mt-5"> <!-- Linha superior -->
-
-<div class="flex justify-center items-center mt-5 space-x-4">
-    <img src="/public/ssl.svg" alt="Image 1" class="h-12"> <!-- Ajuste o caminho e o tamanho da imagem conforme necessário -->
-    <img src="/public/+18.png" alt="Image 2" class="h-12"> <!-- Ajuste o caminho e o tamanho da imagem conforme necessário -->
-</div>
-
-
-<div v-if="setting" class="flex flex-col items-center mt-4 space-y-2">
-    <span v-if="setting.support_email" class="text-gray-500 text-sm">Suporte <a :href="'mailto:' + setting.support_email" class="text-gray-400">{{ setting.support_email }}</a></span>
-    <span v-if="setting.legal_email" class="text-gray-500 text-sm">Jurídico <a :href="'mailto:' + setting.legal_email" class="text-gray-400">{{ setting.legal_email }}</a></span>
-    <span v-if="setting.partners_email" class="text-gray-500 text-sm">Parceiros <a :href="'mailto:' + setting.partners_email" class="text-gray-400">{{ setting.partners_email }}</a></span>
-</div>
-
-<div class="flex justify-center items-center mt-5">
-    <button class="bg-gray-700 text-white py-2 px-4 rounded-full flex items-center space-x-2 border-2 border-green-400" @click.prevent="scrollToTop">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l5 5a1 1 0 11-1.414 1.414L11 6.414V17a1 1 0 11-2 0V6.414L5.707 9.707a1 1 0 11-1.414-1.414l5-5A1 1 0 0110 3z" clip-rule="evenodd" />
-        </svg>
-        <span>De volta ao topo</span>
-    </button>
-</div>
-
-<div v-if="setting" class="flex flex-col items-center mt-5 space-y-1 text-xs text-gray-500">
-    <span>{{ setting.footer_copyright || ('© ' + year + ' ' + setting.software_name + '. Todos os direitos reservados.') }}</span>
-    <span v-if="setting.footer_show_credit && setting.footer_credit">
-        <a v-if="setting.footer_credit_url" :href="setting.footer_credit_url" target="_blank" rel="noopener" class="hover:text-gray-300">{{ setting.footer_credit }}</a>
-        <template v-else>{{ setting.footer_credit }}</template>
-    </span>
-</div>
-
-
-
-
-
-
-
-
-    </div>
+    </footer>
 </template>
 
-
 <script>
-import HttpApi from "@/Services/HttpApi.js";
+import { RouterLink } from "vue-router";
 import { useSettingStore } from "@/Stores/SettingStore.js";
-import DropdownDarkLight from "@/Components/UI/DropdownDarkLight.vue";
-import LanguageSelector from "@/Components/UI/LanguageSelector.vue";
+
 export default {
-    props: [],
-    components: { LanguageSelector, DropdownDarkLight, },
+    components: { RouterLink },
     data() {
         return {
-            isLoading: false,
+            expanded: false,
             year: new Date().getFullYear(),
-            setting: null,
-            custom: null,
-
-            icons: [
-                { id: 1, src: "/storage/providers/PLAYSON.webp", alt: "Descrição da imagem", width: "125px" },
-                { id: 2, src: "/storage/providers/HAMERO.webp", alt: "Descrição da imagem", width: "125px" },
-                { id: 3, src: "/storage/providers/EVOPLAY.webp", alt: "Descrição da imagem", width: "125px" },
-                { id: 4, src: "/storage/providers/PRAGMATIC.webp", alt: "Descrição da imagem", width: "125px" },
-                { id: 5, src: "/storage/providers/BETGAMES.webp", alt: "Descrição da imagem", width: "125px" },
-                { id: 6, src: "/storage/providers/EVOLUTION.webp", alt: "Descrição da imagem", width: "125px" },
-                { id: 7, src: "/storage/providers/PGSOFT.webp", alt: "Descrição da imagem", width: "125px" }
+            legalLinks: [
+                { to: '/terms/service', label: 'Termos e condições' },
+                { to: '/terms/Regras', label: 'Termos de apostas' },
+                { to: '/terms/privacy-policy', label: 'Política de privacidade' },
+                { to: '/terms/bonus', label: 'Política de bônus' },
+                { to: '/terms/Responsavel', label: 'Jogo responsável' },
+                { to: '/terms/Antilavagem', label: 'Política de prevenção à lavagem de dinheiro' },
             ],
-
-            columns: [
-                {
-                    id: 1,
-                    icon: "fas fa-info-circle mr-2",
-                    title: "SUPORTE  ",
-                    links: [
-                        { id: 1, label: "> AML Policy", url: "/terms/Antilavagem" },
-                        { id: 2, label: "> Política de Privacidade", url: "/terms/privacy-policy" },
-                        { id: 3, label: "> Jogo Responsável", url: "/terms/Responsavel" },
-                        { id: 4, label: "> Termos de Apostas", url: "/terms/Regras" },
-                        { id: 5, label: "Política de Bônus", url: "/terms/bonus" }
-
-                    ]
-                },
+            // selos servidos pelo próprio site
+            seals: [
+                { src: '/assets/images/footer/18.svg', alt: 'Proibido para menores de 18 anos', height: '40px' },
+                { src: '/assets/images/footer/jogo-responsavel.svg', alt: 'Jogo responsável', height: '32px' },
+                { src: '/assets/images/footer/site-seguro.svg', alt: 'Site seguro', height: '32px' },
             ],
-
-            logos: [
-                { id: 1, src: "https://tpmr8.games/assets/images/icons/18.svg", alt: "Descrição da imagem", width: "35px" },
-                { id: 2, src: "https://tpmr8.games/assets/images/icons/pix.svg", alt: "Descrição da imagem", width: "60px" },
-                { id: 3, src: "https://tpmr8.games/assets/images/icons/jogoresponsavel.svg", alt: "Descrição da imagem", width: "110px" },
-                { id: 4, src: "https://tpmr8.games/assets/images/icons/seuslimites.svg", alt: "Descrição da imagem", width: "110px" },
-                { id: 5, src: "https://tpmr8.games/assets/images/icons/ssl.svg", alt: "Descrição da imagem", width: "100px" },
-                { id: 6, src: "https://tpmr8.games/assets/images/icons/certified.webp", alt: "Descrição da imagem", width: "75px" },
-                { id: 7, src: "https://tpmr8.games/assets/images/icons/gambling-curacao.png", alt: "Descrição da imagem", width: "100px" }
-            ],
-        }
-    },
-    setup(props) {
-
-
-        return {};
+        };
     },
     computed: {
-
-    },
-    mounted() {
-
+        setting() {
+            return useSettingStore().setting || null;
+        },
+        custom() {
+            // definido em resources/views/layouts/app.blade.php
+            return typeof custom !== 'undefined' && custom ? custom : {};
+        },
+        logo() {
+            const image = this.setting && (this.setting.software_logo_white || this.setting.software_logo_black);
+            if (!image) return '';
+            return /^(https?:)?\/\//.test(image) || image.startsWith('/') ? image : '/storage/' + image;
+        },
+        socials() {
+            const list = [
+                { key: 'instagram', label: 'Instagram', icon: 'fa-brands fa-instagram' },
+                { key: 'telegram', label: 'Telegram', icon: 'fa-brands fa-telegram' },
+                { key: 'whatsapp', label: 'WhatsApp', icon: 'fa-brands fa-whatsapp' },
+                { key: 'facebook', label: 'Facebook', icon: 'fa-brands fa-facebook-f' },
+            ];
+            return list.filter((item) => this.custom[item.key]).map((item) => ({ ...item, url: this.custom[item.key] }));
+        },
+        aboutText() {
+            if (!this.setting) return '';
+            if (this.setting.footer_about) return this.setting.footer_about;
+            const name = this.setting.software_name || 'Este site';
+            return `${name} é um cassino online que oferece aos seus usuários uma experiência única de jogos de cassino. Com uma plataforma intuitiva e fácil de usar, ${name} permite que seus usuários desfrutem de uma ampla variedade de jogos, incluindo os clássicos e os mais recentes lançamentos.\n\n`
+                + `Com o objetivo de proporcionar a melhor experiência de jogos aos seus usuários, ${name} oferece promoções e bônus exclusivos e suporte dedicado. Jogue com responsabilidade: proibido para menores de 18 anos.`;
+        },
+        copyright() {
+            if (!this.setting) return '';
+            return this.setting.footer_copyright || `© ${this.year} ${this.setting.software_name}. Todos os direitos reservados.`;
+        },
     },
     methods: {
-        scrollToTop: function () {
-         window.scrollTo({ top: 0, behavior: 'smooth' });
+        scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         },
-        
-        getSetting: function () {
-            const _this = this;
-            const settingStore = useSettingStore();
-            const settingData = settingStore.setting;
-
-            if (settingData) {
-                _this.setting = settingData;
-            }
-        },
-        
-        toggleText: function () {
-        var textContainer = document.getElementById("text-container");
-        var textContent = document.getElementById("text-content");
-        var fade = document.getElementById("fade");
-        var button = document.getElementById("toggle-button");
-
-        if (textContainer.classList.contains("max-h-24")) {
-            textContainer.classList.remove("max-h-24");
-            textContainer.classList.add("max-h-full");
-            fade.style.display = "none";
-            button.innerText = "Ver menos";
-            button.style.bottom = "-2rem"; // Move the button down
-
-        } else {
-            textContainer.classList.remove("max-h-full");
-            textContainer.classList.add("max-h-24");
-            fade.style.display = "block";
-            button.innerText = "Ver mais";
-            button.style.bottom = "0"; // Move the button back up
-
-        }
-        },
-    },
-    created() {
-        this.getSetting();
-        this.custom = custom;
-
-    },
-    watch: {
-
     },
 };
 </script>
 
 <style scoped>
-        @keyframes pulse {
-        0%, 100% {
-            transform: scale(1);
-        }
-        50% {
-            transform: scale(1.1);
-        }
-    }
-
-    .animate-pulse {
-        animation: pulse 2s infinite;
-    }
-    
-        .max-h-24 {
-        max-height: 6rem; /* Approx. 4 lines of text */
-    }
-    .max-h-full {
-        max-height: none;
-    }
-    
-    .footer-color {
-    background-color: #1d1d1d !important;
+.site-footer {
+    background-color: #1d1d1d;
+    color: #e5e7eb;
 }
 
+.footer-title {
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+}
 
+.footer-link {
+    display: inline-block;
+    padding: 4px 0;
+    color: #9ca3af;
+    transition: color 0.15s ease;
+}
+
+.footer-link:hover {
+    color: #fff;
+}
+
+.footer-social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #f3f4f6;
+    font-size: 1.15rem;
+    transition: background-color 0.15s ease;
+}
+
+.footer-social:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.footer-top {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 2px solid #4ade80;
+    border-radius: 9999px;
+    background-color: #374151;
+    color: #fff;
+}
 </style>

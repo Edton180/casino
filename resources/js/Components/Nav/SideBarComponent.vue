@@ -70,11 +70,11 @@
 <ul>
     <li v-for="(category, index) in categories" :key="index">
         <!-- Verifique se a categoria é 'Esportes' -->
-        <a v-if="category.slug === 'Esportes'"
+        <a v-if="category.slug === 'Esportes'" v-show="setting && setting.turn_on_football && setting.football_link"
            :href="setting.football_link"
            target="_blank"
            class="bg-gray-600/[0.2] flex flex-row items-center py-3 px-4 hover:dark:bg-gray-600/[0.1] rounded-[6px]">
-            <img :src="`/storage/`+category.image" alt="" width="20">
+            <img :src="categoryImage(category)" alt="" width="20" height="20">
             <span class="ml-3">{{ $t(category.name) }}</span>
         </a>
         <!-- Caso contrário, use RouterLink como de costume -->
@@ -82,7 +82,7 @@
                     :to="{ name: 'casinosAll', params: { provider: 'all', category: category.slug }}"
                     active-class="link-active"
                     class="bg-gray-600/[0.2] flex flex-row items-center py-3 px-4 hover:dark:bg-gray-600/[0.1] rounded-[6px]">
-            <img :src="`/storage/`+category.image" alt="" width="20">
+            <img :src="categoryImage(category)" alt="" width="20" height="20">
             <span class="ml-3">{{ $t(category.name) }}</span>
         </RouterLink>
     </li>
@@ -120,6 +120,7 @@ import {onMounted} from "vue";
 import { sidebarStore } from "@/Stores/SideBarStore.js";
 import { RouterLink } from "vue-router";
 import HttpApi from "@/Services/HttpApi.js";
+import { categoryImage } from "@/Services/CategoryImage.js";
 import {useToast} from "vue-toastification";
 import {useAuthStore} from "@/Stores/Auth.js";
 import {useSettingStore} from "@/Stores/SettingStore.js";
@@ -179,6 +180,7 @@ export default {
     window.addEventListener('resize', this.checkIfMobile);
     },
     methods: {
+        categoryImage,
                     checkIfMobile() {
       this.isMobile = window.innerWidth <= 900;
     },

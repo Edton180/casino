@@ -1,9 +1,9 @@
 <template>
     <BaseLayout>
         <div class="w-full fundo flex flex-col items-center justify-start min-h-screen">
-                    <div class="mt-10"> <!-- Adicionando margem superior para descer um pouco -->
+                    <div class="mt-10 w-full max-w-md px-4">
 
-<div v-if="wallet && !isLoading" class="max-w-md mx-auto bg-gray-100 dark:bg-gray-800 shadow-lg rounded-lg mb-3 p-4">
+<div v-if="wallet && !isLoading" class="w-full mx-auto bg-gray-100 dark:bg-gray-800 shadow-lg rounded-lg mb-3 p-4">
     <div class="flex flex-col space-y-4">
         <!-- Cabeçalho -->
         <h2 class="tituloaff">Indique um amigo e ganhe dinheiro</h2>
@@ -26,7 +26,7 @@
                    required>
 
         </div>
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center gap-2">
 
 <button @click.prevent="copyLink" class="ui-button-custom3 flex items-center space-x-2">
     <svg height="0.9em" viewBox="0 0 512 512" width="0.9em" xmlns="http://www.w3.org/2000/svg">
@@ -139,7 +139,7 @@ export default {
         shareContent: function() {
       if (navigator.share) {
         navigator.share({
-          title: 'GUGABET A MELHOR!',
+          title: (JSON.parse(localStorage.getItem('setting') || '{}')?.software_name || document.title),
           text: 'Venha Retirar Suas Rodadas Grátis',
           url: this.urlCode  // Concatenação do urlCode ao URL
 

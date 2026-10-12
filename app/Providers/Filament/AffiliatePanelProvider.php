@@ -40,6 +40,8 @@ class AffiliatePanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Affiliate/Pages'), for: 'App\\Filament\\Affiliate\\Pages')
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->sidebarCollapsibleOnDesktop()
+            ->renderHook(\Filament\View\PanelsRenderHook::HEAD_END, fn () => view('filament.components.mobile-sidebar'))
+            ->defaultAvatarProvider(\App\Filament\Support\LocalAvatarProvider::class)
             ->collapsibleNavigationGroups(true)
             ->pages([
                 DashboardAffiliate::class,
