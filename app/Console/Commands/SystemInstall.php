@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\InteractsWithDatabaseAdmin;
 use App\Install\CasinoInstaller;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
@@ -19,6 +20,8 @@ use Illuminate\Support\Str;
  */
 class SystemInstall extends Command
 {
+    use InteractsWithDatabaseAdmin;
+
     protected $signature = 'system:install
         {--url= : URL do site (ex: https://meusite.com)}
         {--name= : Nome do site}
@@ -179,7 +182,12 @@ class SystemInstall extends Command
             $generated = true;
         }
 
-        $how = $this->provisionAttempts($installer, $db, $interactive);
+        try {
+            $statements = $installer->provisionStatements($db, [CasinoInstaller::class, 'sqlQuote']);
+        } catch (\InvalidArgumentException $e) {
+            return ['ok' => false, 'kind' => 'provision', 'message' => $e->getMessage()];
+        }
+        $how = $this->runAsDatabaseAdmin($installer, $db, $statements, $interactive);
         if ($how === null) {
             return ['ok' => false, 'kind' => 'provision', 'message' => 'Não consegui criar o banco e o usuário: nenhuma conta administradora do MySQL funcionou.'];
         }
@@ -190,99 +198,6 @@ class SystemInstall extends Command
         }
 
         return $installer->testDatabase($db);
-    }
-
-    /** @return string|null  por onde o banco foi criado, ou null se nenhuma forma funcionou */
-    private function provisionAttempts(CasinoInstaller $installer, array $db, bool $interactive): ?string
-    {
-        // 1) conta informada nas opções; depois root sem senha (XAMPP/Laragon/Windows,
-        //    ou o comando rodando como root no Linux, quando o root entra pelo socket)
-        $admins = [];
-        if ($this->option('db-root-user') !== null || $this->option('db-root-pass') !== null) {
-            $admins[] = ['username' => $this->option('db-root-user') ?: 'root', 'password' => (string) $this->option('db-root-pass')];
-        }
-        $admins[] = ['username' => 'root', 'password' => ''];
-        foreach ($admins as $admin) {
-            if ($installer->provisionWithAdmin($db, $admin)['ok']) {
-                return "conta {$admin['username']} do MySQL";
-            }
-        }
-
-        // 2) Ubuntu/Debian: o root do MariaDB/MySQL não tem senha; entra pelo socket com sudo
-        if ($this->sudoMysqlAvailable()) {
-            if ($interactive) {
-                $this->line('  Vou usar o administrador do MySQL pelo sudo (pode pedir a senha do seu usuário do computador).');
-            }
-            if ($this->runSudoMysql($installer->provisionSql($db), $interactive)) {
-                return 'sudo mysql';
-            }
-        }
-
-        // 3) uma conta administradora informada agora
-        if ($interactive) {
-            for ($try = 1; $try <= 3; $try++) {
-                $user = (string) $this->ask('Usuário administrador do MySQL', 'root');
-                $pass = (string) ($this->secret('Senha desse usuário (ENTER se não tiver)') ?? '');
-                $result = $installer->provisionWithAdmin($db, ['username' => $user, 'password' => $pass]);
-                if ($result['ok']) {
-                    return "conta {$user} do MySQL";
-                }
-                $this->warn('  ' . $result['message']);
-                if ($try < 3 && !$this->confirm('Tentar outra conta ou senha?', true)) {
-                    break;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private function sudoMysqlAvailable(): bool
-    {
-        if (PHP_OS_FAMILY === 'Windows' || !function_exists('proc_open')) {
-            return false;
-        }
-        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
-            return false; // já é root: a conexão como root pelo socket (passo 1) cobre esse caso
-        }
-
-        return $this->commandExists('sudo') && $this->commandExists('mysql');
-    }
-
-    private function commandExists(string $command): bool
-    {
-        $out = [];
-        $rc = 1;
-        @exec('command -v ' . escapeshellarg($command) . ' 2>/dev/null', $out, $rc);
-
-        return $rc === 0 && $out !== [];
-    }
-
-    /** Roda o SQL no cliente "mysql" com sudo. O sudo pede a senha no próprio terminal (não pela entrada padrão). */
-    private function runSudoMysql(string $sql, bool $interactive): bool
-    {
-        $command = $interactive ? ['sudo', 'mysql'] : ['sudo', '-n', 'mysql'];
-        $process = @proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        if (!is_resource($process)) {
-            return false;
-        }
-
-        fwrite($pipes[0], $sql);
-        fclose($pipes[0]);
-        $out = (string) stream_get_contents($pipes[1]);
-        $err = (string) stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        if (proc_close($process) !== 0) {
-            $reason = trim($err !== '' ? $err : $out);
-            if ($reason !== '') {
-                $this->warn('  sudo mysql: ' . Str::limit(preg_replace('/\s+/', ' ', $reason), 200));
-            }
-            return false;
-        }
-
-        return true;
     }
 
     private function databaseHelp(CasinoInstaller $installer, array $db, string $kind): void

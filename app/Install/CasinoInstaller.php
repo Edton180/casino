@@ -222,12 +222,16 @@ class CasinoInstaller
         return $sql;
     }
 
+    /** Literal SQL de texto (mesmo escape do mysql_real_escape_string, modo padrão do MySQL/MariaDB). */
+    public static function sqlQuote(string $value): string
+    {
+        return "'" . strtr($value, ['\\' => '\\\\', "\0" => '\\0', "\n" => '\\n', "\r" => '\\r', "'" => "\\'", '"' => '\\"', "\x1a" => '\\Z']) . "'";
+    }
+
     /** Mesmo SQL em texto, para rodar no cliente "mysql" (ex.: sudo mysql). */
     public function provisionSql(array $db): string
     {
-        $quote = fn (string $v) => "'" . str_replace(['\\', "'"], ['\\\\', "\\'"], $v) . "'";
-
-        return implode(";\n", $this->provisionStatements($db, $quote)) . ";\n";
+        return implode(";\n", $this->provisionStatements($db, [self::class, 'sqlQuote'])) . ";\n";
     }
 
     /**
@@ -239,6 +243,27 @@ class CasinoInstaller
     public function provisionWithAdmin(array $db, array $admin): array
     {
         try {
+            $statements = $this->provisionStatements($db, [self::class, 'sqlQuote']);
+        } catch (Throwable $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+        $result = $this->adminExecute($db, $admin, $statements);
+        if ($result['ok']) {
+            $this->log('Banco e usuário criados pela conta administradora', ['database' => $db['database'] ?? '', 'user' => $db['username'] ?? '']);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Executa comandos SQL com uma conta administradora do MySQL (sem selecionar banco).
+     *
+     * @param  list<string>  $statements
+     * @return array{ok: bool, message: string}
+     */
+    public function adminExecute(array $db, array $admin, array $statements): array
+    {
+        try {
             $pdo = $this->connect([
                 'host'     => $db['host'] ?? 'localhost',
                 'port'     => $db['port'] ?? 3306,
@@ -246,31 +271,13 @@ class CasinoInstaller
                 'username' => $admin['username'] ?? 'root',
                 'password' => $admin['password'] ?? '',
             ]);
-            foreach ($this->provisionStatements($db, fn (string $v) => $pdo->quote($v)) as $statement) {
+            foreach ($statements as $statement) {
                 $pdo->exec($statement);
             }
-            $this->log('Banco e usuário criados pela conta administradora', ['database' => $db['database'] ?? '', 'user' => $db['username'] ?? '']);
 
-            return ['ok' => true, 'message' => 'Banco e usuário criados.'];
+            return ['ok' => true, 'message' => 'Comandos executados.'];
         } catch (Throwable $e) {
             return ['ok' => false, 'message' => $this->friendlyDbError($e->getMessage())];
-        }
-    }
-
-    private function createDatabase(array $db): bool
-    {
-        $name = (string) ($db['database'] ?? '');
-        if (!preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $name)) {
-            return false;
-        }
-
-        try {
-            $pdo = $this->connect(['database' => ''] + $db);
-            $pdo->exec('CREATE DATABASE IF NOT EXISTS `' . $name . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
-            $this->log('Banco de dados criado: ' . $name);
-            return true;
-        } catch (Throwable $e) {
-            return false;
         }
     }
 
@@ -547,7 +554,11 @@ class CasinoInstaller
         $kernel->call('optimize:clear');
         \Illuminate\Support\Facades\Cache::flush();
 
-        file_put_contents($this->path('storage/installed.lock'), date('c'));
+        $version = is_file($this->path('VERSION')) ? trim((string) file_get_contents($this->path('VERSION'))) : '';
+        file_put_contents($this->path('storage/installed.lock'), json_encode([
+            'installed_at' => date('c'),
+            'version'      => $version !== '' ? $version : 'dev',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
 
         return $warnings;
     }

@@ -19,6 +19,12 @@ return [
     'name' => env('APP_NAME', 'Laravel'),
 
     /*
+    | Versão do sistema (arquivo VERSION na raiz). Mostrada no painel em Sistema
+    | e usada pelo atualizador para saber de qual versão para qual está indo.
+    */
+    'version' => trim((string) @file_get_contents(base_path('VERSION'))) ?: 'dev',
+
+    /*
     |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
