@@ -154,7 +154,11 @@ class Uninstaller
     {
         $removed = [];
 
-        $this->stopLocalServer();
+        // pelo painel quem atende o pedido pode ser justamente o servidor local (php -S): desligá-lo
+        // agora interromperia a desinstalação no meio. Ele fica ligado mostrando o instalador.
+        if (PHP_SAPI === 'cli') {
+            $this->stopLocalServer();
+        }
 
         $clean = [
             'storage/logs'                 => true,
