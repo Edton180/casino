@@ -1398,14 +1398,18 @@ EOF
 # =============================================================================
 #  Atualizar
 # =============================================================================
-update_target() {
+update_target() {   # qual instalação manter: a pasta informada (--dir) > a cópia de onde o assistente roda > o servidor
   [[ -n "${TARGET}" ]] && return 0
+  if [[ -z "${APP_DIR}" && -n "${CHECKOUT}" && -f "${CHECKOUT}/.env" ]]; then APP_DIR="${CHECKOUT}"; fi
   if [[ -n "${APP_DIR}" && -f "${APP_DIR}/.env" ]]; then
-    if [[ -f /etc/nginx/sites-available/casino ]] && grep -q "${APP_DIR}" /etc/nginx/sites-available/casino 2>/dev/null; then TARGET="server"; else TARGET="local"; fi
+    if [[ -n "$(server_site_for "${APP_DIR}")" ]]; then TARGET="server"; else TARGET="local"; fi
     return 0
   fi
-  if [[ -f /var/www/casino/.env ]]; then TARGET="server"; APP_DIR="/var/www/casino"
-  elif [[ -n "${CHECKOUT}" && -f "${CHECKOUT}/.env" ]]; then TARGET="local"; APP_DIR="${CHECKOUT}"
+  if [[ -n "${APP_DIR}" ]]; then die "Não há instalação em ${APP_DIR} (sem .env)."; fi
+  if [[ -f "${HOME}/casino/.env" ]]; then   # pasta padrão da instalação no computador (assistente via curl | bash)
+    APP_DIR="${HOME}/casino"
+    if [[ -n "$(server_site_for "${APP_DIR}")" ]]; then TARGET="server"; else TARGET="local"; fi
+  elif [[ -f /var/www/casino/.env ]]; then TARGET="server"; APP_DIR="/var/www/casino"
   else die "Não encontrei uma instalação. Use --dir para informar a pasta (ou --local / --domain para instalar)."; fi
 }
 
