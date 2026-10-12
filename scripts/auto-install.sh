@@ -1388,9 +1388,9 @@ EOF
     "  Senha      ${ADMIN_PASS}" \
     "" \
     "  ${c_dim}Dados salvos em ${CRED_FILE} (só o root lê)${c_off}" \
-    "  ${c_dim}Atualizar:  sudo bash scripts/auto-install.sh --update${c_off}" \
-    "  ${c_dim}Backup:     sudo bash scripts/auto-install.sh --backup${c_off}" \
-    "  ${c_dim}Remover:    sudo bash scripts/auto-install.sh --uninstall${c_off}"
+    "  ${c_dim}Atualizar:  sudo bash ${SRC}/instalar.sh --update${c_off}" \
+    "  ${c_dim}Backup:     sudo bash ${SRC}/instalar.sh --backup${c_off}" \
+    "  ${c_dim}Remover:    sudo bash ${SRC}/instalar.sh --uninstall${c_off}"
   echo
   info "Próximo passo: configure os gateways em ${APP_URL}/admin (docs/PAGAMENTOS.md)."
 }
@@ -1954,7 +1954,8 @@ purge_programs() {   # programas que o PRÓPRIO assistente instalou (nunca os qu
   # o assistente sempre baixa o Composer para ~/.local/bin (instalações antigas não tinham o registro)
   if [[ -f "${HOME}/.local/bin/composer" ]]; then UN_COMPOSER="$(merge_words ${UN_COMPOSER:-} "${HOME}/.local/bin/composer")"; fi
   for c in ${UN_COMPOSER:-}; do
-    if [[ -f "${c}" ]] && { [[ ${PURGE_PACKAGES} -eq 1 ]] || { [[ ${INTERACTIVE} -eq 1 ]] && confirm "Remover o Composer que o assistente baixou (${c})?" s; }; }; then
+    # sem perguntas (-y) vale o padrão de cada pergunta: Composer e cache saem; pacotes e swap ficam
+    if [[ -f "${c}" ]] && { [[ ${PURGE_PACKAGES} -eq 1 ]] || confirm "Remover o Composer que o assistente baixou (${c})?" s; }; then
       rm -f "${c}" && ok "Composer removido" && removed_composer=1
       rmdir "$(dirname "${c}")" 2>/dev/null || true
     fi
@@ -1966,7 +1967,7 @@ purge_programs() {   # programas que o PRÓPRIO assistente instalou (nunca os qu
   if [[ ${#cache_dirs[@]} -gt 0 ]]; then
     size="$(du -sch "${cache_dirs[@]}" 2>/dev/null | tail -1 | cut -f1 || true)"
     if [[ ${removed_composer} -eq 1 || ${PURGE_PACKAGES} -eq 1 ]] \
-       || { [[ ${INTERACTIVE} -eq 1 ]] && confirm "Apagar o cache do Composer (${size:-?})? Outros projetos PHP só baixam de novo o que precisarem" s; }; then
+       || confirm "Apagar o cache do Composer (${size:-?})? Outros projetos PHP só baixam de novo o que precisarem" s; then
       rm -rf "${cache_dirs[@]}" && ok "Cache e configuração do Composer apagados (${size:-?})"
     fi
   fi
@@ -1974,7 +1975,7 @@ purge_programs() {   # programas que o PRÓPRIO assistente instalou (nunca os qu
     local pk=() p; for p in ${UN_PKGS}; do pkg_installed "${p}" && pk+=("${p}"); done
     if [[ ${#pk[@]} -gt 0 ]]; then
       info "Programas que o assistente instalou: ${pk[*]}"
-      if [[ ${PURGE_PACKAGES} -eq 1 ]] || { [[ ${INTERACTIVE} -eq 1 ]] && confirm "Remover esses programas também? (o MariaDB leva TODOS os bancos dele junto)" n; }; then
+      if [[ ${PURGE_PACKAGES} -eq 1 ]] || confirm "Remover esses programas também? (o MariaDB leva TODOS os bancos dele junto)" n; then
         setup_sudo "remover os programas" soft || true
         run "Removendo ${#pk[@]} pacote(s)" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq "${pk[@]}"
         run "Limpando dependências que sobraram" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y -qq
@@ -1984,7 +1985,7 @@ purge_programs() {   # programas que o PRÓPRIO assistente instalou (nunca os qu
     fi
   fi
   for s in ${UN_SWAP:-}; do
-    if [[ -f "${s}" && ${EUID} -eq 0 ]] && { [[ ${PURGE_PACKAGES} -eq 1 ]] || { [[ ${INTERACTIVE} -eq 1 ]] && confirm "Remover o swap ${s} criado pelo assistente?" n; }; }; then
+    if [[ -f "${s}" && ${EUID} -eq 0 ]] && { [[ ${PURGE_PACKAGES} -eq 1 ]] || confirm "Remover o swap ${s} criado pelo assistente?" n; }; then
       swapoff "${s}" >>"${LOG}" 2>&1 || true; rm -f "${s}"; sed -i "\#^${s} #d" /etc/fstab; ok "Swap ${s} removido"
     fi
   done
