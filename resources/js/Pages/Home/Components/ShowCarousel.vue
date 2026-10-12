@@ -62,7 +62,7 @@ export default {
             breakpointsGames: {
                 700: {
                     itemsToShow: 3.5,
-                    snapAlign: 'center',
+                    snapAlign: 'start',
                 },
                 1024: {
                     itemsToShow: 6,

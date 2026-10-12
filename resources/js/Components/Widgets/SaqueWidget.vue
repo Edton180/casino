@@ -84,6 +84,7 @@
 
 
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
     import {useToast} from "vue-toastification";
     import HttpApi from "@/Services/HttpApi.js";
     import QRCodeVue3 from "qrcode-vue3";
@@ -176,7 +177,7 @@ function formatarCPF(cpf) {
 // Exemplo de uso
 this.cpf = userData && userData.cpf ? formatarCPF(userData.cpf) : '';
 
-            this.modalSaque = new Modal(document.getElementById('modalElSaque'), {
+            this.modalSaque = lazyModal('modalElSaque', {
                 placement: 'center',
                 backdrop: 'dynamic',
                 backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',

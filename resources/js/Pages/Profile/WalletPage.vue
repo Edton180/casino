@@ -169,7 +169,7 @@ export default {
                 .then(response => {
                    _this.getMyWallet();
                     _this.isLoadingWallet = false;
-                    window.location.href = 'https://gugabet.com/profile/transactions';
+                    _this.$router.push({ name: 'profileTransactions' });
 
                 })
                 .catch(error => {

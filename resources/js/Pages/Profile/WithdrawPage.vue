@@ -225,8 +225,12 @@ if (userData && userData.cpf) {
 }
 
 function formatarCPF(cpf) {
+    // jogador ainda sem CPF cadastrado: nada a formatar
+    if (!cpf) {
+        return '';
+    }
     // Remover caracteres não numéricos do CPF
-    cpf = cpf.replace(/\D/g, '');
+    cpf = String(cpf).replace(/\D/g, '');
     
     // Aplicar a máscara do CPF
     cpf = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
@@ -235,7 +239,7 @@ function formatarCPF(cpf) {
 }
 
 // Exemplo de uso
-this.cpf = formatarCPF(userData.cpf);
+this.cpf = formatarCPF(userData?.cpf);
     },
     methods: {
         toggleFormAndShowModal() {

@@ -42,6 +42,7 @@
 </template>
 
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
     import {useAuthStore} from "@/Stores/Auth.js";
     import DepositWidget from "@/Components/Widgets/DepositWidget.vue";
     import {onMounted} from "vue";
@@ -71,7 +72,7 @@
             },
         },
         mounted() {
-            this.modalDeposit = new Modal(document.getElementById('modalElDeposit'), {
+            this.modalDeposit = lazyModal('modalElDeposit', {
                  placement: 'top-center', // Altere isso para 'top-center' para abrir para cima
                 backdrop: 'dynamic',
                 backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',
@@ -133,11 +134,11 @@
       justify-content: center;
       flex-direction: column;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-      mask-image: url('/public/hexagon.svg'); /* URL do SVG */
+      mask-image: url('/hexagon.svg'); /* URL do SVG */
       mask-size: contain;
       mask-position: center;
       mask-repeat: no-repeat;
-      -webkit-mask-image: url('/public/hexagon.svg'); /* Compatibilidade com WebKit */
+      -webkit-mask-image: url('/hexagon.svg'); /* Compatibilidade com WebKit */
       -webkit-mask-size: contain;
       -webkit-mask-position: center;
       -webkit-mask-repeat: no-repeat;

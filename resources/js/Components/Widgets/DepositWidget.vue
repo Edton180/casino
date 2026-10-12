@@ -215,6 +215,7 @@
 </template>
 
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
     import {useToast} from "vue-toastification";
     import HttpApi from "@/Services/HttpApi.js";
     import QRCodeVue3 from "qrcode-vue3";
@@ -281,9 +282,8 @@
                 this.showCPFInput = true;
             }
 
-            const modalEl = document.getElementById('modalElDeposit');
-            if (modalEl && typeof Modal !== 'undefined') {
-                this.modalDeposit = new Modal(modalEl, {
+            {
+                this.modalDeposit = lazyModal('modalElDeposit', {
                     placement: 'center',
                     backdrop: 'dynamic',
                     backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',
@@ -519,13 +519,13 @@
 }
 
 .full-screen {
-  width: 90vw;
-  height: 100vh;
+  /* ocupa a largura de quem o contém (janela de depósito ou página /profile/deposit) */
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* Alinha o conteúdo ao topo */
-  justify-content: flex-start; /* Garante que o conteúdo comece do topo */
-
+  align-items: stretch;
+  justify-content: flex-start;
 }
 .amount.selected {
   color: var(--ci-primary-color);

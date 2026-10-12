@@ -8,6 +8,7 @@ Route::prefix('games')
     ->group(function ()
     {
         Route::get('all', [GameController::class, 'index']);
+        Route::get('recent-wins', [GameController::class, 'recentWins'])->middleware('throttle:60,1');
         Route::get('single/{id}', [GameController::class, 'show']);
         Route::post('favorite/{id}', [GameController::class, 'toggleFavorite']);
         Route::post('like/{id}', [GameController::class, 'toggleLike']);

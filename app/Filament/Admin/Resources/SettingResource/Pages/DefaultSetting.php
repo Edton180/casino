@@ -279,6 +279,12 @@ class DefaultSetting extends Page implements HasForms
                             ->rows(3)
                             ->columnSpanFull(),
                         TextInput::make('support_email')->label('E-mail de suporte')->email()->maxLength(191),
+                        TextInput::make('support_url')
+                            ->label('Link de suporte (WhatsApp, Telegram ou chat)')
+                            ->placeholder('https://wa.me/5511999999999')
+                            ->helperText('Usado pela página Suporte do site. Vazio: usa o e-mail de suporte.')
+                            ->url()
+                            ->maxLength(191),
                         TextInput::make('legal_email')->label('E-mail jurídico')->email()->maxLength(191),
                         TextInput::make('partners_email')->label('E-mail de parceiros')->email()->maxLength(191),
                     ])->columns(3),

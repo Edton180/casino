@@ -1,12 +1,8 @@
 <template>
-        <a v-if="showNewElement && !isAuthenticated" class="elemento-adicional" href="profile/affiliate">
-        <h1>{{ setting.software_description }}</h1>
-        <button @click="$router.push('/profile/affiliate')" class="botao-adicional">Resgatar</button>
-    </a>
-    <a v-if="showNewElement && isAuthenticated" class="elemento-adicional" href="profile/affiliate">
-        <h1>{{ setting.software_description2 }}</h1>
-        <button @click="$router.push('/profile/affiliate')" class="botao-adicional">Resgatar</button>
-    </a>
+    <RouterLink v-if="showNewElement" class="elemento-adicional" :to="{ name: 'profileAffiliate' }">
+        <h1>{{ isAuthenticated ? setting.software_description2 : setting.software_description }}</h1>
+        <span class="botao-adicional">Resgatar</span>
+    </RouterLink>
 
     <nav class="fixed navbar z-45 w-full navtop-color border-none custom-box-shadow translucent-navbar"
          :style="{ top: showNewElement ? '30px' : '0' }">
@@ -752,6 +748,7 @@
 
 </template>
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
 import { RouterLink, useRoute } from "vue-router";
 import { sidebarStore } from "@/Stores/SideBarStore.js";
 import { Modal } from 'flowbite';
@@ -895,7 +892,7 @@ export default {
         * $targetEl: required
         * options: optional
         */
-        this.modalProfile = new Modal(document.getElementById('modalProfileEl'), {
+        this.modalProfile = lazyModal('modalProfileEl', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -915,7 +912,7 @@ export default {
         * $targetEl: required
         * options: optional
         */
-        this.modalAuth = new Modal(document.getElementById('modalElAuth'), {
+        this.modalAuth = lazyModal('modalElAuth', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -935,7 +932,7 @@ export default {
        * $targetEl: required
        * options: optional
        */
-        this.modalRegister = new Modal(document.getElementById('modalElRegister'), {
+        this.modalRegister = lazyModal('modalElRegister', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -951,7 +948,7 @@ export default {
             }
         });
         
-        this.modalElpresente = new Modal(document.getElementById('modalElpresente'), {
+        this.modalElpresente = lazyModal('modalElpresente', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -967,7 +964,7 @@ export default {
             }
         });
         
-            this.modalDeposit = new Modal(document.getElementById('modalElDeposit'), {
+            this.modalDeposit = lazyModal('modalElDeposit', {
                  placement: 'top-center', // Altere isso para 'top-center' para abrir para cima
                 backdrop: 'dynamic',
                 backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',
@@ -982,7 +979,7 @@ export default {
 
                 },
             });
-            this.modalSaque = new Modal(document.getElementById('modalElSaque'), {
+            this.modalSaque = lazyModal('modalElSaque', {
                  placement: 'top-center', // Altere isso para 'top-center' para abrir para cima
                 backdrop: 'dynamic',
                 backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',

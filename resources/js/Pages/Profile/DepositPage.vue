@@ -1,12 +1,8 @@
 <template>
     <BaseLayout>
-        <div class="md:w-4/6 2xl:w-4/6 mx-auto p-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 z-[999999]">
-
-                <div class="col-span-2 relative" style="margin-top: 1px;"> <!-- Ajuste o valor de margin-top conforme necessário -->
-                    <DepositWidget />
-                </div>
-            </div>
+        <div class="w-full max-w-2xl mx-auto p-4">
+            <h1 class="text-xl font-bold mb-4">Depositar</h1>
+            <DepositWidget />
         </div>
     </BaseLayout>
 </template>

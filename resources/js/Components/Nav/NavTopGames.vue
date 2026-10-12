@@ -683,6 +683,7 @@
 
 </template>
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
 import { RouterLink, useRoute } from "vue-router";
 import { sidebarStore } from "@/Stores/SideBarStore.js";
 import { Modal } from 'flowbite';
@@ -814,7 +815,7 @@ export default {
         * $targetEl: required
         * options: optional
         */
-        this.modalProfile = new Modal(document.getElementById('modalProfileEl'), {
+        this.modalProfile = lazyModal('modalProfileEl', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -834,7 +835,7 @@ export default {
         * $targetEl: required
         * options: optional
         */
-        this.modalAuth = new Modal(document.getElementById('modalElAuth'), {
+        this.modalAuth = lazyModal('modalElAuth', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -854,7 +855,7 @@ export default {
        * $targetEl: required
        * options: optional
        */
-        this.modalRegister = new Modal(document.getElementById('modalElRegister'), {
+        this.modalRegister = lazyModal('modalElRegister', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -870,7 +871,7 @@ export default {
             }
         });
         
-        this.modalElpresente = new Modal(document.getElementById('modalElpresente'), {
+        this.modalElpresente = lazyModal('modalElpresente', {
             placement: 'center',
             backdrop: 'dynamic',
             backdropClasses: 'bg-gray-700 bg-opacity-50 dark:bg-opacity-80 fixed inset-0 z-40',
@@ -886,7 +887,7 @@ export default {
             }
         });
         
-            this.modalDeposit = new Modal(document.getElementById('modalElDeposit'), {
+            this.modalDeposit = lazyModal('modalElDeposit', {
                  placement: 'top-center', // Altere isso para 'top-center' para abrir para cima
                 backdrop: 'dynamic',
                 backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',
@@ -1231,13 +1232,13 @@ export default {
         }
     },
     async created() {
+        // carteira, saques e depósitos só existem para quem está logado (sem isso: respostas 401)
         if(this.isAuthenticated) {
-
             await this.getProfile();
+            this.getWallet();
+            this.getWithdraws();
+            this.getDeposits();
         }
-        this.getWallet();
-        this.getWithdraws();
-        this.getDeposits();
     },
     watch: {
         searchTerm(newValue, oldValue) {

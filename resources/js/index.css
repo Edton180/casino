@@ -1447,7 +1447,7 @@ body{
     position: relative;
     background: linear-gradient(19.92deg, rgba(234, 172, 32, 0.51) -6.45%,rgba(175,13,132,.04) 78.77%),rgba(216,216,216,.05);
 }
-@media only screen and (max-width: 600px) {
+@media only screen and (max-width: 1024px) {
     .btn-refer {
         width: 100%;
     }
@@ -1734,10 +1734,11 @@ input:focus, input:hover
 }
 
 
-@media (min-width: 768px)
+@media (min-width: 768px) {
 .elemento-adicional {
     gap: .5rem;
     padding: .375rem .5rem;
+}
 }
 
 .tituloaff {
@@ -1770,11 +1771,12 @@ input:focus, input:hover
     color: rgb(0 0 0 / var(--tw-text-opacity));
 }
 
-@media (min-width: 768px)
+@media (min-width: 768px) {
 .elemento-adicional .ChDQ3 {
     font-size: 1.125rem;
     line-height: 1.75rem;
     right: .5rem;
+}
 }
 .elemento-adicional .ChDQ3 {
     cursor: pointer;
@@ -1786,14 +1788,18 @@ input:focus, input:hover
     right: 0;
 }
 
-@media (min-width: 768px)
+@media (min-width: 768px) {
 .elemento-adicional button {
     font-size: .875rem;
     font-weight: 500;
     line-height: 1.25rem;
 }
+}
 
-.elemento-adicional button {
+.elemento-adicional button,
+.elemento-adicional .botao-adicional {
+    display: inline-block;
+    white-space: nowrap;
     border-radius: 8px;
     --tw-bg-opacity: 1;
     background-color: #000;
@@ -2080,4 +2086,34 @@ input:focus, input:hover
     background-color: var(--ci-primary-opacity-color);
     padding: 15px;
     border-radius: 100px;
+}
+
+/* Botões de largura fixa: em telas estreitas dividem o espaço em vez de estourar a largura */
+.ui-button-custom, .ui-button-custom2, .ui-button-custom3, .ui-button-custom4,
+.ui-button-custom5, .ui-button-custom6, .ui-button-custom7 {
+    max-width: 100%;
+    white-space: nowrap;
+}
+@media (max-width: 480px) {
+    .ui-button-custom, .ui-button-custom3, .ui-button-custom4,
+    .ui-button-custom6, .ui-button-custom7 {
+        width: auto;
+        min-width: 0;
+        flex: 1 1 0;
+        margin-right: 0;
+        padding: 0 12px;
+        font-size: 18px;
+    }
+    .ui-button-custom2, .ui-button-custom5 {
+        width: 100%;
+        font-size: 18px;
+    }
+}
+
+/* Faixa de aviso no topo: texto longo vira "..." em vez de quebrar a faixa */
+.elemento-adicional h1 {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

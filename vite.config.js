@@ -11,9 +11,13 @@ export default defineConfig({
         }),
         vue({
             template: {
-                base: null,
-                includeAbsolute: false
-            }
+                // imagens com caminho absoluto (/assets/..., /storage/...) ficam como estão:
+                // são servidas pela pasta public/, não passam pelo Vite
+                transformAssetUrls: {
+                    base: null,
+                    includeAbsolute: false,
+                },
+            },
         }),
         i18n(),
     ],

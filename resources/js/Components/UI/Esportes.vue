@@ -1,12 +1,14 @@
 <template>
-    <button onclick="window.location.href='https://gugabet.com/games/play/12174/8357'" type="button" :class="[showMobile === false ? 'hidden md:block' : '', isFull ? 'w-full' : '']" class="ui-button-blue mr-3 rounded">
+    <a v-if="sportsLink" :href="sportsLink" :class="[showMobile === false ? 'hidden md:block' : '', isFull ? 'w-full' : '']" class="ui-button-blue mr-3 rounded text-center">
         Esportes
-    </button>
+    </a>
 
 </template>
 
 <script>
+import { lazyModal } from '@/Services/LazyModal.js';
     import {useAuthStore} from "@/Stores/Auth.js";
+    import {useSettingStore} from "@/Stores/SettingStore.js";
     import DepositWidget from "@/Components/Widgets/DepositWidget.vue";
     import {onMounted} from "vue";
     import {initFlowbite} from "flowbite";
@@ -29,13 +31,18 @@
             return {};
         },
         computed: {
+            // aparece só quando o link de esportes estiver configurado e ligado no painel
+            sportsLink() {
+                const setting = useSettingStore().setting;
+                return setting && setting.turn_on_football && setting.football_link ? setting.football_link : null;
+            },
             isAuthenticated() {
                 const authStore = useAuthStore();
                 return authStore.isAuth;
             },
         },
         mounted() {
-            this.modalDeposit = new Modal(document.getElementById('modalElDeposit'), {
+            this.modalDeposit = lazyModal('modalElDeposit', {
                 placement: 'center',
                 backdrop: 'dynamic',
                 backdropClasses: 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40',

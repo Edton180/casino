@@ -84,6 +84,7 @@ class Setting extends Model
         'footer_show_credit',
         'footer_about',
         'support_email',
+        'support_url',
         'legal_email',
         'partners_email',
         'menu',

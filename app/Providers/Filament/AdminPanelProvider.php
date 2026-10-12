@@ -72,6 +72,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->sidebarCollapsibleOnDesktop()
+            ->renderHook(\Filament\View\PanelsRenderHook::HEAD_END, fn () => view('filament.components.mobile-sidebar'))
+            ->defaultAvatarProvider(\App\Filament\Support\LocalAvatarProvider::class)
             ->collapsibleNavigationGroups(true)
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([
