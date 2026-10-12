@@ -209,6 +209,13 @@ class AdminPanelProvider extends PanelProvider
                     NavigationGroup::make('maintenance')
                         ->label('Manutenção')
                         ->items([
+                            NavigationItem::make('system_page')
+                                ->icon('heroicon-o-server-stack')
+                                ->label(fn (): string => 'Sistema (atualizar, backups)')
+                                ->url(fn (): string => \App\Filament\Admin\Pages\SystemPage::getUrl())
+                                ->isActiveWhen(fn () => request()->routeIs('filament.admin.pages.sistema'))
+                                ->visible(fn(): bool => auth()->user()->hasRole('admin')),
+
                             NavigationItem::make('advanced_page')
                                 ->icon('heroicon-o-banknotes')
                                 ->label(fn (): string => 'Opções Avançadas')

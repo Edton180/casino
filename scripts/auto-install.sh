@@ -1335,7 +1335,8 @@ do_server_install() {
   existing_install_check || { do_update; return; }
   legal_notice
 
-  step "Instalando Nginx, PHP ${PHP_VERSION} e MariaDB"
+  local php_label; if php_ok; then php_label="PHP $(php_ver)"; else php_label="$(php_plan_label)"; fi
+  step "Instalando Nginx, ${php_label} e MariaDB"
   ensure_swap
   server_packages
   tune_php_fpm
