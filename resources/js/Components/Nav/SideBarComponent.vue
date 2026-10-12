@@ -3,7 +3,7 @@
               sidebar === true ? 'translate-x-0' : '-translate-x-full',
               //isAuthenticated ? 'top-[65px]' : 'top-[115px]'
             ]"
-           class="fixed top-[70px] left-0 z-50 w-64 w-full-mobile h-screen transition-transform -translate-x-full sm:translate-x-0 translucent-menu "
+           class="fixed top-[70px] left-0 z-50 w-64 max-sm:w-full h-screen transition-transform -translate-x-full sm:translate-x-0 translucent-menu "
            aria-label="Sidebar">
         <div class="h-full pb-4 pt-[30px] overflow-y-auto  px-4">
             <!-- <ul class="">
