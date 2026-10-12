@@ -124,7 +124,11 @@ row() {   # row ok|warn|fail|info "rótulo" "valor"
 
 box() {   # box "Título" "linha 1" "linha 2" ...
   local title="$1"; shift
-  local inner=$((COLS - 4)) l pad
+  local inner=$((COLS - 4)) l pad w tcols
+  for l in "$@"; do w=$(( $(vlen "${l}") + 1 )); [[ ${w} -gt ${inner} ]] && inner=${w}; done
+  tcols="$(tput cols 2>/dev/null || echo 0)"; [[ "${tcols}" =~ ^[0-9]+$ ]] || tcols=0
+  [[ ${tcols} -gt 0 && ${inner} -gt $((tcols - 4)) ]] && inner=$((tcols - 4))
+  [[ ${inner} -lt $((COLS - 4)) ]] && inner=$((COLS - 4))
   printf "%s%s%s%s %s%s%s %s%s%s\n" "${c_line}" "${B_TL}" "$(rep "${B_H}" 1)" "${c_off}" "${c_bold}" "${title}" "${c_off}" "${c_line}" "$(rep "${B_H}" $((inner - $(vlen "${title}") - 1)))" "${B_TR}${c_off}"
   for l in "$@"; do
     pad=$((inner - $(vlen "${l}")))
@@ -356,16 +360,26 @@ choose() {   # choose VAR "título" "opção 1" "opção 2" ...   → índice 1.
 random_secret() { local s; s="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"; echo "${s:0:${1:-24}}"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
-setup_sudo() {
-  [[ ${EUID} -eq 0 ]] && return 0
-  have sudo || die "Preciso de permissão de administrador, mas o 'sudo' não existe. Rode como root."
-  SUDO="sudo"
+has_tty() { [[ -t 0 ]] || { [[ -r /dev/tty ]] && (: </dev/tty) 2>/dev/null; }; }
+
+setup_sudo() {   # setup_sudo ["motivo"] [soft] → pede a senha do sudo uma única vez e a mantém válida
+  [[ ${EUID} -eq 0 || -n "${SUDO}" ]] && return 0
+  local soft="${2:-}"
+  if ! have sudo; then [[ -n "${soft}" ]] && return 1; die "Preciso de permissão de administrador, mas o 'sudo' não existe. Rode como root."; fi
   if ! sudo -n true 2>/dev/null; then
-    echo -e "  ${c_dim}Vou pedir a senha de administrador (sudo) para instalar pacotes do sistema.${c_off}"
-    sudo -v || die "Sem permissão de administrador."
+    if ! has_tty; then
+      [[ -n "${soft}" ]] && return 1
+      die "Preciso da senha de administrador (sudo) para ${1:-instalar pacotes do sistema}, mas não há terminal para digitá-la. Rode em um terminal."
+    fi
+    echo -e "  ${c_dim}Vou pedir a senha do seu usuário do computador (sudo) para ${1:-instalar pacotes do sistema}.${c_off}"
+    if ! sudo -v; then
+      [[ -n "${soft}" ]] && { warn "O sudo não foi liberado (senha incorreta ou usuário sem permissão)."; return 1; }
+      die "Sem permissão de administrador (senha do sudo incorreta?)."
+    fi
   fi
+  SUDO="sudo"
   # mantém a autorização viva durante instalações longas
-  ( while true; do sudo -n true 2>/dev/null; sleep 40; kill -0 "$$" 2>/dev/null || exit; done ) &
+  ( while true; do sudo -n true 2>/dev/null; sleep 40; kill -0 "$$" 2>/dev/null || exit; done ) </dev/null >/dev/null 2>&1 &
   SUDO_KEEPALIVE_PID=$!
 }
 
@@ -373,7 +387,12 @@ require_root() {   # reabre com sudo se necessário
   [[ ${EUID} -eq 0 ]] && return 0
   if have sudo && [[ -n "${SELF}" ]]; then
     echo -e "  ${c_dim}Esta instalação precisa de administrador; reabrindo com sudo...${c_off}"
-    exec sudo -E bash "${SELF}" "${ORIG_ARGS[@]}"
+    # sem "sudo -E": o sudo-rs (padrão no Ubuntu 26.04) não aceita; repassa só o necessário
+    local envs=("TERM=${TERM:-xterm}") v
+    for v in GITHUB_TOKEN GH_TOKEN REPO_SLUG REPO_URL BRANCH PHP_VERSION CASINO_NO_UPDATE NO_COLOR; do
+      if [[ -n "${!v:-}" ]]; then envs+=("${v}=${!v}"); fi
+    done
+    exec sudo env "${envs[@]}" bash "${SELF}" "${ORIG_ARGS[@]}"
   fi
   die "Execute como root:  sudo bash scripts/auto-install.sh ..."
 }
@@ -689,11 +708,12 @@ composer_install() {
 }
 
 start_db_service() {
-  mysqladmin ping >/dev/null 2>&1 && return 0
+  mysqladmin ping >/dev/null 2>&1 && return 0          # responde 0 com o servidor no ar (mesmo sem permissão)
+  if [[ ${EUID} -ne 0 ]] && have sudo; then setup_sudo "ligar o MySQL/MariaDB" soft || true; fi
   ${SUDO} service mariadb start >/dev/null 2>&1 || ${SUDO} service mysql start >/dev/null 2>&1 \
-    || ${SUDO} systemctl start mariadb >/dev/null 2>&1 || ${SUDO} systemctl start mysql >/dev/null 2>&1 || true
-  local i; for i in 1 2 3 4 5 6 7 8 9 10; do
-    ${SUDO} mysqladmin ping >/dev/null 2>&1 && return 0
+    || ${SUDO} systemctl start mariadb >/dev/null 2>&1 || ${SUDO} systemctl start mysql >/dev/null 2>&1 \
+    || { have brew && brew services start mariadb >/dev/null 2>&1; } || true
+  local i; for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
     mysqladmin ping >/dev/null 2>&1 && return 0
     sleep 1
   done
@@ -701,23 +721,63 @@ start_db_service() {
 }
 
 DB_ADMIN=()
-db_admin_detect() {   # descobre como falar com o MySQL como administrador (socket, sudo ou senha)
+db_admin_ok() {   # db_admin_ok comando... → conectou E tem cara de administrador (lê mysql.user)
+  "$@" -N -e 'SELECT COUNT(*) FROM mysql.user' >/dev/null 2>&1
+}
+db_admin_detect() {   # descobre como falar com o MySQL como administrador, do jeito mais simples que funcionar
   [[ ${#DB_ADMIN[@]} -gt 0 ]] && return 0
-  if mysql -uroot -e 'select 1' >/dev/null 2>&1; then DB_ADMIN=(mysql -uroot); return 0; fi
-  if [[ -n "${SUDO}" ]] && ${SUDO} mysql -e 'select 1' >/dev/null 2>&1; then DB_ADMIN=(${SUDO} mysql); return 0; fi
-  if [[ ${INTERACTIVE} -eq 1 ]]; then
-    local p; ask_secret p "Senha do usuário root do MySQL" ""
-    if [[ -n "${p}" ]] && MYSQL_PWD="${p}" mysql -uroot -e 'select 1' >/dev/null 2>&1; then
-      export MYSQL_PWD="${p}"; DB_ADMIN=(mysql -uroot); return 0
+  # 1) root sem senha, ou já somos root no Linux (o root do MariaDB entra pelo socket): XAMPP, contêineres, sudo bash
+  if db_admin_ok mysql -uroot; then DB_ADMIN=(mysql -uroot); return 0; fi
+  # 2) macOS/Homebrew: o usuário que instalou o MariaDB é administrador pelo socket
+  if [[ ${IS_MAC} -eq 1 ]] && db_admin_ok mysql; then DB_ADMIN=(mysql); return 0; fi
+  # 3) Ubuntu/Debian: o root do MariaDB/MySQL não tem senha própria; entra pelo socket com sudo
+  if [[ ${EUID} -ne 0 ]] && have sudo; then
+    if [[ -n "${SUDO}" ]] || sudo -n true 2>/dev/null || has_tty; then
+      if setup_sudo "criar o banco de dados (o administrador do MySQL entra pelo sudo)" soft \
+         && db_admin_ok sudo mysql; then DB_ADMIN=(sudo mysql); return 0; fi
     fi
+  fi
+  # 4) MySQL do Debian/Ubuntu: conta de manutenção
+  local cnf=/etc/mysql/debian.cnf
+  if ${SUDO} test -r "${cnf}" 2>/dev/null && db_admin_ok ${SUDO} mysql --defaults-file="${cnf}"; then
+    DB_ADMIN=(${SUDO} mysql --defaults-file="${cnf}"); return 0
+  fi
+  # 5) senha do root do MySQL (quem definiu uma senha na instalação)
+  if [[ ${INTERACTIVE} -eq 1 ]]; then
+    info "Não consegui entrar no MySQL como administrador automaticamente."
+    local p tries
+    for tries in 1 2 3; do
+      ask_secret p "Senha do usuário root do MySQL (ENTER para desistir)" ""
+      [[ -n "${p}" ]] || break
+      if MYSQL_PWD="${p}" db_admin_ok mysql -uroot; then export MYSQL_PWD="${p}"; DB_ADMIN=(mysql -uroot); return 0; fi
+      warn "Senha incorreta (tentativa ${tries} de 3)."
+    done
   fi
   return 1
 }
 
+db_admin_help() {   # explica como resolver quando nenhuma forma de entrar como administrador funcionou
+  echo
+  box "Não consegui criar o banco de dados sozinho" \
+    "O MySQL/MariaDB está ligado, mas não consegui entrar como administrador" \
+    "(nem pelo sudo, nem como root). Crie o banco e um usuário para o site:" \
+    "" \
+    "  sudo mysql" \
+    "  CREATE DATABASE ${1}" \
+    "    CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" \
+    "  CREATE USER '${2}'@'localhost' IDENTIFIED BY 'UmaSenhaForte123';" \
+    "  GRANT ALL PRIVILEGES ON ${1}.* TO '${2}'@'localhost';" \
+    "  exit" \
+    "" \
+    "Depois rode de novo informando esse usuário:" \
+    "  bash instalar.sh --local --db-name ${1} \\" \
+    "      --db-user ${2} --db-pass UmaSenhaForte123"
+}
+
 provision_db() {   # provision_db <banco> <usuario>  → define DB_NAME/DB_USER/DB_PASS
   DB_NAME="$1"; DB_USER="$2"; DB_PASS="$(random_secret 28)"; DB_HOST="127.0.0.1"
-  start_db_service || die "Não consegui iniciar o MySQL/MariaDB. Veja: sudo service mariadb status"
-  db_admin_detect || die "Não consegui acessar o MySQL como administrador. Informe um usuário com --db-user/--db-pass."
+  start_db_service || die "Não consegui ligar o MySQL/MariaDB. Veja o motivo com:  sudo systemctl status mariadb"
+  db_admin_detect || { db_admin_help "${DB_NAME}" "${DB_USER}"; die "Não consegui acessar o MySQL como administrador."; }
   run "Criando o banco de dados '${DB_NAME}' e o usuário '${DB_USER}'" "${DB_ADMIN[@]}" -e "
     CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
@@ -925,7 +985,7 @@ Senha:         ${ADMIN_PASS}
 Banco:         ${DB_NAME}  (usuário ${DB_USER}, senha ${DB_PASS}, host ${DB_HOST})
 Pasta:         ${APP_DIR}
 EOF
-  local rel="${APP_DIR}/scripts/"; rel="${rel/#${HOME}/~}"
+  local tilde='~' rel="${APP_DIR}/scripts/"; rel="${rel/#${HOME}/${tilde}}"
   echo
   box "Instalação local concluída em $(fmt_time $((SECONDS - T0)))" \
     "" \

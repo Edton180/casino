@@ -161,7 +161,99 @@ class CasinoInstaller
                 'version' => $version,
             ];
         } catch (Throwable $e) {
-            return ['ok' => false, 'message' => 'Não foi possível conectar: ' . $this->friendlyDbError($e->getMessage())];
+            return [
+                'ok'      => false,
+                'kind'    => $this->dbErrorKind($e->getMessage()),
+                'message' => 'Não foi possível conectar: ' . $this->friendlyDbError($e->getMessage()),
+                'error'   => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Tipo do erro de conexão: access | unknown_db | no_privilege | no_server | other.
+     */
+    public function dbErrorKind(string $message): string
+    {
+        return match (true) {
+            str_contains($message, '[1044]')                                       => 'no_privilege',
+            str_contains($message, '[1045]'), str_contains($message, '[1698]'),
+            str_contains($message, 'Access denied for user')                       => 'access',
+            str_contains($message, '[1049]'), str_contains($message, 'Unknown database') => 'unknown_db',
+            str_contains($message, '[2002]'), str_contains($message, '[2003]'), str_contains($message, '[2006]'),
+            str_contains($message, 'getaddrinfo'), str_contains($message, 'Connection refused') => 'no_server',
+            default                                                                => 'other',
+        };
+    }
+
+    public function isLocalDatabaseHost(?string $host): bool
+    {
+        return in_array(strtolower(trim((string) $host)), ['', 'localhost', '127.0.0.1', '::1'], true);
+    }
+
+    /* ---- criação do banco e do usuário do site com uma conta administradora (localhost / VPS) ---- */
+
+    /**
+     * Comandos SQL que criam o banco e um usuário com acesso só a ele (ou redefinem a senha, se o usuário existir).
+     *
+     * @param  callable(string): string  $quote  função que transforma a senha em literal SQL
+     * @return list<string>
+     */
+    public function provisionStatements(array $db, callable $quote): array
+    {
+        $name = (string) ($db['database'] ?? '');
+        $user = (string) ($db['username'] ?? '');
+        if (!preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $name)) {
+            throw new \InvalidArgumentException('Nome de banco inválido (use letras, números, _ ou -).');
+        }
+        if (!preg_match('/^[A-Za-z0-9_\-.]{1,32}$/', $user) || strtolower($user) === 'root') {
+            throw new \InvalidArgumentException('Nome de usuário do banco inválido (use letras, números, _, - ou .; o root não é permitido).');
+        }
+        $pass = $quote((string) ($db['password'] ?? ''));
+
+        $sql = ["CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"];
+        foreach (['localhost', '127.0.0.1'] as $host) {
+            $sql[] = "CREATE USER IF NOT EXISTS '{$user}'@'{$host}' IDENTIFIED BY {$pass}";
+            $sql[] = "ALTER USER '{$user}'@'{$host}' IDENTIFIED BY {$pass}";
+            $sql[] = "GRANT ALL PRIVILEGES ON `{$name}`.* TO '{$user}'@'{$host}'";
+        }
+        $sql[] = 'FLUSH PRIVILEGES';
+
+        return $sql;
+    }
+
+    /** Mesmo SQL em texto, para rodar no cliente "mysql" (ex.: sudo mysql). */
+    public function provisionSql(array $db): string
+    {
+        $quote = fn (string $v) => "'" . str_replace(['\\', "'"], ['\\\\', "\\'"], $v) . "'";
+
+        return implode(";\n", $this->provisionStatements($db, $quote)) . ";\n";
+    }
+
+    /**
+     * Cria banco e usuário conectando com uma conta administradora (ex.: root sem senha no XAMPP,
+     * ou root pelo socket quando o processo roda como root no Linux).
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function provisionWithAdmin(array $db, array $admin): array
+    {
+        try {
+            $pdo = $this->connect([
+                'host'     => $db['host'] ?? 'localhost',
+                'port'     => $db['port'] ?? 3306,
+                'database' => '',
+                'username' => $admin['username'] ?? 'root',
+                'password' => $admin['password'] ?? '',
+            ]);
+            foreach ($this->provisionStatements($db, fn (string $v) => $pdo->quote($v)) as $statement) {
+                $pdo->exec($statement);
+            }
+            $this->log('Banco e usuário criados pela conta administradora', ['database' => $db['database'] ?? '', 'user' => $db['username'] ?? '']);
+
+            return ['ok' => true, 'message' => 'Banco e usuário criados.'];
+        } catch (Throwable $e) {
+            return ['ok' => false, 'message' => $this->friendlyDbError($e->getMessage())];
         }
     }
 
@@ -182,14 +274,16 @@ class CasinoInstaller
         }
     }
 
-    private function friendlyDbError(string $message): string
+    public function friendlyDbError(string $message): string
     {
-        return match (true) {
-            str_contains($message, '1045') => 'usuário ou senha incorretos.',
-            str_contains($message, '1049') => 'o banco de dados informado não existe (crie-o no painel da hospedagem).',
-            str_contains($message, '2002'), str_contains($message, 'getaddrinfo') => 'servidor do banco não encontrado (na hospedagem compartilhada normalmente é "localhost").',
-            str_contains($message, '1044') => 'o usuário não tem permissão neste banco (adicione o usuário ao banco com TODOS os privilégios).',
-            default => $message,
+        return match ($this->dbErrorKind($message)) {
+            'access'       => 'acesso negado: o usuário do banco não existe ou a senha está errada'
+                . (str_contains($message, '[1698]') ? ' (erro 1698: no Ubuntu/Debian o "root" do MySQL só entra pelo terminal com sudo; o site precisa de um usuário próprio)' : '')
+                . '. Na hospedagem, crie o usuário no painel (cPanel → Bancos de dados MySQL) e adicione-o ao banco; no seu computador ou VPS o instalador pode criá-lo.',
+            'unknown_db'   => 'o banco de dados informado não existe (crie-o no painel da hospedagem; no seu computador ou VPS o instalador pode criá-lo).',
+            'no_privilege' => 'o usuário não tem permissão neste banco (adicione o usuário ao banco com TODOS os privilégios).',
+            'no_server'    => 'o servidor do banco não respondeu. O MySQL/MariaDB está ligado? (Linux: sudo systemctl start mariadb; XAMPP/Laragon: inicie o MySQL no painel). Na hospedagem compartilhada o servidor normalmente é "localhost".',
+            default        => $message,
         };
     }
 

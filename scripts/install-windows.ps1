@@ -227,6 +227,28 @@ function Ativa-Extensoes($php) {
 function Banco-Responde {
   try { $c = New-Object Net.Sockets.TcpClient; $c.Connect($DbHost, $DbPorta); $c.Close(); return $true } catch { return $false }
 }
+function Testa-Login-Banco($php, $usuario, $senha) {   # 'ok' | 'acesso' | 'outro: mensagem'
+  # script em arquivo + variáveis de ambiente: o PowerShell 5.1 estraga aspas e argumentos vazios de programas externos
+  $arq = Join-Path $env:TEMP ('casino-testa-banco-' + [guid]::NewGuid().ToString('N') + '.php')
+  Set-Content -Path $arq -Encoding ascii -Value @'
+<?php
+try {
+    new PDO('mysql:host=' . getenv('CASINO_DB_HOST') . ';port=' . getenv('CASINO_DB_PORT'), (string) getenv('CASINO_DB_USER'), (string) getenv('CASINO_DB_PASS'));
+    echo 'ok';
+} catch (Throwable $e) {
+    $m = $e->getMessage();
+    echo (strpos($m, '[1045]') !== false || strpos($m, '[1698]') !== false) ? 'acesso' : 'outro: ' . $m;
+}
+'@
+  $env:CASINO_DB_HOST = $DbHost; $env:CASINO_DB_PORT = "$DbPorta"; $env:CASINO_DB_USER = $usuario; $env:CASINO_DB_PASS = $senha
+  try { $r = & $php $arq 2>$null }
+  finally {
+    Remove-Item Env:CASINO_DB_PASS, Env:CASINO_DB_USER -ErrorAction SilentlyContinue
+    Remove-Item $arq -ErrorAction SilentlyContinue
+  }
+  return (($r | Out-String).Trim())
+}
+
 function Acha-MysqlExe {
   foreach ($p in 'C:\xampp\mysql\bin\mysql.exe', 'C:\laragon\bin\mysql\*\bin\mysql.exe', 'C:\Program Files\MariaDB*\bin\mysql.exe') {
     $f = Get-ChildItem $p -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -410,12 +432,40 @@ try {
   if ($Porta -le 0) { $Porta = Porta-Livre 8000; $Porta = [int](Pergunta 'Porta do site' $Porta) }
   $url = "http://127.0.0.1:$Porta"
   if (-not $DbUsuario) { $DbUsuario = 'root' }
+  if ($DbUsuario -eq 'root') {
+    # XAMPP/Laragon: root sem senha. MariaDB instalado à parte costuma ter senha: pergunta (até 3 vezes)
+    $login = Testa-Login-Banco $php 'root' $DbSenha
+    $tentativa = 0
+    while ($login -eq 'acesso' -and -not $Sim -and $tentativa -lt 3) {
+      $tentativa++
+      Aviso $(if ($tentativa -eq 1) { 'O usuário root do MySQL tem senha.' } else { 'Senha incorreta.' })
+      $seg = Read-Host '  ? Senha do usuário root do MySQL' -AsSecureString
+      $DbSenha = (New-Object System.Net.NetworkCredential('', $seg)).Password
+      $login = Testa-Login-Banco $php 'root' $DbSenha
+    }
+    if ($login -eq 'acesso') {
+      Falha 'Não consegui entrar no MySQL como root (senha incorreta).'
+      Write-Host '  Rode de novo informando a senha:  powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1 -DbUsuario root -DbSenha SUA_SENHA'
+      Write-Host '  Ou crie um usuário para o site no HeidiSQL/phpMyAdmin e use -DbUsuario/-DbSenha.'
+      exit 1
+    }
+    if ($login -ne 'ok') { throw "Não consegui conectar ao MySQL em ${DbHost}:${DbPorta}. $login" }
+    Ok 'Acesso ao MySQL conferido'
+  }
   Executa 'Criando tabelas, jogos iniciais e o administrador' {
     Set-Location $using:Raiz
     & $using:php artisan system:install --no-interaction --overwrite "--url=$using:url" "--name=$using:Nome" `
       "--db-host=$using:DbHost" "--db-port=$using:DbPorta" "--db-name=$using:DbNome" "--db-user=$using:DbUsuario" "--db-pass=$using:DbSenha" `
       "--admin-email=$using:Email" "--admin-pass=$using:Senha"
     if ($LASTEXITCODE -ne 0) { throw 'system:install falhou' }
+  }
+  Executa 'Conferindo o login do administrador' {
+    Set-Location $using:Raiz
+    & $using:php artisan system:admin "--email=$using:Email" "--password=$using:Senha" --check
+    if ($LASTEXITCODE -ne 0) {
+      & $using:php artisan system:admin "--email=$using:Email" "--password=$using:Senha"
+      if ($LASTEXITCODE -ne 0) { throw 'O login do administrador não conferiu' }
+    }
   }
   (Get-Content (Join-Path $Raiz '.env')) -replace '^APP_ENV=.*$', 'APP_ENV=local' -replace '^APP_DEBUG=.*$', 'APP_DEBUG=true' | Set-Content (Join-Path $Raiz '.env') -Encoding utf8
   & $php artisan optimize:clear | Out-Null

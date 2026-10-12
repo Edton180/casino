@@ -216,6 +216,14 @@ composer install --no-dev --optimize-autoloader
 php artisan system:install            # pergunta banco, URL e administrador
 ```
 
+**Banco de dados:** informe o nome do banco, o usuário e a senha. Se o usuário ainda não existir (erro *Access denied* 1045/1698), o comando explica o motivo e **oferece criar o banco e o usuário** para você, com acesso só a esse banco. Se você deixou a senha em branco, ele gera uma senha forte e grava no `.env`. Para isso ele tenta, nesta ordem:
+
+1. o `root` do MySQL sem senha (XAMPP, Laragon, Windows; ou quando o comando roda como root);
+2. `sudo mysql` (Ubuntu/Debian, onde o root do MariaDB/MySQL não tem senha própria) — pede a senha do **seu usuário do computador**;
+3. uma conta administradora que você digitar (ex.: `root` + senha).
+
+> No Ubuntu/Debian, **não use `root` como usuário do site**: ele só entra pelo terminal com `sudo` (é isso que causa o erro 1698). Use um usuário próprio, como `casino`; o comando cria para você.
+
 Sem perguntas:
 
 ```bash
@@ -225,9 +233,21 @@ php artisan system:install --no-interaction \
   --admin-email=voce@meusite.com --admin-pass='SENHA_ADMIN'
 ```
 
+Sem perguntas, criando banco e usuário se ainda não existirem (seu computador ou VPS):
+
+```bash
+php artisan system:install --no-interaction --create-db \
+  --url=http://127.0.0.1:8000 --name="Meu Cassino" \
+  --db-name=casino --db-user=casino --db-pass='SENHA_DO_BANCO' \
+  --admin-email=voce@meusite.com --admin-pass='SENHA_ADMIN'
+# conta administradora do MySQL com senha:  --db-root-user=root --db-root-pass='SENHA_DO_ROOT'
+```
+
 Verificar só os requisitos: `php artisan system:install --check`.
 
 Se o banco informado não existir e o usuário tiver permissão, ele é criado automaticamente.
+
+Redefinir o administrador do painel (e conferir o login): `php artisan system:admin --email=voce@meusite.com --password='NOVA_SENHA'`.
 
 O frontend já vem compilado em `public/build`. Para alterar o Vue/Tailwind:
 `npm ci && npm run build`.
