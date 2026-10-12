@@ -1729,7 +1729,11 @@ server_cleanup() {   # Nginx, SSL, agendador, logrotate, PHP-FPM e código-fonte
     domain="$(awk '/server_name/{print $2; exit}' "${site}" | tr -d ';')"
     rm -f /etc/nginx/sites-enabled/casino "${site}"
     # devolve o site padrão do Nginx, se não sobrar nenhum outro
-    if [[ -f /etc/nginx/sites-available/default && -z "$(ls -A /etc/nginx/sites-enabled 2>/dev/null)" ]]; then ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default; fi
+    if [[ -f /etc/nginx/sites-available/default && -z "$(ls -A /etc/nginx/sites-enabled 2>/dev/null)" ]]; then
+      ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+      # servidor sem IPv6: o site padrão (listen [::]:80) derrubaria o Nginx
+      if have nginx && ! nginx -t >>"${LOG}" 2>&1; then rm -f /etc/nginx/sites-enabled/default; fi
+    fi
     if have nginx && nginx -t >>"${LOG}" 2>&1; then svc reload nginx >>"${LOG}" 2>&1 || true; fi
     ok "Site do Nginx removido"
     if [[ -n "${domain}" && "${domain}" != "localhost" && -d "/etc/letsencrypt/live/${domain}" ]] && have certbot; then
@@ -1980,7 +1984,7 @@ purge_programs() {   # programas que o PRÓPRIO assistente instalou (nunca os qu
         run "Removendo ${#pk[@]} pacote(s)" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get purge -y -qq "${pk[@]}"
         run "Limpando dependências que sobraram" ${SUDO} env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y -qq
       else
-        info "Programas mantidos. Para remover depois: bash instalar.sh --uninstall --purge-packages"
+        info "Programas mantidos. Para remover depois:  sudo apt purge ${pk[*]} && sudo apt autoremove"
       fi
     fi
   fi
