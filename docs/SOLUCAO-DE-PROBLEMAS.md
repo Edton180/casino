@@ -46,6 +46,7 @@ A senha é criptografada automaticamente. Depois entre em `/admin` com a nova se
 
 | Sintoma | Solução |
 |---|---|
+| Não consigo entrar no `/admin` ("Essas credenciais não correspondem") | Redefina o administrador e confira o login: `php artisan system:admin --email=SEU@EMAIL --password=SUASENHA` (dentro da pasta do site; use o e-mail e a senha que quiser, mín. 8 caracteres). O comando mostra o banco usado e diz se o login passou a funcionar. O instalador já faz essa conferência no final. |
 | "Opção desconhecida: --stack" (ou outra opção) | A pasta `casino` é uma cópia **antiga**. Atualize: `git pull` (ou rode o comando de 1 linha de [INSTALACAO.md](INSTALACAO.md#instalação-em-1-comando-recomendado), que já usa a versão mais nova). O `instalar.sh` atualiza a cópia git sozinho. |
 | `curl ... 404` ao baixar o instalador | O repositório está privado ou o endereço está errado. Com o repositório **público** use: `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/instalar.sh \| bash -s -- --auto`. Se estiver privado: baixe o ZIP logado no GitHub ou use `--token`. |
 | "Não consegui baixar o código" | Sem internet/GitHub bloqueado, ou repositório privado (use `--token`). |

@@ -582,7 +582,7 @@ deploy_code() {   # copia SRC → APP_DIR (se forem pastas diferentes)
     run "Copiando arquivos para ${APP_DIR}" rsync -a --delete \
       --exclude '.git' --exclude '/.github' --exclude '/docs' --exclude '/scripts' --exclude '/docker' \
       --exclude '/docker-compose.yml' --exclude '/.dockerignore' --exclude '/instalar.sh' --exclude '/tests' --exclude '/dist' \
-      --exclude '/.env' --exclude '/storage/app/' --exclude '/storage/logs/' --exclude '/storage/installed.lock' \
+      --exclude '/.env' --exclude '/storage/local-server.pid' --exclude '/storage/app/' --exclude '/storage/logs/' --exclude '/storage/installed.lock' \
       --exclude '/public/storage/' --exclude '/vendor/' --exclude '/node_modules/' \
       "${SRC}/" "${APP_DIR}/"
   fi
@@ -740,6 +740,21 @@ artisan_install() {
       --url="${APP_URL}" --name="${SITE_NAME}" \
       --db-host="${DB_HOST}" --db-port="${DB_PORT}" --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-pass="${DB_PASS}" \
       --admin-email="${ADMIN_EMAIL}" --admin-pass="${ADMIN_PASS}" )
+  verify_admin
+}
+
+verify_admin() {   # confere o login do administrador pelo mesmo caminho do formulário; repara se preciso
+  local args=(--email="${ADMIN_EMAIL}" --password="${ADMIN_PASS}")
+  if ( cd "${APP_DIR}" && "${APP_USER_CMD[@]}" php artisan system:admin "${args[@]}" --check >>"${LOG}" 2>&1 ); then
+    ok "Login do administrador conferido (${ADMIN_EMAIL})"; return 0
+  fi
+  warn "O login do administrador não conferiu; recriando o usuário..."
+  if ( cd "${APP_DIR}" && "${APP_USER_CMD[@]}" php artisan system:admin "${args[@]}" >>"${LOG}" 2>&1 ); then
+    ok "Administrador recriado e conferido (${ADMIN_EMAIL})"
+  else
+    tail -n 8 "${LOG}" | sed "s/^/    /"
+    die "Não consegui garantir o login do administrador. Veja ${LOG}"
+  fi
 }
 
 set_env_value() {
@@ -775,6 +790,9 @@ existing_install_check() {   # retorna 1 se o usuário escolheu atualizar
 lan_ip() { hostname -I 2>/dev/null | awk '{print $1}'; }
 local_url() { if [[ ${LAN} -eq 1 && -n "$(lan_ip)" ]]; then echo "http://$(lan_ip):${HTTP_PORT}"; else echo "http://127.0.0.1:${HTTP_PORT}"; fi; }
 local_pidfile() { echo "${APP_DIR}/storage/local-server.pid"; }
+local_kill_orphans() {   # servidores "php -S" desta pasta que ficaram órfãos (ex.: pidfile apagado numa reinstalação)
+  pkill -f "^php -S .*${APP_DIR}/vendor" 2>/dev/null || true
+}
 local_running() { local pf; pf="$(local_pidfile)"; [[ -f "${pf}" ]] && kill -0 "$(cat "${pf}")" 2>/dev/null; }
 
 health_check() {   # health_check URL [log] [host:porta:ip] → confirma que o site responde (HTTP 2xx/3xx)
@@ -807,7 +825,9 @@ local_start() {
   [[ -f "${router}" ]] || die "Dependências não instaladas (pasta vendor)."
   local bind="127.0.0.1"; [[ ${LAN} -eq 1 ]] && bind="0.0.0.0"
   # o roteador do Laravel precisa rodar de dentro de public/ (igual ao "artisan serve")
-  ( cd "${APP_DIR}/public" && PHP_CLI_SERVER_WORKERS=4 nohup php -S "${bind}:${HTTP_PORT}" "${router}" >"${APP_DIR}/storage/logs/local-server.log" 2>&1 &
+  ( cd "${APP_DIR}/public" || exit 1
+    export PHP_CLI_SERVER_WORKERS=4
+    nohup php -S "${bind}:${HTTP_PORT}" "${router}" >"${APP_DIR}/storage/logs/local-server.log" 2>&1 </dev/null &
     echo $! > "$(local_pidfile)" )
   local i; for i in $(seq 1 20); do port_in_use "${HTTP_PORT}" && break; sleep 0.5; done
   port_in_use "${HTTP_PORT}" || die "O servidor não subiu. Veja ${APP_DIR}/storage/logs/local-server.log"
@@ -821,8 +841,12 @@ local_stop() {
     local pid; pid="$(cat "$(local_pidfile)")"
     pkill -P "${pid}" 2>/dev/null || true      # processos filhos (workers)
     kill "${pid}" 2>/dev/null || true
-    rm -f "$(local_pidfile)"; ok "Site desligado."
-  else warn "O site local não está ligado."; rm -f "$(local_pidfile)" 2>/dev/null || true; fi
+    rm -f "$(local_pidfile)"; local_kill_orphans; ok "Site desligado."
+  else
+    if pgrep -f "^php -S .*${APP_DIR}/vendor" >/dev/null 2>&1; then local_kill_orphans; ok "Site desligado (servidor sem registro encerrado)."
+    else warn "O site local não está ligado."; fi
+    rm -f "$(local_pidfile)" 2>/dev/null || true
+  fi
   return 0
 }
 
@@ -873,6 +897,7 @@ do_local_install() {
   resolve_source
   [[ -n "${APP_DIR}" ]] || APP_DIR="${SRC}"
   existing_install_check || { do_update; return; }
+  local_kill_orphans
   deploy_code
 
   step "Instalando o site"
