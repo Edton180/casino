@@ -288,12 +288,12 @@ class DefaultSetting extends Page implements HasForms
                         TextInput::make('legal_email')->label('E-mail jurídico')->email()->maxLength(191),
                         TextInput::make('partners_email')->label('E-mail de parceiros')->email()->maxLength(191),
                     ])->columns(3),
-                    Section::make('Cassino Winners')
-                    ->description('Ativar ou desativar o cassino winners')
+                    Section::make('Top ganhos')
+                    ->description('Faixa na página inicial com os prêmios reais mais recentes dos jogadores (nome parcialmente oculto). Some sozinha enquanto não houver prêmios.')
                     ->schema([
                         Toggle::make('cassinowinner')
                             ->inline(false)
-                            ->label('Ativar Carrossel vencedores'),
+                            ->label('Mostrar "Top ganhos" na página inicial'),
 
                     ])->columns(1),
 

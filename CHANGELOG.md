@@ -1,5 +1,32 @@
 # CHANGELOG.md
 
+## v9.4.0
+
+### Instalação que funciona de verdade (testada no Ubuntu 26.04 + PHP 8.5 + MariaDB 11.8 + sudo-rs)
+- **Corrigido o erro que parava todas as instalações novas**: o Composer 2.10 não tenta mais o caminho alternativo quando o GitHub recusa downloads anônimos ("Could not authenticate against github.com"); o assistente agora baixa as dependências pelo git sozinho (ou usa `--token`).
+- Rodar o assistente de novo por cima de uma instalação que falhou no meio aproveita a pasta e conclui; Composer baixado pelo GitHub quando o getcomposer.org não responde; versão correta no cabeçalho.
+- PHP 8.5: conexão com SSL do MySQL sem aviso de recurso obsoleto.
+- Testado de ponta a ponta: instalação no computador (usuário comum com sudo-rs), em servidor (Nginx, PHP-FPM, cron, logrotate), pelo comando de 1 linha, atualização, backup/restauração e desinstalação; Windows validado no PowerShell 7.
+
+### Atualizar sem perder dados, backup e restauração
+- `bash instalar.sh --update` faz **backup completo antes**, baixa a versão nova, coloca o site em manutenção, aplica as migrações e reativa o site; se algo falhar, indica o comando para voltar ao backup.
+- Novos comandos `php artisan system:backup | system:restore | system:update | system:uninstall` e opções `--backup`/`--restore` no assistente; backups `.zip` com banco, `.env` e arquivos enviados (só o dono lê o arquivo).
+- **Painel → Manutenção → Sistema**: versão, mudanças de banco pendentes, *Concluir atualização* (hospedagem sem terminal), criar/baixar/restaurar/apagar backups e desinstalar.
+- Backup diário automático do banco às 03:20 (agendador), mantendo os 10 mais novos.
+- Arquivo `VERSION`; a versão instalada fica registrada.
+
+### Desinstalar sem deixar rastros
+- `bash instalar.sh --uninstall` encontra **todas** as instalações (a atual, as registradas, `/var/www`, cópias antigas na pasta pessoal, uma dentro da outra, tentativas que falharam), faz backup final e remove banco e usuário do MySQL, `.env`, uploads, logs, caches, pasta, site do Nginx/SSL, cron, logrotate, ajustes do PHP-FPM, o Composer e o cache dele; programas só com `--purge-packages`. Bancos com tabelas de outros sistemas nunca são apagados (só as tabelas do cassino saem). Sem instalações restantes, oferece apagar bancos "casino…" que sobraram.
+- Windows: menu com **Atualizar, Fazer backup, Restaurar e Desinstalar** (remove também o PHP/Composer que o assistente baixou).
+- Hospedagem compartilhada: desinstalar pelo painel, com aviso no instalador do que foi removido.
+
+### Site e painel
+- Corrigidos erros de JavaScript em várias páginas (janelas de depósito/saque/login/missões, carteira, saque, jogo); visitante não chama mais APIs de jogador.
+- **Celular, tablet e PC**: nenhuma página do site ou do painel estoura a largura da tela (verificado em 360, 390, 768, 1024, 1280 e 1920 px); fileiras de jogos alinhadas no tablet; depósito, indicação, VIP e botões ajustados; menu do painel começa fechado no celular.
+- "Top ganhos" mostra **prêmios reais** (antes nomes e valores inventados com links quebrados); página de suporte com link configurável (WhatsApp/Telegram/chat); removidos restos de outros sites (chat, links e textos).
+- Rodapé refeito (responsivo, selos próprios); ícones padrão para categorias sem imagem; capas reais para jogos locais que mostravam o ícone do Construct 3; textos com acentuação quebrada corrigidos.
+- Avatar do painel gerado no próprio servidor (sem serviço externo).
+
 ## v9.3.0
 
 ### Assistente de instalação (novo)

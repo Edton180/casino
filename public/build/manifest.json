@@ -40,12 +40,12 @@
     "src": "resources/css/app.css"
   },
   "resources/js/app.css": {
-    "file": "assets/app-febf5e70.css",
+    "file": "assets/app-bed88d5c.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.js": {
     "css": [
-      "assets/app-febf5e70.css"
+      "assets/app-bed88d5c.css"
     ],
     "dynamicImports": [
       "lang/en.json",
@@ -56,7 +56,7 @@
       "lang/php_vendor.json",
       "lang/pt_BR.json"
     ],
-    "file": "assets/app-92d66fb3.js",
+    "file": "assets/app-b934f924.js",
     "isEntry": true,
     "src": "resources/js/app.js"
   }

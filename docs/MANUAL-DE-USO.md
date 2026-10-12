@@ -54,7 +54,7 @@ Somente usuários com a função **admin** entram no painel. Jogadores usam o e-
 | **Customização** | Banners da home e cores/CSS/JS do site |
 | **Administração** | Usuários, Carteiras, Depósitos, Saques |
 | **Funções e Permissões** | Quem pode acessar o quê |
-| **Manutenção** | Opções Avançadas (atualizar banco, limpar cache, importar jogos) e Limpar o cache |
+| **Manutenção** | **Sistema** (versão, concluir atualização, backups, desinstalar), Opções Avançadas (limpar cache, importar jogos) e Limpar o cache |
 
 ---
 
@@ -78,7 +78,7 @@ Menu **Configurações** (as abas ficam na lateral esquerda da página):
 
 | Aba | O que ajustar |
 |---|---|
-| **Padrão** | Nome, textos da barra superior (logado/deslogado), logos, favicon, tela de carregamento, banners de login/cadastro/giros, botão e link do app, carrossel de vencedores e **Rodapé** (veja abaixo) |
+| **Padrão** | Nome, textos da barra superior (logado/deslogado), logos, favicon, tela de carregamento, banners de login/cadastro/giros, botão e link do app, faixa *Top ganhos* (prêmios reais dos jogadores) e **Rodapé** (veja abaixo) |
 | **Bônus Vip** | Liga/desliga o bônus VIP e o percentual |
 | **Rollover** | *Rollover Depósito* (ex.: `1` = apostar 1× o valor depositado), *Rollover Bônus*, *Proteção de Rollover* (mínimo de apostas) e *Desativar Rollover* (o depósito fica sacável na hora) |
 | **Taxas** | Comissão de afiliados: **RevShare (%)**, **CPA Valor** e **CPA Baseline** (depósito mínimo do indicado para pagar o CPA), NGR e RevShare negativo |
@@ -98,6 +98,7 @@ Depois de salvar aparece **"Dados alterados com sucesso!"**. O site usa os novos
 | Crédito do desenvolvedor | Ex.: `Desenvolvido por Edton Braz` (padrão). Pode ter um link e ser ocultado em **Mostrar crédito do desenvolvedor** |
 | Texto "Sobre" | Substitui o texto institucional padrão do rodapé |
 | E-mails de suporte, jurídico e parceiros | Só aparecem no rodapé quando preenchidos |
+| **Link de suporte** | WhatsApp (`https://wa.me/55DDDNUMERO`), Telegram ou chat. É o botão *Falar com o suporte* da página **Suporte** do site; vazio = a página mostra só o e-mail de suporte |
 
 ---
 
@@ -225,23 +226,40 @@ Todas as apostas (de todos os tipos de jogo), com usuário, jogo, valor, ganho e
 
 ## 13. Manutenção
 
+**Manutenção → Sistema**
+
+| Parte | O que faz |
+|---|---|
+| **Versão e atualização** | Mostra a versão dos arquivos e a instalada, PHP/Laravel, espaço livre e avisos (pasta sem permissão, depuração ligada em produção). Se houver mudanças de banco pendentes aparece *"Há uma atualização para concluir"* |
+| **Concluir atualização** | Depois de enviar os arquivos de uma versão nova (hospedagem): faz backup, aplica as migrações, copia imagens padrão novas, limpa caches e registra a versão. Nada é apagado |
+| **Backups** | *Fazer backup agora* (banco, `.env` e arquivos enviados num `.zip`), **Baixar**, **Restaurar** (salva antes o estado atual; digite RESTAURAR) e **Apagar**. Ficam em `storage/app/backups`, protegidos do navegador; os 10 mais novos são mantidos |
+| **Desinstalar o sistema** | Para hospedagem compartilhada: pede sua senha e a palavra DESINSTALAR, faz um backup final fora da pasta do site e apaga tabelas, `.env`, uploads, logs e caches. Depois apague a pasta pelo gerenciador de arquivos |
+
+Com o agendador (cron) ativo, o sistema também copia o banco **todo dia às 03:20**.
+
 **Manutenção → Opções Avançadas**
 
 | Botão | Quando usar |
 |---|---|
-| **Atualizar banco de dados** | Depois de enviar arquivos de uma versão nova (equivale a `php artisan migrate`) |
+| **Atualizar banco de dados** | Só as migrações (prefira *Sistema → Concluir atualização*, que faz backup antes) |
 | **Limpar cache** | Mudou algo no `.env` ou o site mostra dados antigos |
 | **Criar link de uploads** | Imagens enviadas pelo painel não aparecem |
 | **Importar provedores/jogos** | Catálogo da WorldSlot/EverGame |
 
 **Manutenção → Limpar o cache** faz o mesmo que o botão acima, em um clique.
 
-Em VPS, atualizações e backups também podem ser feitos por comando:
+Por comando (VPS, seu computador, SSH):
 
 ```bash
-sudo bash auto-install.sh --update          # atualiza o código, banco e cache
-sudo bash /opt/casino-src/scripts/casino-backup   # banco + .env + uploads
+sudo bash /opt/casino-src/instalar.sh --update    # VPS: baixa a versão nova e atualiza sem perder dados (backup antes)
+bash ~/casino/instalar.sh --update                # no seu computador
+php artisan system:backup                         # backup (banco, .env e arquivos enviados)
+php artisan system:restore                        # restaura (escolhe na lista)
+php artisan system:update                         # conclui uma atualização (depois de trocar os arquivos)
+php artisan system:uninstall                      # desinstala (backup final, tabelas, .env, uploads, logs)
 ```
+
+No Windows, as mesmas opções estão no menu do `instalar-windows.bat`.
 
 ---
 
@@ -285,6 +303,12 @@ Administração → Usuários → editar → *Banido*.
 
 **Trocar a logo**
 Configurações → Padrão → Logo Branca/Escura → Salvar.
+
+**Antes de mexer em algo importante**
+Manutenção → Sistema → *Fazer backup agora* → *Baixar* (guarde a cópia fora do servidor).
+
+**Configurar o atendimento**
+Configurações → Padrão → Rodapé → *Link de suporte* (WhatsApp/Telegram/chat) e *E-mail de suporte*.
 
 ---
 

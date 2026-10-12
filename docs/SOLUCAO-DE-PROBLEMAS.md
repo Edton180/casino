@@ -15,7 +15,7 @@ Para ver o erro na tela temporariamente: no `.env`, `APP_DEBUG=true` (volte para
 | "o usuário não tem permissão neste banco" | cPanel → Bancos MySQL → *Adicionar usuário ao banco* → **TODOS OS PRIVILÉGIOS**. |
 | "O banco já possui tabelas" | Use um banco vazio ou marque *Apagar dados existentes* (apaga tudo!). |
 | Instalação parou numa etapa | A mensagem mostra o motivo; detalhes em `storage/logs/installer.log`. Clique em **Tentar novamente**. |
-| Quero reinstalar | Apague `storage/installed.lock` e acesse `/install/`. |
+| Quero reinstalar | Desinstale (veja [Desinstalar](INSTALACAO.md#desinstalar-remover-tudo)) e instale de novo; para reaproveitar os dados, restaure o backup final depois. Na hospedagem também dá para apagar `storage/installed.lock` e acessar `/install/`. |
 
 ## Depois de instalar
 
@@ -54,6 +54,10 @@ A senha é criptografada automaticamente. Depois entre em `/admin` com a nova se
 | "PHP não encontrado" / faltam extensões | Rode `bash instalar.sh`: ele mostra o que falta e instala com apt (pede sua senha). No macOS: `brew install php composer mariadb`. |
 | "Não rode o modo local com sudo" | Rode sem `sudo`: `bash instalar.sh`. Ele pede a senha só quando precisa instalar pacotes. |
 | "Senha do usuário root do MySQL" / "Não consegui acessar o MySQL como administrador" | O assistente tenta, nesta ordem: `root` sem senha, `sudo mysql` (pede a **senha do seu usuário do computador**, não do MySQL), a conta de manutenção do Debian e, por último, a senha do root do MySQL (3 tentativas). No Ubuntu/Debian normalmente basta a senha do `sudo`. Se nada funcionar, ele mostra os comandos para criar o banco e o usuário à mão e como rodar de novo com `--db-user`/`--db-pass`. |
+| "Could not authenticate against github.com" / "Source fallback is disabled" ao instalar as dependências | O GitHub limitou os downloads anônimos (acontece com o Composer 2.10+). **O assistente já contorna sozinho** baixando as dependências pelo git; se ainda falhar, espere 1 hora ou rode com um token: `bash instalar.sh --token SEU_TOKEN`. Versões antigas do assistente paravam aqui — rode o comando de 1 linha de novo (ele pega a versão nova e continua de onde parou). |
+| Uma instalação anterior falhou no meio (pasta `~/casino` sem `.env`, banco criado pela metade) | Rode o assistente de novo: ele aproveita a pasta e conclui. Para começar do zero: `bash instalar.sh --uninstall` (encontra e remove também restos de tentativas antigas e bancos que sobraram) e depois instale. |
+| A atualização falhou no meio | O site é reativado sozinho e nada é apagado. Para voltar exatamente ao estado de antes: `bash instalar.sh --restore` e escolha o backup feito antes da atualização (Windows: menu → Restaurar; hospedagem: Painel → Sistema → Restaurar). |
+| Site em "manutenção" depois de um erro | `php artisan up` na pasta do site (ou rode o `--update` de novo). |
 | O apt está ocupado / "Could not get lock" | Outra atualização está rodando. Aguarde uns minutos (ou `sudo dpkg --configure -a`) e rode de novo. |
 | Faltou memória durante o Composer | Crie um swap de 2 GB (o assistente mostra o comando) e rode de novo. |
 | "A porta 80 já está em uso" (VPS/`--stack`) | Se for o Apache, o assistente oferece desativá-lo. Ou use `--port 8080`. |
@@ -72,8 +76,10 @@ O registro completo de cada execução fica em `/tmp/casino-install-AAAAMMDD-HHM
 | Sintoma | Solução |
 |---|---|
 | Certbot falhou | O DNS (registro A) do domínio precisa apontar para o servidor. Depois: `certbot --nginx -d seu-dominio -m seu@email --agree-tos --redirect` |
-| 502 Bad Gateway | `systemctl restart php8.3-fpm nginx` |
-| Ver diagnóstico | `sudo bash auto-install.sh --diagnose` |
-| Atualizar | `sudo bash auto-install.sh --update` |
+| 502 Bad Gateway | `systemctl restart nginx php$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')-fpm` |
+| Ver diagnóstico | `sudo bash /opt/casino-src/instalar.sh --diagnose` |
+| Atualizar | `sudo bash /opt/casino-src/instalar.sh --update` (backup automático antes) |
+| Backup / restaurar | `sudo bash /opt/casino-src/instalar.sh --backup` · `--restore` (backups em `/var/backups/casino`) |
+| Desinstalar | `sudo bash /opt/casino-src/instalar.sh --uninstall` (remove também Nginx, cron, logrotate e SSL do site) |
 | "A porta 80 já está em uso por 'apache2'" | O servidor já tem Apache. Pare-o (`systemctl disable --now apache2`) ou use `--port 8080`. |
 | Nginx não iniciou | `nginx -t` mostra o erro de configuração; `journalctl -u nginx` mostra o motivo. |

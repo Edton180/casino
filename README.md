@@ -1,7 +1,7 @@
 # 🎰 Casino Platform
 
-![versão](https://img.shields.io/badge/versão-9.3.0-blue)
-![php](https://img.shields.io/badge/PHP-8.2%20%7C%208.3%20%7C%208.4-777bb4)
+![versão](https://img.shields.io/badge/versão-9.4.0-blue)
+![php](https://img.shields.io/badge/PHP-8.2%20%7C%208.3%20%7C%208.4%20%7C%208.5-777bb4)
 ![laravel](https://img.shields.io/badge/Laravel-12-ff2d20)
 ![filament](https://img.shields.io/badge/Filament-3.3-f59e0b)
 
@@ -34,6 +34,17 @@ irm https://raw.githubusercontent.com/Edton180/casino/main/scripts/install-windo
 | **Docker** | `docker compose up -d` |
 
 👉 Passo a passo completo de cada opção: **[docs/INSTALACAO.md](docs/INSTALACAO.md)**
+
+### Manutenção (sem perder dados)
+
+| O que fazer | Computador (Linux/macOS/WSL) | VPS | Windows | Hospedagem compartilhada |
+|---|---|---|---|---|
+| Atualizar (backup antes) | `bash ~/casino/instalar.sh --update` | `sudo bash /opt/casino-src/instalar.sh --update` | `instalar-windows.bat` → Atualizar | envie o ZIP novo e clique em Painel → Sistema → *Concluir atualização* |
+| Backup | `bash ~/casino/instalar.sh --backup` | `... --backup` | → Fazer backup | Painel → Sistema → *Fazer backup agora* |
+| Restaurar | `bash ~/casino/instalar.sh --restore` | `... --restore` | → Restaurar | Painel → Sistema → *Restaurar* |
+| Desinstalar tudo | `bash ~/casino/instalar.sh --uninstall` | `... --uninstall` | → Desinstalar | Painel → Sistema → *Desinstalar* |
+
+O banco também é copiado **automaticamente todo dia** (com o agendador ativo). A desinstalação faz um backup final, encontra instalações antigas e restos de tentativas que falharam, e remove só o que pertence ao cassino.
 
 ## 📚 Documentação
 
@@ -73,7 +84,7 @@ irm https://raw.githubusercontent.com/Edton180/casino/main/scripts/install-windo
 
 ## 🧱 Tecnologia
 
-Laravel 12 · PHP 8.2–8.4 · MySQL/MariaDB · Vue 3 + Vite + TailwindCSS · Filament 3.3 · Livewire 3 · JWT
+Laravel 12 · PHP 8.2–8.5 · MySQL/MariaDB · Vue 3 + Vite + TailwindCSS · Filament 3.3 · Livewire 3 · JWT
 
 Desenvolvimento: `composer install && npm ci && npm run dev` (veja [docs/INSTALACAO.md](docs/INSTALACAO.md#c-instalação-manual-ssh--desenvolvimento)).
 

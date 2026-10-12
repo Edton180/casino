@@ -111,11 +111,13 @@ Por segurança o instalador é bloqueado depois de concluído (`storage/installe
 
   > Em algumas hospedagens o PHP do cron é `/usr/local/bin/php` ou `/opt/cpanel/ea-php83/root/usr/bin/php`.
 
-### 7. Atualizar (hospedagem compartilhada)
+### 7. Atualizar (hospedagem compartilhada) — sem perder dados
 
-1. Faça backup do banco (cPanel → *phpMyAdmin → Exportar*) e da pasta `storage`.
+1. No painel: **Manutenção → Sistema → Fazer backup agora** (e clique em **Baixar** para guardar uma cópia no seu computador).
 2. Baixe o `casino-pronto-para-hospedagem.zip` mais recente e extraia **por cima** dos arquivos atuais. O zip não traz `.env`, uploads nem a trava de instalação, então nada disso é sobrescrito.
-3. No painel: **Manutenção → Opções Avançadas → Atualizar banco de dados** e depois **Limpar cache**.
+3. Volte em **Manutenção → Sistema** e clique em **Concluir atualização**: ele faz outro backup, aplica as mudanças do banco da versão nova, copia as imagens padrão novas e limpa os caches (o site fica em manutenção por alguns segundos).
+
+Se algo der errado, a mesma página lista os backups: **Restaurar** volta o banco e os arquivos enviados ao estado do backup (antes, ela salva o estado atual).
 
 Continue em [Depois de instalar](#depois-de-instalar).
 
@@ -132,7 +134,8 @@ O repositório é **público**: não precisa baixar nada antes. Abra o terminal 
 | **VPS com domínio e HTTPS** | `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/instalar.sh \| sudo bash -s -- --domain meusite.com --email voce@meusite.com --ssl -y` |
 
 - `--auto` instala no seu computador **sem fazer nenhuma pergunta** (site em `http://127.0.0.1:8000`, login `admin@casino.local` / `admin12345`). Sem `--auto`, ele abre o menu interativo.
-- Para **atualizar** depois: rode o mesmo comando de novo, ou `bash instalar.sh --update` dentro da pasta (`~/casino`).
+- Para **atualizar** depois sem perder dados: `bash ~/casino/instalar.sh --update` (faz backup antes; no VPS: `sudo bash /opt/casino-src/instalar.sh --update`).
+- Para **remover tudo** (inclusive restos de instalações antigas): `bash ~/casino/instalar.sh --uninstall` — veja [Desinstalar](#desinstalar-remover-tudo).
 - A instalação local fica em `~/casino` (Windows: `%USERPROFILE%\casino`).
 - Se preferir baixar antes: `git clone https://github.com/Edton180/casino.git && cd casino && bash instalar.sh --auto` (Windows: dois cliques em `instalar-windows.bat`).
 
@@ -190,20 +193,24 @@ sudo bash scripts/auto-install.sh --token github_pat_XXXX --domain meusite.com -
 | `-y` | Não pergunta nada |
 | `--no-color` | Sem cores nem animação (para logs) |
 
-### Atualizar
+### Atualizar (sem perder dados)
 
 ```bash
-cd casino && git pull          # (ou baixe o ZIP novo e extraia por cima)
-sudo bash scripts/auto-install.sh --update
+sudo bash /opt/casino-src/instalar.sh --update
 ```
 
-Ele coloca o site em manutenção, atualiza arquivos e dependências, roda as migrações, limpa o cache e reativa o site (se algo falhar, o site volta do modo manutenção sozinho). Funciona também em instalações feitas por versões antigas do instalador.
+(`/opt/casino-src` é onde o assistente guarda o código no servidor; se você instalou a partir de uma cópia baixada, rode o `instalar.sh` dela.)
+Ele faz um **backup completo antes** (em `/var/backups/casino`), baixa a versão nova, coloca o site em manutenção, atualiza arquivos e dependências, aplica as migrações, copia as imagens padrão novas, limpa os caches e reativa o site. Se algo falhar, o site volta do modo manutenção sozinho e o assistente mostra o comando para voltar ao backup. Funciona também em instalações feitas por versões antigas do instalador.
 
-### Backup
+### Backup e restauração
 
 ```bash
-sudo bash scripts/casino-backup   # banco + .env + uploads em /var/backups/casino (guarda 7 dias)
+sudo bash /opt/casino-src/instalar.sh --backup             # banco + .env + arquivos enviados num .zip
+sudo bash /opt/casino-src/instalar.sh --restore            # escolhe um backup da lista
+sudo bash /opt/casino-src/instalar.sh --restore ARQUIVO.zip
 ```
+
+Além disso o sistema faz **sozinho, todo dia às 03:20, um backup do banco** (`storage/app/backups`, ficam os 10 mais novos) — basta o agendador (cron) estar ativo, o que o assistente do VPS já configura. Pelo painel: **Manutenção → Sistema** (criar, baixar, restaurar e apagar backups). Guarde cópias fora do servidor.
 
 ---
 
@@ -292,7 +299,10 @@ bash instalar.sh
 | Ligar o site | `bash instalar.sh --start` (ou menu → *Ligar / desligar*) |
 | Desligar | `bash instalar.sh --stop` |
 | Ver se está ligado | `bash instalar.sh --status` |
-| Atualizar | `bash instalar.sh --update` |
+| Atualizar sem perder dados (backup antes) | `bash instalar.sh --update` |
+| Fazer backup | `bash instalar.sh --backup` (fica em `~/casino-backups`) |
+| Restaurar um backup | `bash instalar.sh --restore` |
+| Desinstalar (remove tudo, com backup final) | `bash instalar.sh --uninstall` |
 | Diagnóstico | `bash instalar.sh --diagnose` |
 | Liberar acesso de outros aparelhos da rede (celular) | `bash instalar.sh --local --lan` |
 
@@ -313,7 +323,8 @@ Passo a passo:
 3. Escolha **1) Instalar no meu computador** e responda as perguntas (ou aperte ENTER para os padrões).
 4. O navegador abre em **http://127.0.0.1:8000**. Login padrão: `admin@casino.local` / `admin12345`.
 
-Para ligar/desligar/atualizar depois, dê dois cliques no mesmo arquivo e escolha a opção no menu. Pelo PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1 -Acao Diagnostico`.
+Depois, dê dois cliques no mesmo arquivo e escolha no menu: **Ligar**, **Desligar**, **Atualizar** (backup antes, baixa a versão nova e atualiza o banco sem perder dados), **Fazer backup**, **Restaurar um backup**, **Desinstalar** ou **Diagnóstico**. Os backups ficam em `%USERPROFILE%\casino-backups`.
+Pelo PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1 -Acao Atualizar` (ou `Backup`, `Restaurar -Arquivo caminho.zip`, `Desinstalar`, `Diagnostico`).
 
 > Se o Windows mostrar *"O Windows protegeu o computador"*, clique em *Mais informações → Executar assim mesmo* (o arquivo vem do seu próprio repositório).
 
@@ -409,9 +420,29 @@ Problemas? Veja **[SOLUCAO-DE-PROBLEMAS.md](SOLUCAO-DE-PROBLEMAS.md)**.
 
 ---
 
-## Reinstalar do zero
+## Desinstalar (remover tudo)
 
-1. Apague `storage/installed.lock` (gerenciador de arquivos ou SSH).
-2. Acesse `/install/` e marque **Apagar dados existentes** na etapa do banco.
+Todas as formas fazem antes um **backup final** (banco, `.env` e arquivos enviados) **fora da pasta do site**, para você poder voltar atrás. Se não quiser: `--no-backup` (bash) ou `-SemBackup` (Windows).
 
-> ⚠️ Isso apaga **todos** os dados (usuários, saldos, histórico).
+| Onde | Como |
+|---|---|
+| **Linux, macOS, WSL** (seu computador) | `bash ~/casino/instalar.sh --uninstall` — ou, sem a pasta: `curl -fsSL https://raw.githubusercontent.com/Edton180/casino/main/instalar.sh \| bash -s -- --uninstall` |
+| **VPS** | `sudo bash /opt/casino-src/instalar.sh --uninstall` |
+| **Windows** | `instalar-windows.bat` → **Desinstalar** (ou `scripts\install-windows.ps1 -Acao Desinstalar`) |
+| **Hospedagem compartilhada** | Painel → **Manutenção → Sistema → Desinstalar o sistema**; depois apague a pasta do site pelo gerenciador de arquivos e, se quiser, o banco e o usuário MySQL no painel da hospedagem |
+| **Docker** | `docker compose down -v` na pasta do projeto (o `-v` apaga também o banco) |
+
+O assistente (Linux/macOS/WSL/VPS e Windows):
+
+- **encontra todas as instalações** — a atual, as registradas, as de `/var/www`, cópias antigas na pasta pessoal (inclusive uma dentro da outra, como `casino-main/casino-main`) e restos de instalações que falharam no meio — mostra cada uma (instalada, parcial ou só o código) e pergunta quais remover (`--all` = todas, `--dir PASTA` = só uma);
+- desliga o site, apaga **as tabelas do cassino, o banco e o usuário do MySQL criados para ele** (se o banco tiver tabelas de outro sistema, só as do cassino saem e o banco fica), o `.env`, uploads, logs e caches, e a pasta (`--purge` apaga as pastas sem perguntar);
+- no VPS também remove o site do Nginx (e o certificado SSL, se você confirmar), o agendador (cron), a rotação de logs e os ajustes do PHP-FPM;
+- remove o que **ele mesmo instalou**: o Composer e o cache dele, o código-fonte em `/opt/casino-src`, o arquivo de senhas; programas como PHP, Nginx e MariaDB só com `--purge-packages` (ou se você confirmar), nunca os que já existiam antes;
+- sem nenhuma instalação restante, procura **bancos "casino…" que sobraram** de instalações apagadas à mão e pergunta se pode apagá-los (com cópia antes).
+
+`--keep-database` mantém o banco. Os backups **não** são apagados (ficam em `~/casino-backups`, `/var/backups/casino` ou `%USERPROFILE%\casino-backups`).
+
+### Reinstalar do zero
+
+Desinstale como acima e instale de novo. Para reaproveitar os dados, depois de instalar rode `bash instalar.sh --restore ARQUIVO.zip` (ou Painel → Sistema → Restaurar).
+Na hospedagem compartilhada também dá para apagar `storage/installed.lock` e abrir `/install/` marcando **Apagar dados existentes** — isso apaga **todos** os dados (usuários, saldos, histórico).
