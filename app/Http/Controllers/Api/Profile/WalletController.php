@@ -22,8 +22,9 @@ class WalletController extends Controller
      */
     public function index()
     {
-        $wallet = Wallet::whereUserId(auth('api')->id())->where('active', 1)->first();
-        return response()->json(['wallet' => $wallet], 200);
+        $wallet = Wallet::whereUserId(auth('api')->id())->where('active', 1)->first()
+            ?? Wallet::whereUserId(auth('api')->id())->first();
+        return response()->json(['wallet' => $this->present($wallet)], 200);
     }
 
     /**
@@ -31,8 +32,29 @@ class WalletController extends Controller
      */
     public function myWallet()
     {
-        $wallets = Wallet::whereUserId(auth('api')->id())->get();
+        $wallets = Wallet::whereUserId(auth('api')->id())->get()->map(fn (Wallet $wallet) => $this->present($wallet));
         return response()->json(['wallets' => $wallets], 200);
+    }
+
+    /**
+     * Conta de influencer joga com o "saldo de influencer" (os jogos debitam e creditam nele):
+     * é esse saldo que o site mostra no topo. O saldo real continua em real_total_balance.
+     */
+    private function present(?Wallet $wallet): ?array
+    {
+        if (!$wallet) {
+            return null;
+        }
+        $data = $wallet->toArray();
+        $user = auth('api')->user();
+        if ($user && $user->is_demo_agent) {
+            $data['real_total_balance'] = $data['total_balance'];
+            $data['total_balance'] = round((float) $wallet->balance_demo, 2);
+            $data['total_balance_without_bonus'] = $data['total_balance'];
+            $data['is_influencer'] = true;
+        }
+
+        return $data;
     }
 
     /**
@@ -41,16 +63,16 @@ class WalletController extends Controller
      */
     public function setWalletActive($id)
     {
-        $checkWallet = Wallet::whereUserId(auth('api')->id())->where('active', 1)->first();
-        if(!empty($checkWallet)) {
-            $checkWallet->update(['active' => 0]);
+        // só carteiras do próprio usuário (antes qualquer ID era aceito e os dados da carteira voltavam na resposta)
+        $wallet = Wallet::whereUserId(auth('api')->id())->find($id);
+        if (empty($wallet)) {
+            return response()->json(['error' => 'Carteira não encontrada'], 404);
         }
 
-        $wallet = Wallet::find($id);
-        if(!empty($wallet)) {
-            $wallet->update(['active' => 1]);
-            return response()->json(['wallet' => $wallet], 200);
-        }
+        Wallet::whereUserId(auth('api')->id())->where('active', 1)->whereKeyNot($wallet->getKey())->update(['active' => 0]);
+        $wallet->update(['active' => 1]);
+
+        return response()->json(['wallet' => $this->present($wallet)], 200);
     }
 
     /**

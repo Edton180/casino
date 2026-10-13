@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Deposit extends Model
 {
@@ -59,6 +60,29 @@ class Deposit extends Model
     public function user() : BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Cobrança/lançamento que credita este depósito (status 1 = já creditado na carteira). */
+    public function transaction(): HasOne
+    {
+        return $this->hasOne(Transaction::class, 'payment_id', 'payment_id');
+    }
+
+    /**
+     * Marcado como aprovado mas nunca creditado: lançado pelo painel em versões anteriores
+     * (que só gravavam o registro) ou aprovado à mão sem passar pelo crédito.
+     */
+    public function isApprovedWithoutCredit(): bool
+    {
+        if ((int) $this->status !== 1) {
+            return false;
+        }
+        $credited = $this->getAttribute('credited');   // withExists na listagem
+        if ($credited === null) {
+            $credited = $this->payment_id && Transaction::where('payment_id', $this->payment_id)->where('status', 1)->exists();
+        }
+
+        return !$credited;
     }
 
     /**

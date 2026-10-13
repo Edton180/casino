@@ -1,6 +1,6 @@
 # 🎰 Casino Platform
 
-![versão](https://img.shields.io/badge/versão-9.4.0-blue)
+![versão](https://img.shields.io/badge/versão-9.4.1-blue)
 ![php](https://img.shields.io/badge/PHP-8.2%20%7C%208.3%20%7C%208.4%20%7C%208.5-777bb4)
 ![laravel](https://img.shields.io/badge/Laravel-12-ff2d20)
 ![filament](https://img.shields.io/badge/Filament-3.3-f59e0b)
