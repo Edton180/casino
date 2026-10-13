@@ -1,5 +1,15 @@
 # CHANGELOG.md
 
+## v9.4.1
+
+### Depósitos e saldos pelo painel
+- **Lançar depósito agora credita a carteira**: antes o painel só gravava o registro (marcado como aprovado) e o saldo do jogador não mudava. O depósito passa pelo mesmo fluxo de um depósito feito no site (rollover, pontos VIP, CPA do afiliado e, se escolhido, bônus de 1º depósito) e é creditado uma única vez. Botão *Lançar depósito* na lista, usuário buscado por nome/e-mail/CPF, comprovante opcional, moeda preenchida.
+- Depósitos pendentes (lançados ou do site, quando o aviso do gateway não chega) podem ser aprovados e creditados pelo painel; depósitos "aprovados sem crédito" de versões anteriores aparecem em destaque com *Creditar agora*.
+- **Ajustar saldo** (Carteiras e Usuários): adicionar, retirar ou definir qualquer saldo com a carteira travada no banco — o formulário antigo regravava todos os saldos com os valores de quando a tela abriu, apagando apostas feitas no meio tempo —, sem deixar ficar negativo e com registro de quem fez e do motivo. Carteiras não podem mais ser apagadas pelo painel.
+- **Saldo de influencer**: o site mostra para a conta influencer o saldo com que ela joga (antes mostrava sempre o saldo real); o ajuste oferece marcar a conta como influencer.
+- Segurança: trocar a carteira ativa só aceita carteiras do próprio usuário (antes qualquer ID era aceito e os dados voltavam na resposta).
+
+
 ## v9.4.0
 
 ### Instalação que funciona de verdade (testada no Ubuntu 26.04 + PHP 8.5 + MariaDB 11.8 + sudo-rs)

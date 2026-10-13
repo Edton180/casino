@@ -121,9 +121,20 @@ Passo a passo de cada um (onde pegar as chaves e qual URL de webhook cadastrar):
 ### Como o depósito funciona
 1. O jogador escolhe valor e forma de pagamento → recebe o QR Code PIX ou é levado ao checkout.
 2. Quando o gateway confirma (webhook) — ou quando o site consulta o status — o valor entra na carteira **uma única vez**, com bônus de 1º depósito, VIP e CPA do afiliado.
-3. Acompanhe em **Administração → Depósitos** (status *Pendente*/*Pago*).
+3. Acompanhe em **Administração → Depósitos** (situação *Pendente*/*Aprovado*).
 
 > O crédito é sempre conferido direto no gateway; um webhook falso não credita nada.
+
+### Lançar um depósito pelo painel
+Para um pagamento recebido **fora do site** (PIX direto na sua conta, transferência, dinheiro): **Administração → Depósitos → Lançar depósito**.
+
+1. Escolha o usuário (digite nome, e-mail ou CPF), o valor e a forma de pagamento; o comprovante é opcional.
+2. Com **Aprovar agora e creditar o saldo** ligado, o valor entra na carteira na hora, exatamente como um depósito feito no site: vai para o *saldo para jogar* com o rollover configurado, conta pontos VIP e paga o CPA do afiliado. O bônus de 1º depósito só entra se você ligar **Dar o bônus de primeiro depósito**.
+3. Desligado, o depósito fica *Pendente*: aprove depois com **Aprovar** na lista (ou *Aprovar e creditar* na página do depósito). Isso também serve para um depósito do site cujo aviso do gateway não chegou — confirme antes no gateway que o pagamento entrou.
+
+Cada depósito é creditado **uma única vez**. Apagar um depósito aprovado não retira o saldo (para isso use *Carteiras → Ajustar saldo*).
+
+> **Depósitos "Aprovado sem crédito"**: versões anteriores do painel marcavam o depósito como aprovado sem colocar o valor na carteira. Eles aparecem em vermelho na lista com o botão **Creditar agora**. Antes de creditar, confira a carteira do jogador: se você já compensou o valor à mão, não credite de novo.
 
 ### Aprovar saques
 **Administração → Saques**:
@@ -174,8 +185,14 @@ Todas as apostas (de todos os tipos de jogo), com usuário, jogo, valor, ganho e
 - **Criar** usuário manualmente. No campo **Funções**, escolha *admin* para dar acesso ao painel (deixe vazio, ou *afiliado*, para jogadores).
 
 **Administração → Carteiras**
-- Saldo real, saldo de bônus, saldo sacável, rollover pendente e comissões de cada jogador.
-- Editar a carteira permite **ajustes manuais** de saldo real, saldo de bônus, saldo sacável e comissão (ex.: bônus de compensação). Todo ajuste manual é de sua responsabilidade — registre o motivo.
+- Saldos de cada jogador: **para jogar** (depósitos e prêmios ainda presos ao rollover), **disponível para saque**, **bônus**, **comissão de afiliado**, **saldo de influencer** e o rollover que falta.
+- **Ajustar saldo** (na lista de Carteiras, na página da carteira ou na lista de Usuários): escolha o saldo, *Adicionar*, *Retirar* ou *Definir o valor*, o valor e o motivo. A conta é feita com a carteira travada, então uma aposta que aconteça ao mesmo tempo não é sobrescrita; não deixa retirar mais do que o jogador tem; e cada ajuste fica registrado (com quem fez e o motivo) em *Últimos ajustes* na página da carteira.
+- Qual saldo usar: para o jogador **apostar**, *Saldo para jogar*; para ele poder **sacar** na hora, *Disponível para saque*; para promoções, *Bônus*.
+
+**Influencers (contas de divulgação)**
+- Em **Usuários → editar → Influencer**, a conta passa a jogar com o **saldo de influencer**, separado do saldo real: os jogos apostam e pagam nesse saldo, e o site mostra esse valor no topo para ela.
+- Para dar saldo: *Ajustar saldo → Saldo de influencer* (se a conta ainda não for influencer, o próprio formulário oferece marcar). Toda conta nasce com R$ 1.000 de saldo de influencer, que só é usado depois de marcada.
+- O saldo de influencer não pode ser sacado; o *disponível para saque* real continua separado.
 
 ---
 
@@ -291,12 +308,19 @@ Administração → Saques → filtre *Pendente* → faça o PIX → **Aprovar**
 1. Confira em Administração → Depósitos se está *Pendente*.
 2. Verifique se o webhook está cadastrado no gateway ([PAGAMENTOS.md](PAGAMENTOS.md)).
 3. Enquanto a tela do PIX está aberta, o site reconsulta o gateway e credita automaticamente quando estiver pago.
+4. Confirmado no gateway que o dinheiro entrou, use **Aprovar** na linha do depósito: ele é creditado uma única vez (se o aviso do gateway chegar depois, não credita de novo).
+
+**Recebi um PIX direto na minha conta**
+Administração → Depósitos → **Lançar depósito** (aprovado na hora).
 
 **Desativar um jogo com problema**
 Meus Jogos → Todos os Jogos → editar → desmarque *Status*.
 
 **Dar um bônus manual**
-Administração → Carteiras → editar a carteira do jogador → some o valor ao *saldo de bônus*.
+Administração → Carteiras (ou Usuários) → **Ajustar saldo** → *Bônus* → *Adicionar* → valor e motivo.
+
+**Dar ou tirar saldo de um jogador**
+Administração → Carteiras (ou Usuários) → **Ajustar saldo** → escolha o saldo, *Adicionar*/*Retirar*/*Definir* e o motivo.
 
 **Bloquear um jogador**
 Administração → Usuários → editar → *Banido*.

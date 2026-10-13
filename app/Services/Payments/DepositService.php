@@ -20,8 +20,126 @@ use Illuminate\Support\Str;
  */
 class DepositService
 {
+    /** "Gateway" dos depósitos lançados pelo painel (PIX direto, transferência, dinheiro...). */
+    public const MANUAL_GATEWAY = 'manual';
+
     public function __construct(private PaymentManager $payments)
     {
+    }
+
+    /**
+     * Depósito lançado pelo administrador. Se aprovado, credita na hora como um depósito de gateway:
+     * rollover, pontos VIP, CPA do afiliado e, se pedido, o bônus de primeiro depósito.
+     */
+    public function createManual(User $user, float $amount, string $type, bool $approve, bool $acceptBonus = false, ?string $proof = null): Deposit
+    {
+        $amount = round($amount, 2);
+        if ($amount <= 0) {
+            throw new PaymentException('Informe um valor maior que zero.');
+        }
+
+        $wallet = Wallet::where('user_id', $user->id)->where('active', 1)->first()
+            ?? Wallet::where('user_id', $user->id)->first();
+        if (!$wallet) {
+            throw new PaymentException('Este usuário não tem carteira.');
+        }
+
+        $setting   = Setting::first();
+        $reference = 'man' . Str::lower(Str::random(29));
+
+        return DB::transaction(function () use ($user, $amount, $type, $approve, $acceptBonus, $proof, $wallet, $setting, $reference) {
+            Transaction::create([
+                'payment_id'     => $reference,
+                'user_id'        => $user->id,
+                'payment_method' => $type,
+                'gateway'        => self::MANUAL_GATEWAY,
+                'price'          => $amount,
+                'currency'       => $wallet->currency ?: strtoupper($setting->currency_code ?? 'BRL'),
+                'accept_bonus'   => $acceptBonus,
+                'status'         => 0,
+            ]);
+
+            $deposit = Deposit::create([
+                'payment_id' => $reference,
+                'user_id'    => $user->id,
+                'amount'     => $amount,
+                'type'       => $type,
+                'proof'      => $proof,
+                'currency'   => $wallet->currency ?: strtoupper($setting->currency_code ?? 'BRL'),
+                'symbol'     => $wallet->symbol ?: 'R$',
+                'status'     => 0,
+            ]);
+
+            if ($approve) {
+                $this->approve($deposit);
+            }
+
+            return $deposit->fresh();
+        });
+    }
+
+    /**
+     * Aprova um depósito pendente pelo painel (lançado manualmente ou de gateway cujo aviso não chegou)
+     * e credita a carteira uma única vez.
+     *
+     * @param  bool|null  $acceptBonus  null = mantém a escolha feita no depósito
+     * @param  bool  $creditApprovedWithoutCredit  credita também um depósito marcado como aprovado que nunca foi
+     *                                             creditado (lançado pelo painel em versões anteriores)
+     * @return bool true se creditou agora; false se o depósito já estava creditado
+     */
+    public function approve(Deposit $deposit, ?bool $acceptBonus = null, bool $creditApprovedWithoutCredit = false): bool
+    {
+        return DB::transaction(function () use ($deposit, $acceptBonus, $creditApprovedWithoutCredit) {
+            $locked = Deposit::whereKey($deposit->getKey())->lockForUpdate()->first();
+            if (!$locked) {
+                return false;
+            }
+            // aprovado = creditado, a não ser que o painel peça para creditar um "aprovado sem crédito"
+            if ((int) $locked->status === 1 && !($creditApprovedWithoutCredit && $locked->isApprovedWithoutCredit())) {
+                return false;
+            }
+
+            $transaction = $locked->payment_id
+                ? Transaction::where('payment_id', $locked->payment_id)->lockForUpdate()->first()
+                : null;
+
+            if ($transaction && (int) $transaction->status === 1) {
+                $locked->update(['status' => 1]);   // o gateway já tinha creditado
+                return false;
+            }
+
+            if (!$transaction) {
+                // depósito sem cobrança registrada (ex.: criado pelo painel em versões anteriores)
+                $reference = $locked->payment_id ?: 'man' . Str::lower(Str::random(29));
+                $wallet    = Wallet::where('user_id', $locked->user_id)->first();
+                $transaction = Transaction::create([
+                    'payment_id'     => $reference,
+                    'user_id'        => $locked->user_id,
+                    'payment_method' => $locked->type ?: 'manual',
+                    'gateway'        => self::MANUAL_GATEWAY,
+                    'price'          => $locked->amount,
+                    'currency'       => $locked->currency ?: ($wallet->currency ?? 'BRL'),
+                    'accept_bonus'   => (bool) $acceptBonus,
+                    'status'         => 0,
+                ]);
+                $locked->update(array_filter([
+                    'payment_id' => $locked->payment_id ? null : $reference,
+                    'currency'   => $locked->currency ? null : ($wallet->currency ?? 'BRL'),
+                    'symbol'     => $locked->symbol ? null : ($wallet->symbol ?? 'R$'),
+                ]));
+            } elseif ($acceptBonus !== null) {
+                $transaction->update(['accept_bonus' => $acceptBonus]);
+            }
+
+            // o valor do depósito é o que vale (pode ter sido corrigido no painel enquanto pendente)
+            if ((float) $transaction->price !== (float) $locked->amount) {
+                $transaction->update(['price' => $locked->amount]);
+            }
+
+            $this->creditWallet($transaction->fresh());
+
+            return true;
+        });
     }
 
     /**
@@ -126,6 +244,10 @@ class DepositService
 
         if ((int) $transaction->status === 1) {
             return PaymentGateway::STATUS_PAID;
+        }
+
+        if ($transaction->gateway === self::MANUAL_GATEWAY) {
+            return PaymentGateway::STATUS_PENDING;   // lançado pelo painel: só o administrador aprova
         }
 
         $remote = $this->payments->get($transaction->gateway)->fetchStatus($transaction);

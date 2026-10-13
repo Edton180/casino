@@ -179,6 +179,7 @@ class UserResource extends Resource
                         ,
                         Forms\Components\Toggle::make('is_demo_agent')
                             ->label('Influencer')
+                            ->helperText('Conta de divulgação: joga com o "saldo de influencer" (separado do saldo real) e o site mostra esse saldo para ela. Ajuste o valor em Carteiras → Ajustar saldo → Saldo de influencer.')
                             ->columnSpanFull()
                         ,
                         Forms\Components\Toggle::make('status')
@@ -268,6 +269,22 @@ class UserResource extends Resource
                     })
             ])
             ->actions([
+                Tables\Actions\Action::make('adjustBalance')
+                    ->label('Ajustar saldo')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('success')
+                    ->modalHeading(fn (User $record) => 'Ajustar saldo de ' . $record->name)
+                    ->form(WalletResource::adjustForm())
+                    ->modalSubmitActionLabel('Aplicar')
+                    ->action(function (User $record, array $data): void {
+                        $wallet = \App\Models\Wallet::where('user_id', $record->id)->where('active', 1)->first()
+                            ?? \App\Models\Wallet::where('user_id', $record->id)->first();
+                        if (!$wallet) {
+                            \Filament\Notifications\Notification::make()->title('Este usuário não tem carteira')->danger()->send();
+                            return;
+                        }
+                        WalletResource::applyAdjustment($wallet, $data);
+                    }),
                 Tables\Actions\Action::make('details')
                     ->label('Detalhes')
                     ->icon('heroicon-o-chart-bar')
